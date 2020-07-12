@@ -1,45 +1,47 @@
 # Purpose
 
-When comparing large text files on Linux, the graphical compare tools
-gvimdiff, kompare, or meld are often used.
-In many cases, it is difficult to compare the files directly,
-when each file needs to be preprocessed before comparing.
+When comparing large text files on Linux, the graphical compare tools gvimdiff, kompare, or meld are often used.
 
-This script runs the Linux gvimdiff, kompare, or meld tool on 2 files
-after preprocessing each of them with a wide variety of options.
+In many cases, it is difficult to compare the files directly, when each file needs to be preprocessed before comparing.
+
+This script runs the Linux gvimdiff, kompare, or meld tool on 2 files after preprocessing each of them with a wide variety of options.
 
 # Sample Problems and Solutions
-Problem:    Differences in whitespace or comments or case cause mismatches
-Solution:   Use options -white or -nowhite or -comments or -case
 
-Problem:    Input files are too large for a quick comparison
+## Differences in whitespace or comments or case cause mismatches
+Solution:  Use options -white or -nowhite or -comments or -case
+
+## Input files are too large for a quick comparison
 Solution1:  Use -head or -tail to only compare the first or last N lines
 			or
 Solution2:  Use -start and -stop to specify a section of the file using regexes
 
-Problem:    Lines are too long to visually compare easily
-Solution:   Use -fold to wrap
+## Lines are too long to visually compare easily
+Solution:  Use -fold to wrap
 
-Problem:    Files contain binary characters
-Solution:   Use -strings
+## Files contain binary characters
+Solution:  Use -strings
 
-Problem:    Files are sorted differently
-Solution:   Use -sort
+## Files are sorted differently
+Solution:  Use -sort
 
-Problem:    Files both need to be filtered using regexes, to strip out certain characters or sequences
+## Files both need to be filtered using regexes, to strip out certain characters or sequences
 Solution1:  Use -sub <regex> to supply one instance of substitution and replacement
 			or
 Solution2:  Use -subtable <file> to supply a file with many substitution/replacement
 
-Usage examples:
+# Usage examples
 perl cmpx file1 file2
+
 perl cmpx file1 file2 -white
+
 perl cmpx dir1 dir2
 
-Filtering options:    
--head              compare only the first 10000 lines
+# Filtering options
+## -head
+compare only the first 10000 lines
 
--headlines N       compare only the first N lines.
+## -headlines N       compare only the first N lines.
 
 -tail              compare only the first 10000 lines
 
