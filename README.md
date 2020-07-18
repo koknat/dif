@@ -27,9 +27,9 @@ Solution:  Use -strings
 Solution:  Use -sort
 
 #### Files both need to be filtered using regexes, to strip out certain characters or sequences
-Solution1:  Use -sub <regex> to supply one instance of substitution and replacement
+Solution1:  Use -search <regex> -replace <regex> to supply one instance of substitution and replacement
 			or
-Solution2:  Use -subtable <file> to supply a file with many substitution/replacement
+Solution2:  Use -subtable <file> to supply a file with many substitution/replacement regexes
 
 # Usage examples
 * perl cmpx file1 file2
