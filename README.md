@@ -1,10 +1,11 @@
+# Background
+The graphical compare tools gvimdiff, kompare, or meld are used to compare text files on Linux
+
+In many cases, it is difficult to visually compare the files because of formatting differences
+
 # Purpose
 
-The graphical compare tools gvimdiff, kompare, or meld are used to compare text files on Linux.
-
-In many cases, it is difficult to visually compare the files because of formatting differences.
-
-This script runs the Linux gvimdiff, kompare, or meld tool on 2 files after preprocessing each of them with a wide variety of options.
+This script runs the Linux gvimdiff, kompare, or meld tool on 2 files after preprocessing each of them with a wide variety of options
 
 # Sample Problems and Solutions
 
