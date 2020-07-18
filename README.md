@@ -1,48 +1,51 @@
-    Purpose:
-        When comparing large text files on Linux, the graphical compare tools
-        gvimdiff, kompare, or meld are often used.
-        In many cases, it is difficult to compare the files directly,
-        when each file needs to be preprocessed before comparing.
-        
-        This script runs the Linux gvimdiff, kompare, or meld tool on 2 files
-        after preprocessing each of them with a wide variety of options.
-    
-    Sample Problems and Solutions:
-        Problem:    Differences in whitespace or comments or case cause mismatches
-        Solution:   Use options -white or -nowhite or -comments or -case
-    
-        Problem:    Input files are too large for a quick comparison
-        Solution1:  Use -head or -tail to only compare the first or last N lines
-                    or
-        Solution2:  Use -start and -stop to specify a section of the file using regexes
-    
-        Problem:    Lines are too long to visually compare easily
-        Solution:   Use -fold to wrap
-    
-        Problem:    Files contain binary characters
-        Solution:   Use -strings
+# Purpose
 
-        Problem:    Files are sorted differently
-        Solution:   Use -sort
+The graphical compare tools gvimdiff, kompare, or meld are used to compare text files on Linux.
 
-        Problem:    Files both need to be filtered using regexes, to strip out certain characters or sequences
-        Solution1:  Use -sub <regex> to supply one instance of substitution and replacement
-                    or
-        Solution2:  Use -subtable <file> to supply a file with many substitution/replacement
+In many cases, it is difficult to visually compare the files because of formatting differences.
 
-    Usage examples:
-        perl cmpx file1 file2
-        perl cmpx file1 file2 -white
-        perl cmpx dir1 dir2
+This script runs the Linux gvimdiff, kompare, or meld tool on 2 files after preprocessing each of them with a wide variety of options.
+
+# Sample Problems and Solutions
+
+#### Differences in whitespace or comments or case cause mismatches
+Solution:  Use options -white or -nowhite or -comments or -case
+
+#### Input files are too large for a quick comparison
+Solution1:  Use -head or -tail to only compare the first or last N lines
+			or
+Solution2:  Use -start and -stop to specify a section of the file using regexes
+
+#### Lines are too long to visually compare easily
+Solution:  Use -fold to wrap
+
+#### Files contain binary characters
+Solution:  Use -strings
+
+#### Files are sorted differently
+Solution:  Use -sort
+
+#### Files both need to be filtered using regexes, to strip out certain characters or sequences
+Solution1:  Use -sub <regex> to supply one instance of substitution and replacement
+			or
+Solution2:  Use -subtable <file> to supply a file with many substitution/replacement
+
+# Usage examples
+* perl cmpx file1 file2
+* perl $scriptName file1 file2 -sort
+* perl cmpx file1 file2 -white -comments -case
+* perl cmpx file1 file2 -sub 'foo^^bar'
+
+# Options
 
     Filtering options:    
        -head              compare only the first 10000 lines
        
-       -headlines N       compare only the first N lines.
+       -headLines N       compare only the first N lines.
 
        -tail              compare only the first 10000 lines
        
-       -taillines N       compare only the first N lines.
+       -tailLines N       compare only the first N lines.
 
        -fields N          compare only fields N.  Multiple fields may be given, separated by commas (-fields N,M).
                           Field numbers start at 0.
@@ -63,18 +66,18 @@
        -white             remove blank lines and leading/trailing whitespace.
                           Condense multiple whitespace to a single space
        
-       -nowhite           remove all whitespace.  Useful to check output of perltidy.
+       -noWhite           remove all whitespace.  Useful to check output of perltidy.
 
        -case              convert files to lowercase before comparing
        
        -split             splits each line on whitespace
        
-       -splitchar 'char'  splits each line on 'char'
+       -splitChar 'char'  splits each line on 'char'
        
        -trim              Trims each line to 105 characters.
                           Useful when lines are very long, and the important information is near the beginning
        
-       -trimchars N       Trims with specified number of characters, instead of 105
+       -trimChars N       Trims with specified number of characters, instead of 105
        
        -comments          remove any comments like // or # or single-line */ /*
                           requires module Regexp::Common
@@ -128,7 +131,7 @@
                                  For example, to convert all spaces to newlines, use:
                                      -sub '\s+^^\n'
 
-       -subtable file     Specify a two-column file which will be used for search/replace
+       -subTable file     Specify a two-column file which will be used for search/replace
                           The delimiter is any amount of spaces
                           Terms in the file are treated as regular expressions
                           The replace term is eval'd
@@ -143,14 +146,14 @@
        
        -json              Used for comparing two json files via Data::Dumper
 
-       -perldump          Useful when comparing previously captured output of Data::Dumper
+       -perlDump          Useful when comparing previously captured output of Data::Dumper
                           filter out all SCALAR/HASH/ARRAY/REF/GLOB/CODE addresses from output of Dumpvalue,
                           since they change on every execution.
                               SPECS' => HASH(0x9880110)    becomes    'SPECS' => HASH()
                           Also works on Python object dumps:
                               <_sre.SRE_Pattern object at 0x216e600>
 
-       -perleval          The input file is a perl hashref
+       -perlEval          The input file is a perl hashref
                           Print the keys in alphabetical order
 
       
@@ -175,9 +178,9 @@
                           Useful for comparing long lines,
                           so that you don't need to scroll within the kompare tool
 
-       -foldchars N       run 'fold' on each input file with N characters per column
+       -foldChars N       run 'fold' on each input file with N characters per column
 
-       -pponly            Stop after creating processed files
+       -ppOnly            Stop after creating processed files
 
 
     Viewing options:
@@ -236,14 +239,13 @@
                               k file2 ../file2
                               k file3 ../file3
        
-      -listfiles         Print report showing which files match, when using -gold or -dir2
+      -listFiles         Print report showing which files match, when using -gold or -dir2
+    
 
+    Default compare tool:
+        The default compare tool (difftool) is gvimdiff
+        To change this, create the file ~/.cmpx.options using this example:
+            difftool: kompare
+            #difftool: meld
+            #difftool: tkdiff
 
-    Perforce version control support:
-            Perforce uses # to signify version numbers
-    Perforce examples:
-            perl cmpx file#6 file#7   compares p4 version 6 with p4 version 7
-            perl cmpx file#6 file#+   compares p4 version 6 with p4 version 7
-            perl cmpx file#6 file#-   compares p4 version 6 with p4 version 5
-            perl cmpx file#7          compares p4 version 7 with file version
-            perl cmpx file#head       compares most current p4 version with file version
