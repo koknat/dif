@@ -35,7 +35,7 @@ Solution2:  Use -subtable <file> to supply a file with many substitution/replace
 * perl cmpx file1 file2
 * perl $scriptName file1 file2 -sort
 * perl cmpx file1 file2 -white -comments -case
-* perl cmpx file1 file2 -sub 'foo^^bar'
+* perl cmpx file1 file2 -search 'foo' -replace 'bar'
 
 # Options
 
