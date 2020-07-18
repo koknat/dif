@@ -114,24 +114,24 @@ Solution2:  Use -subtable <file> to supply a file with many substitution/replace
                           Useful when Perl subroutines have been moved within a file.
                           This option preprocesses each file, so that the subroutine definitions
                           are in alphabetical order
-       
-       -sub 'search^^replace'    On each line, do global regex search and replace.
-                                 The ^^ is the delimiter between the search and replace terms.
+			  
+       -search 'regex'
+       -replace 'regex    On each line, do global regex search and replace.
                                  For example, to replace 'line 1234' with 'line':
-                                     -sub 'line \d+^^line'
+                                     -search 'line \d+'  -replace 'line'
                                   
-                                 Since the search term is interpreted as a regex,
+                                 Since the search/replace terms are interpreted as regex,
                                  remember to escape any parentheses
                                      Exception:  if you are using regex grouping, 
                                                  do not escape the parentheses.
                                      For example:
-                                         -sub '(A|B|C)^^D'
+                                         -search '(A|B|C)'  -replace 'D'
 
                                  Since the replace term is eval'd, make sure to escape any $ dollar signs
                                  Make sure you use 'single-quotes' instead of "double-quotes"
                                  For example, to convert all spaces to newlines, use:
-                                     -sub '\s+^^\n'
-
+                                     -search '\s+'  -replace '\n'
+    
        -subTable file     Specify a two-column file which will be used for search/replace
                           The delimiter is any amount of spaces
                           Terms in the file are treated as regular expressions
