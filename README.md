@@ -10,23 +10,23 @@ Afterwards, it runs the Linux gvimdiff, kompare, or meld tool on them
 
 It can also be used as part of an automated testing framework, returning 0 for identical, and 1 for mismatch.
 
-# Sample Problems and Solutions
+# Solutions
 
-#### Differences in whitespace or comments or case cause mismatches
+#### Problem: differences in whitespace or comments or case cause mismatches
 Solution:  Use options -white or -nowhite or -comments or -case
 
-#### Input files are too large for a quick comparison
+#### Problem: input files are too large for a quick comparison
 Solution1:  Use -head or -tail to only compare the first or last N lines
 			or
 Solution2:  Use -start and -stop to specify a section of the file using regexes
 
-#### Lines are too long to visually compare easily
+#### Problem: lines are too long to visually compare easily
 Solution:  Use -fold to wrap
 
-#### Files are sorted differently
+#### Problem: files are sorted differently
 Solution:  Use -sort
 
-#### Files both need to be filtered using regexes, to strip out certain characters or sequences
+#### Problem: files both need to be filtered using regexes, to strip out certain characters or sequences
 Solution1:  Use -search <regex> -replace <regex> to supply one instance of substitution and replacement
 			or
 Solution2:  Use -subtable <file> to supply a file with many substitution/replacement regexes
