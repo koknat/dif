@@ -22,9 +22,6 @@ Solution2:  Use -start and -stop to specify a section of the file using regexes
 #### Lines are too long to visually compare easily
 Solution:  Use -fold to wrap
 
-#### Files contain binary characters
-Solution:  Use -strings
-
 #### Files are sorted differently
 Solution:  Use -sort
 
