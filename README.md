@@ -210,10 +210,10 @@ Solution2:  Use -subtable <file> to supply a file with many substitution/replace
 
                           -difftool ''          
                                 This is useful when comparing from a script
-                                After running cmpx, check the return status:
+                                After running dif, check the return status:
                                     0 = files are equal
                                     1 = files are different
-                                    cmpx a.yml b.yml difftool '' -silent ; echo $?
+                                    dif a.yml b.yml difftool '' -silent ; echo $?
 
                           -difftool 'diff -C 1' | grep -v '^[*-]'
                               Use diff, with the options:
@@ -222,17 +222,13 @@ Solution2:  Use -subtable <file> to supply a file with many substitution/replace
 
        -diff              Shortcut for '-difftool diff'
 
-       The diff tool can also be set with an environment variable.  For example, use one of these:
-           setenv CMPX_DIFFTOOL /usr/bin/meld
-           export CMPX_DIFFTOOL=/usr/bin/meld
-
 
     Other options:
        -gold              When used with one filename (file.extension), assumes that 2nd file will be file.golden.extension
-                          When used with multiple filenames (file.extension), it runs cmpx multiple times, once for each of the pairs.
+                          When used with multiple filenames (file.extension), it runs dif multiple times, once for each of the pairs.
                           This option is useful when doing regressions against golden files
 
-       -dir2 <dir>        For each input file specified, run 'k' on the file in the current directory against the file in the specified directory
+       -dir2 <dir>        For each input file specified, run 'cdif' on the file in the current directory against the file in the specified directory
                           For example:
                               dif file1 file2 file3 -dir ..
                           will run:
