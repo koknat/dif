@@ -5,7 +5,7 @@ In many cases, it is difficult to visually compare the files because of formatti
 
 # Purpose
 
-This script runs the Linux gvimdiff, kompare, or meld tool on 2 files after preprocessing each of them with a wide variety of options
+'dif' runs the Linux gvimdiff, kompare, or meld tool on 2 files after preprocessing each of them with a wide variety of options
 
 # Sample Problems and Solutions
 
@@ -32,10 +32,10 @@ Solution1:  Use -search <regex> -replace <regex> to supply one instance of subst
 Solution2:  Use -subtable <file> to supply a file with many substitution/replacement regexes
 
 # Usage examples
-* perl cmpx file1 file2
-* perl cmpx file1 file2 -sort
-* perl cmpx file1 file2 -white -comments -case
-* perl cmpx file1 file2 -search 'foo' -replace 'bar'
+* dif file1 file2
+* dif file1 file2 -sort
+* dif file1 file2 -white -comments -case
+* dif file1 file2 -search 'foo' -replace 'bar'
 
 # Options
 
@@ -234,18 +234,18 @@ Solution2:  Use -subtable <file> to supply a file with many substitution/replace
 
        -dir2 <dir>        For each input file specified, run 'k' on the file in the current directory against the file in the specified directory
                           For example:
-                              k file1 file2 file3 -dir ..
+                              dif file1 file2 file3 -dir ..
                           will run:
-                              k file1 ../file1
-                              k file2 ../file2
-                              k file3 ../file3
+                              dif file1 ../file1
+                              dif file2 ../file2
+                              dif file3 ../file3
        
       -listFiles         Print report showing which files match, when using -gold or -dir2
     
 
     Default compare tool:
         The default compare tool (difftool) is gvimdiff
-        To change this, create the file ~/.cmpx.options using this example:
+        To change this, create the file ~/.dif.options using this example:
             difftool: kompare
             #difftool: meld
             #difftool: tkdiff
