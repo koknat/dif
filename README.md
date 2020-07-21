@@ -6,6 +6,7 @@ In many cases, it is difficult and time-consuming to visually compare large file
 # Purpose
 
 This script 'dif' preprocesses input text files with a wide variety of options
+
 Afterwards, it runs the Linux gvimdiff, kompare, or meld tool on them
 
 It can also be used as part of an automated testing framework, returning 0 for identical, and 1 for mismatch.
@@ -246,3 +247,19 @@ Solution2:  Use -subtable <file> to supply a file with many substitution/replace
             #difftool: meld
             #difftool: tkdiff
 
+
+# Installation instructions
+
+To install dif and run tests:
+* tar -xvf dif.tar.gz
+* cd dif/tests
+* ./dif.t
+It should return with 'all tests passed'.
+Perl versions 5.6.1 through 5.30 have been tested.
+
+To see usage:
+* cd ..
+* ./dif
+
+To run dif:
+* dif file1 file2 <options>
