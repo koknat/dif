@@ -28,9 +28,11 @@ Solution:  Use -fold to wrap
 Solution:  Use -sort
 
 #### Problem: files both need to be filtered using regexes, to strip out certain characters or sequences
-Solution1:  Use -search <regex> -replace <regex> to supply one instance of substitution and replacement
+Solution1:  Use -grep <regex> or -ignore <regex> to filter in or out
 
-Solution2:  Use -replaceTable <file> to supply a file with many substitution/replacement regexes
+Solution2:  Use -search <regex> -replace <regex> to supply one instance of substitution and replacement
+
+Solution3:  Use -replaceTable <file> to supply a file with many substitution/replacement regexes
 
 # Usage examples
 * dif file1 file2
