@@ -18,7 +18,7 @@ Solution:  Use options -white or -nowhite or -comments or -case
 
 #### Problem: input files are too large for a quick comparison
 Solution1:  Use -head or -tail to only compare the first or last N lines
-			or
+
 Solution2:  Use -start and -stop to specify a section of the file using regexes
 
 #### Problem: lines are too long to visually compare easily
@@ -29,8 +29,8 @@ Solution:  Use -sort
 
 #### Problem: files both need to be filtered using regexes, to strip out certain characters or sequences
 Solution1:  Use -search <regex> -replace <regex> to supply one instance of substitution and replacement
-			or
-Solution2:  Use -subtable <file> to supply a file with many substitution/replacement regexes
+
+Solution2:  Use -replaceTable <file> to supply a file with many substitution/replacement regexes
 
 # Usage examples
 * dif file1 file2
