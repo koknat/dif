@@ -7,7 +7,7 @@ In many cases, it is difficult and time-consuming to visually compare large file
 
 For example:
 * log files are often many MB of unbroken text, with some 'dont care' information such as timestamps
-* different versions of version-crontrolled-code may have significant formatting differences (formatting, subroutines moved around)
+* different versions of version-crontrolled-code may have significant formatting differences
 
 
 # Purpose
