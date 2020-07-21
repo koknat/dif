@@ -264,6 +264,7 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
 # Installation instructions
 
 To install dif and run tests:
+* download dif.tar.gz from GitHub
 * tar -xvf dif.tar.gz
 * cd dif/tests
 * ./dif.t
