@@ -17,9 +17,9 @@ It can also be used as part of an automated testing framework, returning 0 for i
 Solution:  Use options -white or -nowhite or -comments or -case
 
 #### Problem: input files are too large for a quick comparison
-Solution1:  Use -head or -tail to only compare the first or last N lines
+Solution 1:  Use -head or -tail to only compare the first or last N lines
 
-Solution2:  Use -start and -stop to specify a section of the file using regexes
+Solution 2:  Use -start and -stop to specify a section of the file using regexes
 
 #### Problem: lines are too long to visually compare easily
 Solution:  Use -fold to wrap
@@ -28,11 +28,11 @@ Solution:  Use -fold to wrap
 Solution:  Use -sort
 
 #### Problem: files both need to be filtered using regexes, to strip out certain characters or sequences
-Solution1:  Use -grep <regex> or -ignore <regex> to filter in or out
+Solution 1:  Use -grep <regex> or -ignore <regex> to filter in or out
 
-Solution2:  Use -search <regex> -replace <regex> to supply one instance of substitution and replacement
+Solution 2:  Use -search <regex> -replace <regex> to supply one instance of substitution and replacement
 
-Solution3:  Use -replaceTable <file> to supply a file with many substitution/replacement regexes
+Solution 3:  Use -replaceTable <file> to supply a file with many substitution/replacement regexes
 
 # Usage examples
 * dif file1 file2
