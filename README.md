@@ -246,20 +246,25 @@ Solution2:  Use -subtable <file> to supply a file with many substitution/replace
             difftool: kompare
             #difftool: meld
             #difftool: tkdiff
-
-
+	    
+	    
 # Installation instructions
 
 To install dif and run tests:
 * tar -xvf dif.tar.gz
 * cd dif/tests
 * ./dif.t
+
 It should return with 'all tests passed'.
+
 Perl versions 5.6.1 through 5.30 have been tested.
+
 
 To see usage:
 * cd ..
 * ./dif
 
+
 To run dif:
 * dif file1 file2 <options>
+
