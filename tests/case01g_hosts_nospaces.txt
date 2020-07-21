@@ -1,4 +1,0 @@
-#Donotremovethefollowingline,orvariousprograms
-#thatrequirenetworkfunctionalitywillfail.
-127.0.0.1localhost.localdomainlocalhost
-::1localhost6.localdomain6localhost6
