@@ -263,6 +263,16 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
             difftool: tkdiff
 
 
+    Perforce version control support:
+            Perforce uses # to signify version numbers
+    Perforce examples:
+            dif file#head       compares most current p4 version with local version
+            dif file#7          compares p4 version 7 with local version
+            dif file#6 file#7   compares p4 version 6 with p4 version 7
+            dif file#6 file#+   compares p4 version 6 with p4 version 7
+            dif file#6 file#-   compares p4 version 6 with p4 version 5
+            dif file#6..#8      compares p4 version 6 with p4 version 7, and then compares 7 with 8
+
 
 # Installation instructions
 
