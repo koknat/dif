@@ -35,6 +35,9 @@ Solution:  Use -fold to wrap
 #### Problem: files are sorted differently
 Solution:  Use -sort
 
+#### Problem: need to view your changes to a file on Perforce
+Solution:  Specify the file with file#head to see differences
+
 #### Problem: files both need to be filtered using regexes, to strip out certain characters or sequences
 Solution 1:  Use -grep <regex> or -ignore <regex> to filter in or out
 
