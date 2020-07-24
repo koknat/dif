@@ -16,7 +16,7 @@ This script 'dif' preprocesses input text files with a wide variety of options
 
 Afterwards, it runs the Linux tools gvimdiff, kompare, or meld on these intermediate files
 
-'dif' can also be used as part of an automated testing framework, returning 0 for identical, and 1 for mismatch
+'dif' can also be used as part of an automated testing framework against golden files, returning 0 for identical, and 1 for mismatch
 
 
 # Solutions
