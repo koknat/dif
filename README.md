@@ -1,3 +1,5 @@
+# dif - a preprocessing front end to gvimdiff/meld/kompare
+![Alt text](dif.png?raw=true "Screenshot of gvimdiff")
 
 # Background
 
