@@ -31,11 +31,14 @@ Solution 1:  Use -head or -tail to only compare the first or last N lines
 
 Solution 2:  Use -start and -stop to specify a section of the file using regexes
 
-#### Problem: lines are too long to visually compare easily
-Solution:  Use -fold to wrap
-
 #### Problem: files are sorted differently
 Solution:  Use -sort
+
+#### Problem: log files contain dates and times
+Solution:   Use -stripDates
+
+#### Problem: lines are too long to visually compare easily
+Solution:  Use -fold to wrap
 
 #### Problem: need to view your changes to a file on Perforce
 Solution:  'dif file#head' will show the differences between the file in p4, vs the local file
