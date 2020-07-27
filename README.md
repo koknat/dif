@@ -35,7 +35,7 @@ Solution 2:  Use -start and -stop to specify a section of the file using regexes
 Solution:  Use -sort
 
 #### Problem: log files contain dates and times
-Solution:   Use -stripDates
+Solution:   Use -replaceDates
 
 #### Problem: lines are too long to visually compare easily
 Solution:  Use -fold to wrap
