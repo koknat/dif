@@ -156,6 +156,13 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
                               Terms in the file are treated as regular expressions
                               The replace term is run through eval
 
+       -replaceDates      Remove dates and times, for example:
+                               Monday July 20 17:36:34 PDT 2020
+                               Dec  3  2019
+                               Jul 10 17:42
+                               1970.01.01
+                               1/1/1970
+
        -tartv             Compare tarfiles using tar -tv, and look at the file size
                           If file size is not desired in the comparison, also use -fields 1
        
@@ -180,11 +187,20 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
     Preprocessing options (before filtering):
        -bcpp              Run each input file through bcpp with options:  /home/ckoknat/cs2/linux/bcpp -s -bcl -tbcl -ylcnc
 
-       -perltidy          Run each input file through perltidy with options:  /usr/bin/perltidy -l=110 -ce
+       -perltidy          Run each input file through perltidy with options:  /home/utils/perl-5.8.8/bin/perltidy -l=110 -ce
        
        -externalPreprocessScript <script>          
                           Run each input file through your custom preprocessing script
                           It must take input from STDIN and send output to STDOUT, similar to unix 'sort'
+                          Trivial example:
+                              -externalPreprocessScript 'sort'
+                          
+                          Examples for comparing binary files:
+                              -e '/usr/bin/xxd'
+                              -e '/usr/bin/hexdump -c'
+                          Although for the case of comparing binary files,
+                              a standalone diff tool may be preferable,
+                              for example 'qdiff' by Johannes Overmann & Tong Sun
 
 
     Postprocessing options (after filtering):
@@ -193,7 +209,7 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
        -uniq              Run Linux 'uniq' on each input file to eliminate duplicated adjacent lines
                           Use with -sort to eliminate all duplicates
        
-       -strings           Run Linux 'strings' command on each input file
+       -strings           Run Linux 'strings' command on each input file to strip out binary characters
 
        -fold              Run 'fold' on each input file with default of 105 characters per column
                           Useful for comparing long lines,
@@ -205,44 +221,52 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
 
 
     Viewing options:
-       -silent            Do not print to screen
+       -quiet             Do not print to screen
 
-       -verbose           Print names of preprocessed files, before comparing
+       -verbose           Print names and file sizes of preprocessed temp files, before comparing
 
-       -stdout            Cat all processed files to stdout
-
-       -difftool cmd      Instead of using gvimdiff to graphically compare the files, use a different tool
+       -gui cmd           Instead of using gvimdiff to graphically compare the files, use a different tool
                           For example:
-                          -difftool diff
-                                Prints diff to stdout
-
-                          -difftool gvimdiff
-                                Uses gvimdiff as a GUI
+                          -gui gvimdiff
+                              Uses gvimdiff as a GUI
                           
-                          -difftool kompare
-                                Uses kompare as a GUI
+                          -gui kompare
+                              Uses kompare as a GUI
 
-                          -difftool meld
-                                Uses meld as a GUI
+                          -gui meld
+                              Uses meld as a GUI
 
-                          -difftool md5sum
-                                Prints the m5sum to stdout, after preprocessing
+                          -gui md5sum
+                              Prints the m5sum to stdout, after preprocessing
+                          
+                          -gui ''          
+                              This is useful when comparing from a script
+                              After running dif, check the return status:
+                                  0 = files are equal
+                                  1 = files are different
+                                  dif a.yml b.yml -gui '' -quiet ; echo $?
+                           
+                          -gui diff
+                              Prints diff to stdout instead of to a GUI
 
-                          -difftool ''          
-                                This is useful when comparing from a script
-                                After running dif, check the return status:
-                                    0 = files are equal
-                                    1 = files are different
-                                    dif a.yml b.yml difftool '' -silent ; echo $?
-
-                          -difftool 'diff -C 1' | grep -v '^[*-]'
+                          -gui 'diff -C 1' | grep -v '^[*-]'
                               Use diff, with the options:
                                   one line of Context above and below the diff
                                   remove the line numbers of the diffs
 
-       -diff              Shortcut for '-difftool diff'
+       -diff              Shortcut for '-gui diff'
 
     Other options:
+       -stdin             Parse input from stdin
+       -stdout            Cat all preprocessed files to stdout
+                          In this use case, dif can be called on only one file
+                          This allows dif to be part of a pipeline
+                          Example 1:
+                              dif file -stdout <options> | another_script
+                          If -stdin is given, then -stdout is assumed
+                          Example 2:
+                              grep foo bar | dif -stdin <options> | baz | qux
+
        -gold              When used with one filename (file.extension), assumes that 2nd file will be file.golden.extension
                           When used with multiple filenames (file.extension), it runs dif multiple times, once for each of the pairs
                           This option is useful when doing regressions against golden files
@@ -259,39 +283,53 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
       -listFiles         Print report showing which files match, when using -gold or -dir2
     
 
-    Default compare tool:
-        The default compare tool (difftool) is gvimdiff
-        To change this, create the text file ~/.dif.options with one of these content lines:
-            difftool: gvimdiff
-            difftool: kompare
-            difftool: meld
-            difftool: tkdiff
+    File formats:
+        dif will automatically uncompress files from these formats into intermediate files:
+            .gz
+            .bz2
+            .xz
+            .zip  (single files only)
+           
 
+    Default compare tool:
+        The default compare GUI is gvimdiff
+        To change this, create the text file ~/.dif.options with one of these content lines:
+            gui: gvimdiff
+            gui: kompare
+            gui: meld
+            gui: tkdiff
+
+
+    For convenience, link to this code from ~/bin
+        ln -s dif ~/bin/dif
+
+    
 
     Perforce version control support:
             Perforce uses # to signify version numbers
     Perforce examples:
-            dif file#head       compares most current p4 version with local version
-            dif file#7          compares p4 version 7 with local version
             dif file#6 file#7   compares p4 version 6 with p4 version 7
             dif file#6 file#+   compares p4 version 6 with p4 version 7
-            dif file#6 file#-   compares p4 version 6 with p4 version 5
+            dif file#6 file#-   compares p4 version 6 with previous version
+            dif file#head #-    compares p4 head version with previous version (shortcut)
+            dif file#head       compares p4 head version with local version (shortcut)
+            dif file#7          compares p4 version 7 with local version (shortcut)
             dif file#6..#8      compares p4 version 6 with p4 version 7, and then compares 7 with 8
+    
 
 
 # Installation instructions
 
 To install dif and run tests:
-* download dif.tar.gz from GitHub
-* tar -xvf dif.tar.gz
-* cd dif/tests
+* download dif from GitHub
+* cd dif/test
 * ./dif.t
 
 It should return with 'all tests passed'
 
 Perl versions 5.6.1 through 5.30 have been tested
 
-For convenience, copy it to your ~/bin directory
+For convenience, copy 'dif' to your ~/bin directory
 
 
 To see usage:
