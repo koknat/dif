@@ -1,0 +1,3 @@
+HASH\(0x\S+\)	HASH()
+ARRAY\(0x\S+\)	ARRAY()
+HOST	host

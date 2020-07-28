@@ -1,0 +1,19 @@
+A  date
+B  date
+C  date
+D  date
+E  date
+F  date
+-------------
+G  date
+H  date
+-------------
+I  date
+-------------
+J  date
+K  date
+-------------
+L  date
+M  date
+-------------
+foo (for testing -replaceDates in conjunction with -search -replace)

@@ -1,0 +1,16 @@
+
+sub foo {
+    a
+    b
+}
+
+sub bar {
+    a
+    b
+}
+
+sub baz {
+    a
+    c
+}
+

@@ -1,0 +1,25 @@
+---
+- cast:
+  - Felicity Jones
+  - Armie Hammer
+  - Justin Theroux
+  - Jack Reynor
+  - Cailee Spaeny
+  - Sam Waterston
+  - Kathy Bates
+  genres:
+  - BIOGRAPHY
+  - DRAMA
+  year: 2018
+  title: On the Basis of Sex
+- cast:
+  - Nicole Kidman
+  - Tatiana Maslany
+  - Sebastian Stan
+  - Toby Kebbell
+  - Scoot McNairy
+  genres:
+  - CRIME
+  - THRILLER
+  year: 2018
+  title: Destroyer

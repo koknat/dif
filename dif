@@ -1,0 +1,1789 @@
+#!/usr/bin/perl
+# This code has been tested on perl 5.6.1 through 5.30
+use warnings;
+use strict;
+use Cwd;
+use Data::Dumper;
+use File::Basename;
+use File::Temp qw/ tempfile tempdir /;
+use Getopt::Long;
+sub say { print @_, "\n" }
+
+# Debugger from CPAN
+sub D { say "Debug::Statements has been disabled to improve performance" }
+sub d { }
+#eval 'use lib "/home/ate/scripts/regression";  use Debug::Statements ":all";'; say "\nRemember to comment the Debug::Statements line before checking in the code !!\n";
+#use lib "/home/ate/scripts/regression";
+#use Debug::Statements ":all";
+
+# Defaults can be overridden with user config file ~/.dif.defaults  (key/value format)
+my %defaults;
+$defaults{head}     = 10000;                       # lines printed by -head
+$defaults{history}  = 0;                           # log options used to ~/.dif.history
+$defaults{fold}     = 105;                         # columns used by -fold
+$defaults{bcpp}     = "/usr/bin/bcpp";             # location of bcpp
+$defaults{perltidy} = "$^X" . "tidy -l=110 -ce";   # perltidy location and options
+my %opt;
+
+my $scriptName = 'dif';
+
+sub usage {
+    my $backgroundPurpose = "
+# Background
+
+The graphical compare tools gvimdiff, kompare, or meld are used to compare text files on Linux
+
+In many cases, it is difficult and time-consuming to visually compare large files because of formatting differences
+
+For example:
+* log files are often many MB of unbroken text, with some \"don't care\" information such as timestamps
+* different versions of version-crontrolled-code may have significant formatting differences
+
+
+# Purpose
+
+This script '$scriptName' preprocesses input text files with a wide variety of options
+
+Afterwards, it runs the Linux tools gvimdiff, kompare, or meld on these intermediate files
+
+'$scriptName' can also be used as part of an automated testing framework, returning 0 for identical, and 1 for mismatch";
+
+    my $installationInstructions = "
+# Installation instructions
+
+To install $scriptName and run tests:
+* download $scriptName.tar.gz from GitHub
+* tar -xvf $scriptName.tar.gz
+* cd $scriptName/tests
+* ./$scriptName.t
+
+It should return with 'all tests passed'
+
+Perl versions 5.6.1 through 5.30 have been tested
+
+For convenience, copy it to your ~/bin directory
+
+
+To see usage:
+* cd ..  (back into $scriptName main directory)
+* ./$scriptName
+
+
+To run $scriptName
+* ./$scriptName file1 file2 <options>
+    ";
+    my $usage = "\n
+'$scriptName' by Chris Koknat  https://github.com/koknat/dif
+
+    Purpose:
+        The graphical compare tools gvimdiff, kompare, or meld are used to compare text files on Linux
+        In many cases, it is difficult to visually compare the files because of formatting differences
+        This script runs the Linux gvimdiff, kompare, or meld tool on 2 files after preprocessing each of them with a wide variety of options
+
+    Sample Problems and Solutions:
+        Problem:    Differences in whitespace or comments or case cause mismatches
+        Solution:   Use options -white or -noWhite or -comments or -case
+
+        Problem:    Input files are too large for a quick comparison
+        Solution1:  Use -head or -tail to only compare the first or last N lines
+                    or
+        Solution2:  Use -start and -stop to specify a section of the file using regexes
+
+        Problem:    Lines are too long to visually compare easily
+        Solution:   Use -fold to wrap
+
+        Problem:    Files are sorted differently
+        Solution:   Use -sort
+
+        Problem:    Log files contain dates and times
+        Solution:   Use -replaceDates
+
+        Problem:    Files both need to be filtered using regexes, to strip out certain characters or sequences
+        Solution1:  Use -grep <regex> or -ignore <regex> to filter in or out
+                    or
+        Solution2:  Use -search <regex> -replace <regex> to supply one instance of substitution and replacement
+                    or
+        Solution3:  Use -replaceTable <file> to supply a file with many substitution/replacement
+
+    Usage Examples:
+        $scriptName file1 file2
+        $scriptName file1 file2 -sort
+        $scriptName file1 file2 -white -comments -case
+        $scriptName file1 file2 -search 'foo' -replace 'bar'
+
+    Filtering options:    
+       -head              Compare only the first $defaults{head} lines
+       
+       -headLines N       Compare only the first N lines
+
+       -tail              Compare only the first $defaults{head} lines
+       
+       -tailLines N       Compare only the first N lines
+
+       -fields N          Compare only fields N
+                          Multiple fields may be given, separated by commas (-fields N,M)
+                          Field numbers start at 0
+                          Fields in the input files are assumed to be separated by spaces, unless the filename ends with .csv (separated by commas)
+                          Example:  -fields 2
+                          Example:  -fields 0,2      (fields 0 and 2)
+                          Example:  -fields -1       (last field)
+                          Example:  -fields 2+       (field 2 and onwards)
+                          Example:  -fields not2+    (ignore fields 2 and onwards)
+                          Example:  -fields not0,5+  (ignore fields 0, 5, and onwards)
+
+       -fieldSeparator regex    Only needed if default field separators above are not sufficient
+                                Example:  -fieldSeparator ':'
+                                Example:  -fieldSeparator '[,=]' 
+
+       -fieldJustify      Make all fields the same width, right-justified
+
+       -white             Remove blank lines and leading/trailing whitespace
+                          Condense multiple whitespace to a single space
+       
+       -noWhite           Remove all whitespace.  Useful to check output of perltidy
+
+       -case              Convert files to lowercase before comparing
+       
+       -split             Splits each line on whitespace
+       
+       -splitChar 'char'  Splits each line on 'char'
+       
+       -trim              Trims each line to $defaults{fold} characters
+                          Useful when lines are very long, and the important information is near the beginning
+       
+       -trimChars N       Trims with specified number of characters, instead of $defaults{fold}
+       
+       -comments          Remove any comments like // or # or single-line */ /*
+
+       -grep 'regex'      Only keep lines which match the user-specified regex
+                          Multiple regexs can be specified, for example:  -grep '(regexA|regexB)'
+
+       -ignore 'regex'    Ignore any lines which match the user-specified regex
+                          This is the exact opposite of the -grep function
+                          
+       -start 'regex'     Start comparing file when line matches regex
+       
+       -stop 'regex'      Stop comparing file when line matches regex
+
+                          For example, to compare Perl subroutines 'add' and 'subtract' inside files a.pm and b.pm:
+                              $scriptName a.pm b.pm -start '^sub (add|subtract) ' -stop '^}'
+
+       -start1 -stop1 -start2 -stop2
+                          Similar to -start and -stop
+                          The '1' and '2' refer the files
+                          Enables comparing different sections within the same file, or different sections within different files
+                          For example, to compare Perl subroutines 'add' and 'subtract' within single file:
+                              $scriptName a.pm -start1 'sub add' -stop1 '^}' -start2 'sub subtract' -stop '^}'
+
+       -subroutine 'subroutine_name'
+                          Compare same subroutine from two source files
+                          Subroutines may be Perl (sub {}) or TCL (proc {}{})
+                          May specify multiple subroutines with -subroutine '(mysubA|mysubB|mysubC)'
+                          Internally, this piggybacks on the -start -stop functionality
+
+       -subroutineSort
+                          Useful when Perl subroutines have been moved within a file
+                          This option preprocesses each file, so that the subroutine definitions
+                          are in alphabetical order
+       
+       -search 'regex'
+       -replace 'regex'   On each line, do global regex search and replace
+                              For example, to replace 'line 1234' with 'line':
+                                  -search 'line \\d+'  -replace 'line'
+                                  
+                              Since the search/replace terms are interpreted as regex,
+                              remember to escape any parentheses
+                                  Exception:  if you are using regex grouping, 
+                                              do not escape the parentheses
+                                  For example:
+                                      -search '(A|B|C)'  -replace 'D'
+
+                              Since the replace term is run through eval, make sure to escape any \$ dollar signs
+                              Make sure you use 'single-quotes' instead of double-quotes
+                              For example, to convert all spaces to newlines, use:
+                                  -search '\\s+'  -replace '\\n'
+
+       -replaceTable file     Specify a two-column file which will be used for search/replace
+                              The delimiter is any amount of spaces
+                              Terms in the file are treated as regular expressions
+                              The replace term is run through eval
+
+       -replaceDates      Remove dates and times, for example:
+                               Monday July 20 17:36:34 PDT 2020
+                               Dec  3  2019
+                               Jul 10 17:42
+                               1970.01.01
+                               1/1/1970
+
+       -tartv             Compare tarfiles using tar -tv, and look at the file size
+                          If file size is not desired in the comparison, also use -fields 1
+       
+       -lsl               Useful when comparing previously captured output of 'ls -l'
+                          Filters out everything except size and filename
+          
+       -yaml              Used for comparing two yaml files via YAML::XS and Data::Dumper
+       
+       -json              Used for comparing two json files via JSON::XS and Data::Dumper
+
+       -perlDump          Useful when comparing previously captured output of Data::Dumper
+                          filter out all SCALAR/HASH/ARRAY/REF/GLOB/CODE addresses from output of Dumpvalue,
+                          since they change on every execution
+                              'SPECS' => HASH(0x9880110)    becomes    'SPECS' => HASH()
+                          Also works on Python object dumps:
+                              <_sre.SRE_Pattern object at 0x216e600>
+
+       -perlEval          The input file is a perl hashref
+                          Print the keys in alphabetical order
+
+      
+    Preprocessing options (before filtering):
+       -bcpp              Run each input file through bcpp with options:  $defaults{bcpp}
+
+       -perltidy          Run each input file through perltidy with options:  $defaults{perltidy}
+       
+       -externalPreprocessScript <script>          
+                          Run each input file through your custom preprocessing script
+                          It must take input from STDIN and send output to STDOUT, similar to unix 'sort'
+                          Trivial example:
+                              -externalPreprocessScript 'sort'
+                          
+                          Examples for comparing binary files:
+                              -e '/usr/bin/xxd'
+                              -e '/usr/bin/hexdump -c'
+                          Although for the case of comparing binary files,
+                              a standalone diff tool may be preferable,
+                              for example 'qdiff' by Johannes Overmann & Tong Sun
+
+
+    Postprocessing options (after filtering):
+       -sort              Run Linux 'sort' on each input file
+
+       -uniq              Run Linux 'uniq' on each input file to eliminate duplicated adjacent lines
+                          Use with -sort to eliminate all duplicates
+       
+       -strings           Run Linux 'strings' command on each input file to strip out binary characters
+
+       -fold              Run 'fold' on each input file with default of $defaults{fold} characters per column
+                          Useful for comparing long lines,
+                          so that scrolling right is not needed within the GUI
+
+       -foldChars N       Run 'fold' on each input file with N characters per column
+
+       -ppOnly            Stop after creating processed files
+
+
+    Viewing options:
+       -quiet             Do not print to screen
+
+       -verbose           Print names and file sizes of preprocessed temp files, before comparing
+
+       -gui cmd           Instead of using gvimdiff to graphically compare the files, use a different tool
+                          For example:
+                          -gui gvimdiff
+                              Uses gvimdiff as a GUI
+                          
+                          -gui kompare
+                              Uses kompare as a GUI
+
+                          -gui meld
+                              Uses meld as a GUI
+
+                          -gui md5sum
+                              Prints the m5sum to stdout, after preprocessing
+                          
+                          -gui ''          
+                              This is useful when comparing from a script
+                              After running $scriptName, check the return status:
+                                  0 = files are equal
+                                  1 = files are different
+                                  $scriptName a.yml b.yml -gui '' -quiet ; echo \$?
+                           
+                          -gui diff
+                              Prints diff to stdout instead of to a GUI
+
+                          -gui 'diff -C 1' | grep -v '^[*-]'
+                              Use diff, with the options:
+                                  one line of Context above and below the diff
+                                  remove the line numbers of the diffs
+
+       -diff              Shortcut for '-gui diff'
+
+    Other options:
+       -stdin             Parse input from stdin
+       -stdout            Cat all preprocessed files to stdout
+                          In this use case, $scriptName can be called on only one file
+                          This allows $scriptName to be part of a pipeline
+                          Example 1:
+                              dif file -stdout <options> | another_script
+                          If -stdin is given, then -stdout is assumed
+                          Example 2:
+                              grep foo bar | dif -stdin <options> | baz | qux
+
+       -gold              When used with one filename (file.extension), assumes that 2nd file will be file.golden.extension
+                          When used with multiple filenames (file.extension), it runs $scriptName multiple times, once for each of the pairs
+                          This option is useful when doing regressions against golden files
+
+       -dir2 <dir>        For each input file specified, run '$scriptName' on the file in the current directory
+                              against the file in the specified directory
+                          For example:
+                              $scriptName file1 file2 file3 -dir ..
+                          will run:
+                              $scriptName file1 ../file1
+                              $scriptName file2 ../file2
+                              $scriptName file3 ../file3
+       
+      -listFiles         Print report showing which files match, when using -gold or -dir2
+    
+
+    File formats:
+        $scriptName will automatically uncompress files from these formats into intermediate files:
+            .gz
+            .bz2
+            .xz
+            .zip  (single files only)
+           
+
+    Default compare tool:
+        The default compare GUI is gvimdiff
+        To change this, create the text file ~/.dif.options with one of these content lines:
+            gui: gvimdiff
+            gui: kompare
+            gui: meld
+            gui: tkdiff
+
+
+    For convenience, link to this code from ~/bin
+        ln -s $scriptName ~/bin/$scriptName
+
+    ";
+
+    my $p4usage = "
+    Perforce version control support:
+            Perforce uses # to signify version numbers
+    Perforce examples:
+            $scriptName file#6 file#7   compares p4 version 6 with p4 version 7
+            $scriptName file#6 file#+   compares p4 version 6 with p4 version 7
+            $scriptName file#6 file#-   compares p4 version 6 with previous version
+            $scriptName file#head #-    compares p4 head version with previous version (shortcut)
+            $scriptName file#head       compares p4 head version with local version (shortcut)
+            $scriptName file#7          compares p4 version 7 with local version (shortcut)
+            $scriptName file#6..#8      compares p4 version 6 with p4 version 7, and then compares 7 with 8
+    ";
+
+    say "$backgroundPurpose\n\n$installationInstructions" and exit if $opt{installationInstructions};  # for README.txt and Github README.md
+    say "\n$usage";
+    my $whichP4 = `which p4`;
+    say "$p4usage" if  $whichP4 ne ''  and  $whichP4 !~ /Command not found/;
+    say "\n";
+    exit 0;
+}
+
+my $originalCmdLine = "$0 " . join( ' ', @ARGV );
+# Parse options
+%opt = (
+    # Preprocess
+    bcpp                     => '',
+    perltidy                 => '',
+    externalPreprocessScript => '',
+    # Postprocess
+    sort      => "",
+    uniq      => "",
+    strings   => "",
+    fold      => "",
+    foldChars => 0,
+    trim      => "",
+    trimChars => 0,
+    head      => 0,
+    headLines => 0,
+    tail      => 0,
+    tailLines => 0,
+    # Filter
+    ppOnly   => 0,
+    white    => 0,
+    noWhite  => 0,
+    case     => 0,
+    comments => 0,
+    lsl      => 0,
+    perlDump => 0,
+    perlEval => 0,
+    yaml     => 0,
+    json     => 0,
+    rp       => 0,
+    # Other
+    dir2      => '',
+    cleanup   => 0,
+    gold      => 0,
+    listFiles => 0,
+    help      => 0,
+    quiet     => 0,
+    gui       => undef,
+    difftool  => undef,
+    diff      => 0,
+    gvimdiff  => 0,
+    tkdiff    => 0,
+    kompare   => 0,
+    meld      => 0,
+    stdout    => 0,
+);
+my $d = 0;
+
+# Parse user config files ~/.dif.options ~/.dif.defaults ~/.dif.fileMappings
+#     ~/.dif.options
+#         gui: kompare
+#     ~/.dif.defaults
+#         bcpp: /home/ckoknat/cs2/linux/bcpp -s -bcl -tbcl -ylcnc
+#     ~/.dif.fileMappings
+#         {
+#             CPN => 'CheckPatternName.pm',
+#             cpn => 'check_pattern_names.pl',
+#         }
+for my $type ( 'options', 'defaults' ) {
+    d '$type';
+    my $userConfigFile = "$ENV{HOME}/.$scriptName.$type";
+    d '$userConfigFile';
+    if ( -e $userConfigFile ) {
+        d '%opt %defaults';
+        my $map = readTableFile( $userConfigFile, 0, 1 );
+        d '$map';
+        while ( my ( $key, $value ) = each %$map ) {
+            d '$key $value';
+            $key =~ s/:$//;
+            if ( $type eq 'options' ) {
+                $opt{$key} = $value;
+            } elsif ( $type eq 'defaults' ) {
+                $defaults{$key} = $value;
+            }
+        }
+    }
+}
+d '%opt %defaults';
+my %customFilenameMappings;
+for my $type ( 'fileMappings' ) {
+    d '$type';
+    my $userConfigFile = "$ENV{HOME}/.$scriptName.$type";
+    if ( -e $userConfigFile ) {
+        d "Reading $userConfigFile";
+        open my $fh, '<', $userConfigFile;
+        local $/;    # slurp mode;
+        my $data = <$fh>;
+        close $fh;
+        d '$data';
+        my $config;
+        eval "\$config = $data";
+        d '$config';
+
+        while ( my ( $key, $value ) = each %$config ) {
+            d '$key $value';
+            if ( $type eq 'fileMappings' ) {
+                $customFilenameMappings{$key} = $value;
+            }
+        }
+    }
+}
+d '%customFilenameMappings';
+
+my $pwd = Cwd::cwd();
+if ( $defaults{history} ) {
+    #if ( $pwd =~ m{/dif/test} ) {}  # all unit tests were still triggering it
+    if ( $0 =~ m{$scriptName/$scriptName.pl} ) {
+        # do nothing, do not want unit tests in history
+        # if this is not agreeable, another idea is to check if filenames are /^example_/ but would need to move this code below GetOpt
+    } else {
+        chomp( my $date = `date` );
+        #my @options = sort keys %opt;  # no, don't want the default options
+        my @options = sort grep /-\S+/, @ARGV;
+        `echo "$date    @options" >> ~/.$scriptName.history`;
+    }
+}
+
+Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort|s', 'paragraphSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'ppOnly', 'white|w', 'noWhite', 'case', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'subroutine=s', 'subroutineSort', 'replaceTable=s', 'replaceDates', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'silent', 'quiet', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kompare|k', 'meld|m', 'md5sum', 'stdin', 'stdout', 'rp', 'ps', 'cleanup', 'gold|g', 'dir2=s', 'listFiles', 'noDirs', 'tartv', 'noBackground', 'installationInstructions' ) or usage();
+# noDirs is not in usage
+
+my $globaltmpdir;
+my $windows = ( $^O =~ /Win/ ) ? 1 : 0;      # Are we running on Windows?
+if ($windows) {
+    $globaltmpdir = tempdir( 'C:\Windows\Temp\d_XXXX', CLEANUP => $opt{cleanup} );
+} else {
+    # want to keep the directory name relatively short because it appears on top of the kompare window
+    $globaltmpdir = tempdir( '/tmp/d_XXXX', CLEANUP => $opt{cleanup} );
+}
+# Check if files exist
+my @files = @ARGV;
+if ( $opt{stdin} ) {
+    $opt{stdout} = 1;
+    #my @lines = <STDIN>;
+    my $content = do { local $/; <STDIN> };
+    my $tmpfile = sprintf( "%s/%d__%s", $globaltmpdir, 1, 'stdin' );
+    open( my $TMP, '>', $tmpfile ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";
+    #print $TMP @lines;
+    print $TMP $content;
+    close $TMP;
+    $files[0] = $tmpfile;
+}
+usage() if ( $opt{help}  or  not @files  or  $opt{installationInstructions} );
+#usage() if ( $opt{help}  or  (not @files and not $opt{stdin})  or  $opt{installationInstructions} );
+$files[0] .= 'ead' if $files[0] =~ /#h$/;    # enable #h instead of #head
+$files[1] .= 'ead' if $files[0] =~ /#h$/;    # enable #h instead of #head
+d '%opt @files';
+# To use with Windows, download http://strawberryperl.com and WinMerge.  Windows support is very limited, expect some features to not work
+
+# Handle custom file mappings
+( my $filePrefix = $files[0] ) =~ s/(#.*)//;
+my $p4rev = $1 || '#head';
+if ( defined $customFilenameMappings{$filePrefix} ) {
+    $files[0] = "$customFilenameMappings{$filePrefix}$p4rev";
+}
+
+if ( $opt{split} or defined $opt{splitChar} ) {
+    if ( defined $opt{search} or $opt{replace} ) {
+        say "ERROR:  Cannot use -search/-replace with -split or -splitChar";
+        exit 1;
+    } elsif ( $opt{split} ) {
+        $opt{search} = "\\s+";
+        $opt{replace} = "\\n";
+    } elsif ( defined $opt{splitChar} ) {
+        my $splitChar = quotemeta( $opt{splitChar} );
+        $opt{search} = "$splitChar";
+        $opt{replace} = "\\n";
+    } else {
+        die "Program bug";
+    }
+}
+
+$opt{start} = $opt{start2} if defined $opt{start2};
+$opt{stop}  = $opt{stop2}  if defined $opt{stop2};
+$opt{start} = $opt{start1} if defined $opt{start1};
+$opt{stop}  = $opt{stop1}  if defined $opt{stop1};
+if ( not $files[1] and $opt{start2} ) {
+    $files[1] = $files[0];
+}
+
+# Sanity check
+if ( $opt{subroutine} ) {
+    if ( $opt{start} or $opt{stop} ) {
+        say "ERROR:  Cannot use -subroutine with -start or -stop";
+        exit 1;
+    }
+    $opt{start} = '^\s*(sub|proc)\s+' . $opt{subroutine} . '\s+{';
+    $opt{stop}  = '^}';
+}
+
+# Decide which diff tool to use
+chomp( my $uid = `whoami` );
+my $gui = 'gvimdiff';
+if ( $opt{diff} ) {
+    $gui = 'diff';
+} elsif ( $opt{gvimdiff} ) {
+    $gui = 'gvimdiff';
+} elsif ( $opt{tkdiff} ) {
+    $gui = '/home/utils/tkdiff-4.2/bin/tkdiff';
+} elsif ( $opt{kompare} ) {
+    $gui = 'kompare';
+} elsif ( $opt{meld} ) {
+    $gui = 'meld';
+} elsif ( $opt{md5sum} ) {
+    $gui = 'md5sum';
+} elsif ( defined $opt{difftool} ) {  # Renamed to -gui, but retained for backwards compatibility for Amit
+    $gui = $opt{difftool};
+} elsif ( defined $opt{gui} ) {
+    $gui = $opt{gui};
+} else {
+    # Custom user defaults if no diff tool was chosen
+    my $executable_regex = '.(c|cpp|h|pl|pm|py|tn|tcl)($|#)';
+    if ( $uid =~ /astehle/ ) {
+        $gui = 'meld';
+    } elsif ( $uid =~ /ckoknat/ ) {
+        if ( defined $files[2] or defined $files[1] and $opt{gold} ) {
+            # Meld seems to have issues with many files
+            $gui = 'kompare';
+        } elsif ( $files[0] =~ /$executable_regex/ ) {
+            $gui = 'kompare';
+        } else {
+            #$gui = 'meld'; # Tired of meld 1.8.6 crashing
+            $gui = 'kompare';
+        }
+    } elsif ( $uid =~ /jcolburn|samgao/ ) {
+        $gui = 'tkdiff';
+    }
+}
+d '$gui';
+
+# Customizations based on gui choice
+$opt{quiet} = 1 if $opt{silent};  # For backwards compatibility of -silent
+if ( $gui =~ /kompare|meld/ ) {
+    # Use gvimdiff instead of kompare once the file goes above a limit
+    #     10MB uncompressed file takes 2 seconds on gvimdiff vs 39 seconds on kompare and similar on meld (meld will open but not show differences for a while)
+    #     Need to test this on meld as well
+    my $sizelimit;
+    if ( $files[0] =~ /\.(gz|zip|bz2|xz|zip)$/ ) {
+        $sizelimit = 1000000;
+    } else {
+        $sizelimit = 3000000;
+    }
+    if ( not ($opt{head} or $opt{tail})  and   -e $files[0]  and  -s $files[0] > $sizelimit ) {
+        # Using -e because do not want to run these checks if run with p4 revs:  dif releasePatternsRev.pl#136 #140
+        say "Switching to gvimdiff to speed up comparison because 1st file is > $sizelimit bytes.  If you really want to use $gui, use option '-gui $gui'" unless $opt{quiet};
+        $gui = 'gvimdiff';
+    } else {
+        # do nothing
+    }
+}
+d '$gui';
+# Cannot combine this with the above code, since we may have switched to gvimdiff
+if ( $gui =~ /gvimdiff/ ) {
+    $defaults{fold} = 80;    # columns used by -fold, gvimdiff uses larger font than kompare
+} elsif ( $gui eq 'meld' ) {
+    my $meld;
+    my $meld_161 = "/home/utils/meld-1.6.1/bin/meld";
+    my $meld_186 = "/home/utils/meld-1.8.6/bin/meld";
+    # meld does not have line numbers (unless install python-gtksourceview2 is installed)
+    # in that case, use kompare instead
+    if ( -f $meld_186 ) {
+        $meld = $meld_186;
+    } elsif ( -f $meld_161 ) {
+        $meld = $meld_161;
+    } elsif ( -f '/usr/bin/meld' ) {
+        $meld = '/usr/bin/meld';
+    } else {
+        say "WARNING:  meld not found.  Using kompare instead";
+        $meld = 'kompare';
+    }
+    $gui = $meld;
+    # meld $defaults{fold} is same as for kompare
+}
+d '$gui';
+# Fall back to gvimdiff if kompare is not installed
+if ( $gui ne '' ) {
+    # $gui might be 'diff -C 3'
+    ( my $gui_executable = $gui ) =~ s/^(\S+).*/$1/;
+    my $result = `which $gui_executable`;
+    if ( $result eq '' ) {
+        say "Using gvimdiff since $gui_executable is not installed" unless $opt{quiet};
+        # sudo apt install kompare
+        $gui = 'gvimdiff';
+    }
+}
+if ($windows) {
+    #$gui = "fc.exe";  # like diff
+    $gui = "start WinMerge";    # Need to install from internet
+}
+
+# Decide if file needs to go through the preprocessing code
+# If not, then we can later do a quick md5sum check to determine equality
+my $preprocessRequired = 0;
+$preprocessRequired = 1 if $opt{sort} or $opt{paragraphSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or defined $opt{grep} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{subroutineSort} or $opt{lsl} or $opt{perltidy} or $opt{externalPreprocessScript} or $opt{perlEval} or $opt{yaml} or $opt{json} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
+for my $file (@files) {
+    if ( $file =~ /\.tar(\.gz|bz2|xz|zip)?(#(\d+|head|\-|\+))?$/ ) {
+        if ( $opt{tartv} ) {
+            # do nothing, will be handled later
+        } else {
+            $preprocessRequired = 1;
+            $gui           = 'gvimdiff';
+        }
+    }
+    if ( $file =~ /#(\d+|head)$/ or $file =~ m{^//} ) { $preprocessRequired = 1 }
+    if ( $file =~ /\.gz$/ ) {
+        if ( $gui =~ /(diff|kompare|meld)/ ) {
+            $preprocessRequired = 1;
+        } elsif ( $gui eq '' ) {
+            $preprocessRequired = 1;
+        }    # Avoids "binary files differ"
+    }
+}
+if ( $gui eq "gvimdiff" and $preprocessRequired ) {
+    # Set gvim options to speed up comparison
+    # Only for preprocessed files, since the options will prevent reading of compressed files
+    $gui = 'gvimdiff -u NONE -U NONE -N -R +"set number" +"set ic" +"set hlsearch"';
+}
+d '$preprocessRequired $gui';
+
+# Setup for uncompression
+my @zipExtension = @files;
+for my $f (@zipExtension) {
+    $f =~ s/^.*(\.(gz|bz2|xz|zip))$/$1/;
+    $f = '.gz' if !defined $f;  # .gz zdiff is the default since it handles uncompressed files
+}
+$zipExtension[1] = $zipExtension[0] if !defined $zipExtension[1];    # perforce#NNN without 2nd file
+d '@files @zipExtension';
+my $zipDiff;
+if ( grep { /\.xz/ } @zipExtension ) {
+    # Due to bug in xzdiff, which returns status 0 regardless if files differ or not, require preprocessing (unzipping)
+    $preprocessRequired = 1;
+    $zipDiff            = 'zdiff';
+} elsif ( grep { /\.zip/ } @zipExtension ) {
+    # There is no zdiff type of tool for zip
+    $preprocessRequired = 1;
+    $zipDiff            = 'zdiff';  # zdiff handles uncompresed files.  The preprocessing will unzip them
+} elsif ( $zipExtension[0] eq $zipExtension[1] ) {
+    my %diffref = ( '.gz' => 'zdiff', '.bz2' => 'bzdiff', '.xz' => 'xzdiff' );
+    $zipDiff = $diffref{ $zipExtension[0] };
+    $zipDiff = 'zdiff' if !$zipDiff;                                 # .txt
+} else {
+    # Files have different zip formats
+    $preprocessRequired = 1;
+    $zipDiff            = 'zdiff';
+}
+d '$zipDiff $preprocessRequired';
+
+$opt{quiet} = 1                                                         if $opt{stdout};
+$opt{head}   = 99999999999                                              if $opt{head} == 0;
+$opt{head}   = $defaults{head}                                          if $opt{head} == 1;
+$opt{head}   = $opt{headLines}                                          if $opt{headLines};
+$opt{tail}   = $defaults{head}                                          if $opt{tail} == 1;
+$opt{tail}   = $opt{tailLines}                                          if $opt{tailLines};
+$opt{sort}   = "| sort"                                                 if $opt{sort} ne "";
+$opt{sort}   = "| perl -n00 -e 'push \@a, \$_; END { print sort \@a }'" if $opt{paragraphSort};
+$opt{uniq}   = "| uniq"                                                 if $opt{uniq} ne "";
+if ( $opt{strings} ne "" ) {
+
+    if ( `which strings` eq '' ) {
+        # Use perl if 'strings' executable does not exist in linux
+        $opt{strings} = "| perl -nle 'print \$& while m/[[:print:]]{4,}/g'";
+    } else {
+        #$opt{strings} = "| strings";
+        $opt{strings} = "| perl -nle 'print \$& while m/[[:print:]]{4,}/g'";
+    }
+}
+if ( $opt{fold} or $opt{foldChars} ) {
+    $opt{fold} = $opt{foldChars} ? "| fold -s -w $opt{foldChars}" : "| fold -s -w $defaults{fold}";
+}
+if ( $opt{trim} or $opt{trimChars} ) {
+    $opt{trim} = $opt{trimChars} ? $opt{trimChars} : $defaults{fold};
+}
+
+my $fieldsNegate = 0;
+if ( defined $opt{fields} ) {
+    if ( $opt{fields} =~ s/^\!// ) {
+        # The '!' gets interpreted by the shell on the command line
+        $fieldsNegate = 1;
+    }
+    if ( $opt{fields} =~ s/^not// ) {
+        # workaround for above problem
+        $fieldsNegate = 1;
+    }
+}
+
+# -search -replace and -replaceTable and -replaceDates
+my ( $replaceTable_ref, @sub_keys_ordered );
+$opt{replaceTable} = "/home/ckoknat/s/regression/rp/ktable.txt" if $opt{rp};    # work-specific
+$opt{replaceTable} = "/home/ckoknat/s/regression/ps_ktable.txt" if $opt{ps};    # work-specific
+if ( $opt{search} or $opt{replace} or $opt{replaceTable} or $opt{replaceDates} ) {
+    if ( ( defined $opt{search}  and ! defined $opt{replace} )  or  ( ! defined $opt{search}  and defined $opt{replace} ) ) {
+        die "Options -search and -replace must be used together";
+    }
+    if ( $opt{replaceTable} ) {
+        $replaceTable_ref = readTableFile( $opt{replaceTable}, 0, 1 );    # readTableFile($opt{tablefile},$opt{reverse},$opt{regex})
+        d '$replaceTable_ref';
+        if ( !%{$replaceTable_ref} ) {
+            say "ERROR:  Did not find any entries in table file!  Exiting.\n";
+            exit 1;
+        }
+    }
+    if ( defined $opt{search}  or  $opt{replace} ) {
+        $replaceTable_ref->{$opt{search}} = eval "qq($opt{replace})";
+    }
+    if ( $opt{replaceDates} ) {
+        my $weekdayRegex = qr/(Mo(n(day)?)?|Tu(e(s(day)?)?)?|We(d(nesday)?)?|Th(u(r(s(day)?)?)?)?|Fr(i(day)?)?|Sa(t(urday)?)?|Su(n(day)?)?)/;
+        my $monthRegex = qr/(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|(Nov|Dec)(?:ember)?)/;
+        my $timeRegex = qr/\d{2}:\d{2}(:\d{2})?/;  # 17:36:34
+        my $timezoneRegex = qr/([ECMP][SD]T|UTC)/;
+        my $dayRegex = qr/\d{1,2}/;
+        my $yearRegex = qr/\d{4}/;
+        my $dateYMDregex = qr<\d{4,98}[/\-.]\d{1,2}[/\-.]\d{1,2}>;  # YYYY-MM-DD   ,99 is a kludge to make the regex longer, and therefore appear before $dateDMYregex
+        my $dateDMYregex = qr<\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}>;  # DD-MM-YYYY
+        my $replaceDates_ref = {
+            qr/($weekdayRegex\s+)?$monthRegex\s*$dayRegex(\s+$timeRegex)?(\s*$timezoneRegex)?(\s*$yearRegex)?/ => 'date',
+            qr/${dateYMDregex}T${timeRegex}(\+\d\d:\d\d|Z)/ => 'date',  # 2020-07-27T21:13:23+00:00
+            qr/\d{8}T\d{6}Z/ => 'date',  # 20200727T211323Z
+            $dateYMDregex => 'date',     # 'YYYY-MM-DD'
+            $dateDMYregex => 'date',     # 'DD-MM-YYYY'
+        };
+        while ( my ( $search, $replace ) = each %$replaceDates_ref ) {
+            $replaceTable_ref->{$search} = $replace;
+        }
+    }
+    $opt{search_replace} = 1;
+    # The longer regexes are implemented before the shorter ones
+    @sub_keys_ordered = ( reverse sort { length $a <=> length $b } keys %$replaceTable_ref );
+    d( '@sub_keys_ordered', 'e' );
+}
+d '$replaceTable_ref';
+
+my @files_orig = @files;
+if ( $opt{dir2} ) {
+    $opt{noDirs} = 1;
+}
+if ( $opt{noDirs} ) {
+    @files = ();
+    for my $file (@files_orig) {
+        if ( -d $file ) {
+            # do nothing
+        } else {
+            push @files, $file;
+        }
+    }
+}
+
+# If -gold is used, get the golden/non-golden version
+# If -dir2 is used, get the file from the other directory
+# If more than one file was specified, call dif multiple times with options
+# dif file#123
+if ( $opt{gold} and $opt{dir2} ) {
+    die "ERROR:  Cannot use -gold with -dir2";
+}
+if ( $opt{gold} or $opt{dir2} ) {
+    if ( $opt{listFiles} ) {
+        # This does not work in conjunction with any of the preprocessing options
+        # For regression testing
+        #     ~/r/k/dif -gold file1 file3 file4 file5
+        # For as2
+        #     cd processStil
+        #     ~/r/k/dif -dir2 /home/ate/scripts/release/tv5s/a01 * CAD/* dftqtracker/* -listFiles
+        say "Option -listFiles compares sets of files (without doing any preprocessing)";
+        d '@files';
+        my @newfiles;
+        if ( $opt{gold} ) {
+            for my $file (@files) {
+                next if -d $file;
+                my ( $goldfile, $position ) = toFromGolden($file);
+                if ( $position == 1 ) {
+                    push @newfiles, $goldfile;
+                    push @newfiles, $file;
+                } else {
+                    push @newfiles, $file;
+                    push @newfiles, $goldfile;
+                }
+            }
+        } elsif ( $opt{dir2} ) {
+            for my $file (@files) {
+                next if -d $file;
+                my $dir2file = toDir2($file);
+                push @newfiles, $file;
+                push @newfiles, $dir2file;
+            }
+        } else {
+            die "Program bug";
+        }
+        d '@newfiles';
+        my @mismatches;
+        while (@newfiles) {
+            my $file1 = shift(@newfiles);
+            my $file2 = shift(@newfiles);
+            d '$file1 $file2';
+            my $status1 = `md5sum $file1 | cut -d ' ' -f 1`;
+            my $status2 = `md5sum $file2 | cut -d ' ' -f 1`;
+            d '$status1 $status2';
+            if ( $status1 ne $status2 ) {
+                push @mismatches, "$file1  $file2\n";
+            }
+        }
+        d '@mismatches';
+        if (@mismatches) {
+            say "Found " . scalar(@mismatches) . " mismatches:\n @mismatches";
+            exit 1;
+        } else {
+            say "All file pairs matches";
+            exit 0;
+        }
+    }
+}
+if ( $opt{gold} or $opt{dir2} ) {
+    if ( scalar @files > 1 ) {
+        d '$originalCmdLine';
+        $originalCmdLine =~ s/@files_orig//;
+        d '$originalCmdLine';
+        for my $file (@files) {
+            my $cmd = "$originalCmdLine $file &";
+            d '$cmd';
+            system "$cmd";
+        }
+        exit 0;
+    }
+}
+
+sub toDir2 {
+    my $file = shift;
+    # Assuming that all files listed are in the current directory or underneath
+    # fileA fileB mydir/fileC
+    #
+    ## dir2 could be absolute or relative
+    ## relative:
+    ##     file            dir2/file
+    ##     mypath/file
+    ##     /path/to/file
+    ## absolute
+    ##     file            /dir2/file
+    ##my $path = dirname($file);
+    ##my $base = basename($file);
+    ##my $dir2file = "$path/$opt{dir2}/$base";
+    my $dir2file = "$opt{dir2}/$file";
+    return $dir2file;
+}
+
+sub toFromGolden {
+    my $file = shift;
+    my $dir  = dirname($file);
+    my ( $goldfile, $position );
+    if ( basename($file) =~ /^(.*)\.golden(.*)$/ ) {
+        # a.golden     => a
+        # a.golden.csv => a.csv
+        # returning the NON golden filename
+        $goldfile = "$dir/$1$2";
+        $position = 2;
+    } elsif ( basename($file) =~ /^(.*)(\.[^.]+)$/ ) {
+        # a.csv        => a.golden.csv
+        # returning the golden filename
+        $goldfile = "$dir/$1.golden$2";
+        $position = 1;
+    } else {
+        # a            => a.golden
+        # returning the golden filename
+        $goldfile = "$file.golden";
+        $position = 1;
+    }
+    return wantarray ? ( $goldfile, $position ) : $goldfile;
+}
+
+if ( $opt{gold} ) {
+    my ( $goldfile, $position ) = toFromGolden( $files[0] );
+    if ( $position == 1 ) {
+        unshift @files, $goldfile;
+        say "1st file will be $goldfile" unless $opt{quiet};
+    } else {
+        push @files, $goldfile;
+        say "2nd file will be $goldfile" unless $opt{quiet};
+    }
+}
+if ( $opt{dir2} ) {
+    my $dir2file = toDir2( $files[0] );
+    say "2nd file will be $dir2file" unless $opt{quiet};
+    push @files, $dir2file;
+}
+
+# dif //path/file#1..#3
+# opens window for #1 vs #2, then #2 vs #3
+if ( not $files[1] and $files[0] =~ /^([^#\s]+)#(\d+)\.\.#?(\d+|h|head)$/ ) {
+    my ( $file, $begin, $end ) = ( $1, $2, $3 );
+    d '$file $begin $end';
+    d '$originalCmdLine';
+    $originalCmdLine =~ s/$files[0]//;
+    d '$originalCmdLine';
+    if ( $end =~ /(h|head)/ ) {
+        $end = lastP4rev($file);
+    }
+    # internally, convert this to:
+    #     file #1 #n
+    #     file #2 #n
+    for my $rev ( $begin .. $end - 1 ) {
+        my $cmd = "$originalCmdLine $file#$rev #n -noBackground";
+        d '$cmd';
+        system "$cmd";
+    }
+    exit 0;
+}
+
+# If only one file was specified, and it's a perforce p4 rev, get the current non-revved version
+# dif file#123
+if ( not $opt{stdout}  and  not $files[1] and $files[0] =~ /^([^#\s]+)#(\d+|head|n|next|\+|\-)$/ ) {
+    my $nonrevp4file = $1;
+    say "2nd file will be $nonrevp4file" unless $opt{quiet};
+    push @files, $nonrevp4file;
+}
+d '@files';
+# Enable  'dif file#1 #2'
+d '@files';
+my ($lastBase, $lastRev);
+sub lastP4rev {
+    my $base = shift;
+    chomp ($lastRev = `cd $pwd ; p4 fstat $base | grep headRev | sed 's/.*headRev \\(.*\\)/\\1/'`);
+    return $lastRev;
+}
+for my $n ( 0 .. $#files ) {
+    if ( $files[$n] =~ /(.*)#(\d+|head|n|next|\+|\-)$/ ) {
+        my ( $base, $rev ) = ( $1, $2 );
+        d '$n $base $rev';
+        $base = $lastBase if $base eq '';  # file#8 #n
+        d '$base';
+        if ( $rev =~ /^(n|next|\+)$/ ) {
+            $files[$n] = $base . '#' . ( $lastRev + 1 );
+        } elsif ( $rev =~ /^(\-)$/ ) {
+            if ( $lastRev =~ /(h|head)/ ) {
+                $lastRev = lastP4rev($base);
+                d '$lastRev';
+            }
+            $files[$n] = $base . '#' . ( $lastRev - 1 );
+        } else {
+            $files[$n] = $base . '#' . ( $rev );
+        }
+        $lastBase = $base;
+        $lastRev = $rev;
+        d '$lastRev';
+    }
+}
+d '@files';
+
+# Test for existence of files and directories
+my @dirs;
+my $ls = $windows ? 'ls' : 'ls';    # TODO need equivalent of 'ls -l' for windows
+for my $file (@files) {
+    next if $file =~ m{^//} or $file =~ /#(\d+|head|n|next|\+|\-)$/;
+    d "Testing for existence of $file";
+    if ( !-e $file ) {
+        say "$file not found.  Exiting";
+        exit 1;
+    }
+
+    # ls -l
+    if ( -f $file or -l $file ) {
+        print `ls -l $file` if $opt{verbose};
+    } elsif ( $opt{noDirs} ) {
+        # do nothing
+    } elsif ( -d $file ) {
+        my $numfiles = countFilesInDirectory($file);
+        say "Found $numfiles files in directory $file:";
+        print `ls -ld $file` if $opt{verbose};
+        push @dirs, $file;
+    }
+}
+if (@dirs) {
+    # Comparing two directories, use  tree -s  or  ls -lR  to list contents
+    if ( @dirs != @files ) {
+        die "ERROR:  Cannot mix files and directories\n";
+    }
+    @files = ();
+    my $count = 1;
+    for my $dir (@dirs) {
+        my $tmpfile = "/tmp/" . basename($dir) . "_" . $count++;
+        open( my $TMP, '>', $tmpfile ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";
+        my $lslr;
+        my @lslr;
+        my $text;
+        if (0) {
+            # ls -l
+            for my $line (`ls -lR $dir`) {
+                # -rw-rw-r--  1 ckoknat hardware   527 Jul 12 12:36 filename
+                #12          3456      78        9 10111213141516  1718
+                if ( $line =~ /^(\s*)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)(.*)/ ) {
+                    $lslr .= "$1$2$3$6$7$8$9$10 $18\n";
+                } elsif ( $line =~ m{^total \d+} ) {
+                    # print nothing
+                } elsif ( $line =~ m{^($dir)[:/](.*)} ) {
+                    $lslr .= "$2\n" if $2;
+                } else {
+                    $lslr .= $line;
+                }
+            }
+        } else {
+            # tree -s
+            if (1) {
+                $text = `tree -s $dir`;
+            } else {
+                @lslr = `ls -lR $dir`;
+                d '@lslr';
+                for my $line (@lslr) {
+                    d '$line';
+                    my @fields = split /\s+/, $line;
+                    d '@fields';
+                    if ( $line =~ /^d/ ) {
+                        $text .= $line;
+                    } else {
+                        my ( $size, $filename ) = @fields[ 2, 5 ];
+                        #$filename =~ s|^$basefile/||;
+                        $text .= "$size  $filename\n";
+                    }
+                }
+            }
+            d '$text';
+        }
+        print $TMP $text;
+        push @files, $tmpfile;
+        close $TMP;
+    }
+    # end @dirs (comparing directories)
+} elsif ( $opt{tartv} ) {
+    # Compare tarfiles using tar -tv, and look at the file size
+    #     Would also be nice if it do something to each of those files, for example md5sum or -externalPreprocessScript <script>
+    #
+    # If this option is not used, it will simply gvimdiff the tarballs:
+    #     dif //ate/patterns/conversion/srmFiles/tv5s/a01/d/tv5s_a01_d.timingdb_cp_jtagbyptst_d_2_std_FUNC_13_1_dir.tar.gz#2 #3 -comments
+    my @origFiles = @files;
+    @files = ();
+    my $count = 1;
+    for my $f (@origFiles) {
+        my $basefile = basename($f);
+        $basefile =~ s/\.tar(\.(gz|bz2|xz|zip))?$//;
+        d '$basefile';
+        my $tmpfile = "/tmp/" . basename($f) . "_" . $count++;
+        d '$tmpfile';
+        open( my $TMP, '>', $tmpfile ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";
+        my $zipCat = extension2zipcat($f);
+        d '$zipCat';
+        die "ERROR:  File $f is tar a tar file" if basename($f) !~ /\.tar/;
+        my @tar = `$zipCat $f | tar -tv`;
+        d '@tar';
+        my $text;
+
+        for my $line ( sort @tar ) {
+            my @fields = split /\s+/, $line;
+            #if ( $line =~ /^d/ ) {
+            #    $text .= $line;
+            #} else {
+            my ( $size, $filename ) = @fields[ 2, 5 ];
+            $filename =~ s|^$basefile/||;
+            $text .= "$size  $filename\n";
+            #}
+        }
+        d '$text';
+        print $TMP $text;
+        push @files, $tmpfile;
+        close $TMP;
+    }
+}
+
+sub decideFieldSeparator {
+    my $file = shift;
+    my $fieldSeparator;
+    if ( defined $opt{fieldSeparator} ) {
+        $fieldSeparator = $opt{fieldSeparator};
+    } elsif ( $file =~ /\.csv(\.gz)?$/ ) {
+        $fieldSeparator = ',';
+    } else {
+        $fieldSeparator = '\s+';
+    }
+    d '$fieldSeparator';
+    return $fieldSeparator;
+}
+
+sub getFieldColumnWidths {
+    my @fieldColumnWidths;
+    my @files = @_;
+    for my $file (@files) {
+        my $fieldSeparator = decideFieldSeparator($file);
+        my $zipCat         = extension2zipcat($file);
+        open( my $F, "$zipCat $file |" ) or die "ERROR: Cannot open file for reading:  $file\n\n";
+        while ( my $line = <$F> ) {
+            chomp($line);
+            my @fields = split /$fieldSeparator/, $line;
+            for my $i ( 0 .. $#fields ) {
+                if ( !defined $fieldColumnWidths[$i] or length $fields[$i] > $fieldColumnWidths[$i] ) {
+                    $fieldColumnWidths[$i] = length $fields[$i];
+                }
+            }
+            d '@fields';
+        }
+    }
+    d '@fieldColumnWidths';
+    return @fieldColumnWidths;
+}
+
+my @fieldColumnWidths;
+if ( $opt{fieldJustify} ) {
+    @fieldColumnWidths = getFieldColumnWidths(@files);
+}
+
+# Preprocess files
+my $count          = 0;
+my @localFiles     = ();    # original files or files immediately after p4 print
+my @processedFiles = ();    # files after all processing, gunzipping, etc
+for my $f (@files) {
+    #LS($f);
+    $count++;
+    my $tmpfile = sprintf( "%s/%d__%s", $globaltmpdir, $count, basename($f) );
+    $tmpfile =~ s{/}{\\}g if $windows;
+    $tmpfile =~ s/(\.(gz|bz2|xz|zip))//;
+    #my $tmpfile = sprintf( "/tmp/%s_%s_%s_%s", basename($0), $$, basename($f), $count);
+    if ($preprocessRequired) {
+        push @processedFiles, preprocessFile( $f, { tmpfile => $tmpfile }, $count );
+    } else {
+        d 'No options used, so no need to preprocess';
+        push @processedFiles, $f;
+        push @localFiles,     $f;
+        #system("ln -s $f $tmpfile");
+    }
+}
+d '@processedFiles $preprocessRequired';
+
+# Check if all processed files are zero size
+if ( $preprocessRequired and $opt{verbose} ) {
+    my $allProcessedFilesZeroSize = 1;
+    for my $file (@processedFiles) {
+        print `ls -l $file`;
+        if ( -s $file ) {
+            #d("File $file has zero size");
+            $allProcessedFilesZeroSize = 0;
+        }
+    }
+    if ($allProcessedFilesZeroSize) {
+        say "WARNING:  All processed files are zero size!";
+        exit 0;
+    }
+}
+
+# Exit early (after preprocess) for -ppOnly
+if ( $opt{ppOnly} ) {
+    #no, this option is called -stdout
+    #if ( $opt{ppCat} ) {
+    #    for my $file (@processedFiles) {
+    #        say `ls -l $file` unless $opt{quiet};
+    #        say `cat $file`;
+    #    }
+    #    say "Exiting because of option -ppCat\n" unless $opt{quiet};
+    #} else {
+        say "Exiting because of option -ppOnly\n" unless $opt{quiet};
+    #}
+    exit 0;
+}
+
+# Exit early (after preprocess)
+if ( !defined $files[1] and not $opt{stdout} ) {
+    say "Exiting because only one file was specified\n";
+    exit 0;
+}
+
+# Check if files/directories are identical
+my $processedFiles = join " ", @processedFiles;
+d '$processedFiles';
+say "Comparing your files..." if scalar(@files) == 2 and $gui ne 'md5sum' and not $opt{quiet};
+if ( scalar(@files) == 2 and not -d $files[0] and not $opt{stdout} ) {
+    d 'doing a diff';
+    system("$zipDiff $processedFiles > /dev/null");
+    d "Status = $?";
+    exit $? >> 8 if $opt{quiet} or not $gui;
+    # Check exit status
+    if ( $? == 0 and $gui ne "md5sum" ) {
+        d '@files @localFiles @processedFiles';
+        chomp( my $status1 = `md5sum $localFiles[0] | cut -d ' ' -f 1` );
+        chomp( my $status2 = `md5sum $localFiles[1] | cut -d ' ' -f 1` );
+        d '$status1 $status2';
+        if ( $status1 ne $status2 ) {
+            say "*********************************************************************************";
+            say "*  These files are functionally identical, but their md5sums differ.  Exiting.  *";
+            say "*********************************************************************************";
+            say "$status1  $localFiles[0]";
+            say "$status2  $localFiles[1]\n";
+        } else {
+            say "******************************************";
+            say "*  These files are identical.  Exiting.  *";
+            say "******************************************\n";
+        }
+        exit 0;
+    }
+}
+
+# Run kompare
+my $command;
+if ( $opt{stdout} ) {
+    $command = $windows ? "type $processedFiles" : "cat $processedFiles";
+} elsif ( $opt{noBackground} ) {
+    # Useful for dif //path/file#1..#3
+    $command = "$gui $processedFiles";
+} else {
+    $command = "$gui $processedFiles &";
+}
+d '$command';
+#say "Executing  $command" unless $opt{quiet} or $gui eq 'md5sum';
+say "Executing  $command" if $opt{verbose};
+if ($d and not $opt{stdout}) {
+    say "Exiting because d = $d\n";
+    exit 0;
+}
+if ( scalar(@files) > 2 and $gui =~ /^(kompare|tkdiff)$/ ) {
+    say "Not running $gui because it only takes 2 files";
+    exit 1;
+}
+system($command);
+if ( $files[0] =~ /\.p[lm]/ and not $opt{perltidy} ) {
+    say "You seem to be comparing Perl source files.  You may want to use the -perltidy option next time.";
+}
+if ( $files[0] =~ /\.binl/ and not $opt{strings} ) {
+    say "You seem to be comparing binl files.  You may want to use the -strings option next time to remove the binary characters.";
+}
+say "";
+exit 0;
+
+sub extension2zipcat {
+    # Based on the file extension, select a method for uncompressing the file to stdout
+    # Used in this context:
+    #     my $zipCat = extension2zipcat($file);
+    #     open( $F, "$zipCat $file |" );
+    my $file = shift;
+    d '$file';
+    $file =~ s/(#(\d+|head|\-|\+))?$//;
+    $file =~ s/^.*(\.(gz|bz2|xz|zip))$/$1/;
+    $file = '.gz' if !defined $file;
+    #my %catref = ( '.gz' => 'zcat -f', '.bz2' => 'bzcat -f', '.xz' => 'xzcat -f', '.zip' => 'unzip' );
+    my %catref = ( '.gz' => 'zcat -c', '.bz2' => 'bzcat -c', '.xz' => 'xzcat -c', '.zip' => 'unzip -cq' );
+    my $zipCat = $catref{$file};
+    if ( !$zipCat ) {
+        # .txt
+        if ($windows) {
+            $zipCat = 'type';
+        } else {
+            $zipCat = 'cat';
+        }
+    }
+    d '$zipCat';
+    return $zipCat;
+}
+
+# my $tmpfile = preprocessFile( $file, { tmpfile => $tmpfile }, $filenum )
+sub preprocessFile {
+    my ( $file, $ref, $filenum ) = @_;
+    d '.';
+    d '$file $ref $filenum';
+    $file = handlePerforce($file);    # p4 print file in perforce
+    push @localFiles, $file;
+
+    my ( $start, $stop );
+    if ( $opt{"start$filenum"} ) {
+        $start = $opt{"start$filenum"};
+    } else {
+        $start = $opt{start};
+    }
+    if ( $opt{"stop$filenum"} ) {
+        $stop = $opt{"stop$filenum"};
+    } else {
+        $stop = $opt{stop};
+    }
+
+    my $tmpfile = $ref->{tmpfile} || sprintf( "/tmp/%s_%s_%s", basename($0), $$, basename($file) );
+    $tmpfile =~ s/#/_/g;
+    d '\n$file $tmpfile $count';
+
+    # Handle preprocessing from external preprocessing script or bcpp or perltidy
+    my $zipCat = extension2zipcat($file);
+    d '$zipCat';
+    #say "Decompressing $file" if $zipCat ne 'cat' and not $opt{quiet};
+    my $F;
+    if ( $opt{perlEval} or $opt{yaml} or $opt{json} or $opt{subroutineSort} ) {
+        my $result;
+        if ( $opt{perlEval} ) {
+            $result = sortYamlPerlJson( $file, 'perlEval' );
+        } elsif ( $opt{yaml} ) {
+            $result = sortYamlPerlJson( $file, 'yaml' );
+        } elsif ( $opt{json} ) {
+            $result = sortYamlPerlJson( $file, 'json' );
+        } elsif ( $opt{subroutineSort} ) {
+            $result = sortSubroutines($file);
+        } else {
+            die "Program bug";
+        }
+        my $tmpfilePerlEvalEtc = sprintf( "/tmp/%s_%s_%s.yamljson", basename($0), $$, basename($file) );
+        open( my $TMP2, ">", $tmpfilePerlEvalEtc ) or die "ERROR: Cannot open file for writing:  $tmpfilePerlEvalEtc\n\n";
+        print $TMP2 $result;
+        close $TMP2;
+        open( $F, "cat $tmpfilePerlEvalEtc |" ) or die "ERROR: Cannot open file for reading:  $tmpfilePerlEvalEtc\n\n";
+    } else {
+        my $preprocess_pipe = "";
+        if ( $opt{externalPreprocessScript} ) {
+            $preprocess_pipe = "| $opt{externalPreprocessScript}";
+        } elsif ( $opt{bcpp} ) {
+            ( my $bcpp_executable = $defaults{bcpp} ) =~ s/^(\S+).*/$1/;
+            if ( !-x $bcpp_executable ) {
+                die "ERROR:  $bcpp_executable not found";
+            }
+            $preprocess_pipe = "| $defaults{bcpp}";
+        } elsif ( $opt{perltidy} ) {
+            ( my $perltidy_executable = $defaults{perltidy} ) =~ s/^(\S+).*/$1/;
+            if ( !-x $perltidy_executable ) {
+                die "ERROR:  $perltidy_executable not found";
+            }
+            # -st sends output to stdout
+            $preprocess_pipe = "| $defaults{perltidy} -st";
+        }
+        open( $F, "$zipCat $file $preprocess_pipe |" ) or die "ERROR: Cannot open file for reading:  $file\n\n";
+    }
+    if ( $opt{verbose} ) {
+        say "\n\n\n" if ( $opt{gold} or $opt{above} ) and $opt{diff} ne 'md5sum';    # To visually separate the diffs
+        say "Preprocessing $file";
+    }
+    my $wc = "?";
+    $wc = `$zipCat $file | wc -l | cut -d " " -f 1` if $opt{tail};
+    d('$wc') if $opt{tail};
+    open( my $TMP, "$opt{strings} $opt{sort} $opt{uniq} $opt{fold} > $tmpfile" ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";
+    my $firstLine = $opt{tail} ? ( $wc - $opt{tail} + 1 ) : -1;
+    d '$firstLine';
+    my $linenum       = 0;
+    my $startFound    = 0;
+    my $anyStartFound = 0;
+    my $anyStopFound  = 0;
+    my $stopFound     = 0;
+    $startFound = 1 if $stop  and not $start;
+    $stopFound  = 1 if $start and not $stop;
+    d( '$startFound', 'nc*' );    # Turn on line numbers and chomp
+
+    while ( my $line = <$F> ) {
+        d '.';
+        d '$line';
+        $linenum++;
+        if ( $linenum > $opt{head} ) {
+            d "Ignoring rest of file because of option -head";
+            last;
+        } elsif ( $stop and $startFound and $line =~ /($stop)/ ) {
+            my $match = $1;
+            d "Stopping at line $linenum because -stop ($match =~ $stop):  $line";
+            $startFound   = 0;
+            $stopFound    = 1;
+            $anyStopFound = 1;
+        } elsif ( $start and not $startFound and $line =~ /($start)/ ) {
+            my $match = $1;
+            d "Starting at line $linenum because -start ($match =~ $start):  $line";
+            $startFound    = 1;
+            $anyStartFound = 1;
+        } elsif ( ( $start or $stop ) and not $startFound ) {
+            d "Because of -start and/or -stop, ignoring line $linenum:  $line";
+            next;
+        } elsif ( $linenum < $firstLine ) {
+            d "Ignoring line because of option -tail";
+            next;
+        } elsif ( defined $opt{ignore} and $line =~ /$opt{ignore}/ ) {
+            d "Ignoring line because of -ignore option ($opt{ignore}):  $line";
+            next;
+        } elsif ( defined $opt{grep} and $line !~ /$opt{grep}/ ) {
+            d "Bypassing line because it doesn't match -grep option ($opt{grep}):  $line";
+            next;
+        } else {
+        }    # do nothing
+             #d '$linenum $line';
+
+        if ( defined $opt{fieldJustify} ) {
+            my $fieldSeparator = decideFieldSeparator($file);
+            my $newline        = '';
+            chomp $line;
+            my @fields = split $fieldSeparator, $line;
+            for my $i ( 0 .. $#fields ) {
+                $newline .= sprintf( "%-$fieldColumnWidths[$i]s$fieldSeparator", $fields[$i] );
+            }
+            $line = "$newline\n";
+        }
+
+        if ( defined $opt{fields} ) {
+            my $fieldSeparator = decideFieldSeparator($file);
+            chomp($line);
+            my @fields = split /$fieldSeparator/, $line;
+            d '@fields';
+            my $newline = '';
+            if ($fieldsNegate) {
+                for my $i ( 0 .. $#fields ) {
+                    if ( $opt{fields} =~ /^$i\+$/ or $opt{fields} =~ /^$i\+,/ or $opt{fields} =~ /,$i\+,/ or $opt{fields} =~ /$i\+$/ ) {
+                        last;
+                    }
+                    if ( $opt{fields} =~ /^$i\+$/ or $opt{fields} =~ /^$i,/ or $opt{fields} =~ /,$i,/ or $opt{fields} =~ /$i$/ ) {
+                        # do nothing
+                    } else {
+                        $newline .= defined $fields[$i] ? "$fields[$i]  " : "";
+                    }
+                }
+            } else {
+                for my $f ( split /,/, $opt{fields} ) {
+                    d '$f';
+                    if ( $f =~ s/\+$// ) {
+                        $newline .= join "  ", @fields[ $f .. $#fields ];
+                        last;
+                    } else {
+                        $newline .= defined $fields[$f] ? "$fields[$f]  " : "";
+                    }
+                }
+            }
+            $line = "$newline\n";
+        }
+
+        if ( $opt{search_replace} ) {
+            d '$opt{search_replace}';
+            d '\n$line';
+            d '\n@sub_keys_ordered';
+            d '\n$replaceTable_ref';
+            for my $key (@sub_keys_ordered) {
+                #d('$key $replaceTable_ref->{$key}'); # Global symbol "$key" requires explicit package name at (eval 15) line 1, <F> line 1
+                if ($d) { say "DEBUG preprocess_file:  key = $key    replaceTable_ref->{$key} = $replaceTable_ref->{$key}" }
+                my $cnt = ( $line =~ s/$key/$replaceTable_ref->{$key}/g );
+                #my $cnt = ($line =~ s/HASH(0x\S+)/$replaceTable_ref->{$key}/g);
+                d("Found $key and replaced with $replaceTable_ref->{$key} on:  $line") if $cnt;
+            }
+        }
+
+        if ( $opt{lsl} ) {
+            if ( $line =~ /^total \S+$/ ) {
+                d "Ignoring line because of -lsl option:  $line";
+                next;
+            }
+            if ( $line =~ /(.*)(\S[-rwx]{9})\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+\s+\S+\s+\S+)(\s+\S.*)/ ) {
+                my ( $prefix, $perms, $links, $owner, $group, $size, $datetime, $name ) = ( $1, $2, $3, $4, $5, $6, $7, $8 );
+                d "Modifying ls -l line:  $line";
+                $line = sprintf( "%sperms links owner group %10d datetime %s\n", $prefix, $size, $name );
+            }
+        }
+        # 'mox1' => HASH(0xa2a540)
+        # $fstat = HASH(0x25a5cb0)
+        if ( $opt{perlDump} ) {
+            $line =~ s/((SCALAR|HASH|ARRAY|REF|GLOB|CODE).*\(.*)\n$/$2()\n/g;    # Perl
+            $line =~ s/ at 0x\S+>/>/g;                                           # Python
+        }
+
+        if ( $opt{comments} ) {
+            $line =~ s{/\*.*}{};                                                 # C
+            $line =~ s{//.*}{};                                                  # C++
+            $line =~ s{#.*}{};                                                   # Perl
+                                                                                 # After stripping comments, there are sometimes trailing spaces
+            $line =~ s/\s+$//;
+            $line .= "\n" if $line =~ /\S/;
+        }
+
+        if ( $opt{noWhite} ) {
+            $line =~ s/^\s+//g;
+            $line =~ s/[ \t]+//g;
+            $line =~ s/^\n//g;
+        } elsif ( $opt{white} ) {
+            $line =~ s/^\s+//;
+            $line =~ s/[ |\t]+/ /g;
+            $line =~ s/ $//g;
+        } else {
+        }    # do nothing, continue
+
+        if ( $opt{case} ) {
+            $line = lc($line);
+        }
+
+        if ( $opt{trim} ) {
+            chomp( $line = substr( $line, 0, $opt{trim} ) );
+            $line .= "\n";
+        }
+
+        #d('\n$line');
+        print $TMP $line;
+    }
+    if ( defined $start and not $anyStartFound ) {
+        say "WARNING:  Did not find start term '$start' in $tmpfile";
+    }
+    if ( defined $stop and not $anyStopFound ) {
+        say "WARNING:  Did not find stop term '$stop' in $tmpfile";
+    }
+    close $TMP;
+    d( '', 'NC' );    # Turn off line numbers and chomp
+    return $tmpfile;
+}
+
+sub countFilesInDirectory {
+    use File::Find;
+    my $dir   = shift;
+    my $count = 0;
+    find( sub { -f && $count++ }, $dir );
+    return $count;
+}
+
+# $map = readTableFile($filename,$opt{reverse},$opt{regex})
+# Reads 2-column table mapping file, returns hash reference, for option -replaceTable
+sub readTableFile {
+    my ( $table_file, $reverse, $regex ) = @_;
+    d '$table_file $reverse $regex';
+    my %map;
+    say "Reading from table file $table_file" if $opt{replaceTable};
+    my $lineNumber = 0;
+    open( my $F, '<', $table_file ) or die "ERROR: Cannot open file for reading:  $table_file\n\n";
+    while ( my $line = <$F> ) {
+        $lineNumber++;
+        #d('$line');
+
+        # __END__
+        if ( $line =~ /^__END__$/ ) {
+            last;
+        }
+
+        # blank line or # comment, but not #!
+        if ( $line =~ /^\s*$/ or $line =~ /^\s*#[^!]/ ) {
+            # do nothing
+        }
+
+        # search_term    replace_term
+        # xtals_in       XTAL_SSIN
+        elsif ( $line =~ /^\s*(\S+)\s+(.*)\n/ ) {    # Allow nothing for value (replace something with nothing, good for removing newlines)
+            my ( $key, $value ) = ( $1, $2 );
+            $value = '' if not $value;
+            $value =~ s/\s*$//;
+            d "table valid line = $line";
+
+            if ($reverse) {
+                if ( defined $map{$value} ) {
+                    say "ERROR:  Table file $table_file contains 2 entries for $value in the right column!";
+                    say "        1st entry was:  $map{$value}  $value";
+                    say "        2nd entry was:  $key  $value  on line $lineNumber";
+                    say "Exiting.\n";
+                    exit 1;
+                } else {
+                    $value = ( $regex ? $value : quotemeta($value) );
+                    d "reverse value = '$value'    key = '$key'";
+                    $map{$value} = eval "qq($key)";
+                }
+            } else {
+                if ( defined $map{$key} ) {
+                    say "ERROR:  Table file $table_file contains 2 entries for $key in the left column!";
+                    say "        1st entry was:  $key  $map{$key}";
+                    say "        2nd entry was:  $key  $value  on line $lineNumber";
+                    say "Exiting.\n";
+                    exit 1;
+                } else {
+                    $key = ( $regex ? $key : quotemeta($key) );
+                    d "key = '$key'    value = '$value'\n";
+                    $map{$key} = eval "qq($value)";
+                }
+            }
+        }
+
+        # Unknown
+        else {
+            print "ERROR:  Did not understand line in config file:  $line";
+            exit 1;
+        }
+    }
+    close $F;
+    d '%map';
+    return \%map;
+}
+
+sub handlePerforce {
+    # Perforce
+    my $file = shift;
+    if ( $file =~ /^([^#]+)(#\d+|#head)?$/ and $file !~ m{^//} ) {
+        # Resolve symbolic link
+        $file = Cwd::abs_path($1) . ( $2 || '' );
+    }
+    if ( $file =~ /\S+#(\d+|head)$/ or $file =~ m{^//} ) {
+        if ( 0 ) {
+            # Is this needed?
+            if ( $file =~ /^#(\d+|head)$/ and $file !~ m{^//} ) {
+                # This should work for /ate/scripts and all subdirectories, but it's not foolproof
+                my $perforcepath = "";
+                if ( Cwd::cwd() =~ m{/(scripts/.*)} ) {
+                    $perforcepath = "//ate/$1/";
+                    say "Assuming that your file $file is in $perforcepath";
+                }
+                $file = "$perforcepath$file";
+            }
+        }
+        # Print the filelog info for the most current version
+        my $command1 = "p4 filelog '$file' | head -n 2 | tail -n 1";
+        d '$command1';
+        system($command1);
+        my $p4tmpfile = sprintf( "/tmp/%s_%s_%s_p4", basename($0), $$, basename($file) );
+        d '$p4tmpfile';
+        if ( $p4tmpfile =~ /\.([^\.]+)_p4$/ ) {
+            $p4tmpfile =~ s/\.([^\.]+)_p4$/_p4.$1/;    # file.gz_p4 => file_p4.gz
+        }
+        d '$p4tmpfile';
+        my $command2 = "p4 print -q '$file' > $p4tmpfile";
+        if ( 1 ) {
+            # Work around p4 "Path '/home/ckoknat/s/releasePatterns.pl' is not under client's root '/home/ate/ptracker'." issue, which happens because current directory is a soft link ~/s to /home/scratch.ckoknat_cad/ate/scripts
+            #if ( -d '/home/ate' ) {
+                d '$pwd';
+                $command2 = "cd $pwd; $command2";
+            #}
+        }
+        say "Executing  $command2 &" if $opt{verbose};
+        system($command2);
+        if ( -z $p4tmpfile ) {
+            say "ERROR:  p4 print created a file with zero size for $file\nDoes the p4 file exist?\nExiting\n";
+            exit 1;
+        }
+        $file = $p4tmpfile;
+    }
+    return $file;
+}
+
+sub indent {
+    my $string = shift;
+    $string =~ s/^/      /gm;
+    $string =~ s/^\s*//;
+    return $string;
+}
+
+sub sortYamlPerlJson {
+    my ( $file, $type ) = @_;
+    d '$file $type';
+    open my $fh, '<', $file or die;
+    local $/ = undef;
+    my $data = <$fh>;
+    close $fh;
+    d '$data';
+    my $ref;
+
+    if ( $type eq 'yaml' ) {
+        eval 'use YAML::XS ()';
+        #eval 'use YAML::Syck ()';
+        if ($@) {
+            die "ERROR:  Install YAML::XS from CPAN to use option -yaml";
+        } else {
+            $ref = YAML::XS::LoadFile($file);
+            #$ref = YAML::Syck::LoadFile($file);
+            d '$ref';
+        }
+    } elsif ( $type eq 'perlEval' ) {
+        $ref = eval($data);
+    } elsif ( $type eq 'json' ) {
+        eval 'use JSON::XS ()';
+        if ($@) {
+            die "ERROR:  Install JSON::XS from CPAN to use option -json";
+        } else {
+            my $json;
+            local $/;
+            open my $fh, "<", $file;
+            $json = <$fh>;
+            close $fh;
+            $ref = JSON::XS::decode_json($json);
+        }
+    } else {
+        die;
+    }
+    d '$ref';
+    $Data::Dumper::Sortkeys = 1;
+    return Dumper($ref);
+}
+
+# Written for perl, but could be extended to autodetect perl/python/tcl
+# Python may be tricky because there are no curly braces at end, could use def and ignore any comments
+sub sortSubroutines {
+    my ($file) = @_;
+    # subroutines must start and end at beginning of line
+    d '$file';
+    my %subs;
+    my $subroutine = '__MAIN__';
+    open( my $F, '<', $file ) or die "ERROR: Cannot open file for reading:  $file\n\n";
+    while ( my $line = <$F> ) {
+        if ( $line =~ /^(__END__|__DATA__)/ ) {
+            last;
+        } elsif ( $line =~ /^#/ ) {
+            # Ignore any comments at beginning of line, since subroutine descriptions are often immediately before the subroutine
+        } elsif ( $line =~ /^\}/ ) {
+            $subs{$subroutine} .= $line;
+            $subroutine = '__MAIN__';
+        } elsif ( $line =~ /^(sub\s+(\S+)\s*\{)/ ) {
+            $subroutine = $2;
+            $subs{$subroutine} = $line;
+        } else {
+            $subs{$subroutine} .= $line;
+        }
+    }
+    d '%subs';
+    my $result = '';
+    for my $sub ( sort keys %subs ) {
+        $result .= "$subs{$sub}\n";
+    }
+    return $result;
+}
+__END__
+
+dif by Chris Koknat  https://github.com/koknat/dif
+This version created at Mon Jul 27 17:56:22 PDT 2020
+
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details:
+<http://www.gnu.org/licenses/gpl.txt>
+
+

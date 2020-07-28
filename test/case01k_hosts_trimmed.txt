@@ -1,0 +1,4 @@
+# Do not remove the following line, or v
+# that require network functionality wil
+127.0.0.1		localhost.localdomain localho
+::1		localhost6.localdomain6 localhost6
