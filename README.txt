@@ -22,16 +22,15 @@ Afterwards, it runs the Linux tools gvimdiff, kompare, or meld on these intermed
 # Installation instructions
 
 To install dif and run tests:
-* download dif.tar.gz from GitHub
-* tar -xvf dif.tar.gz
-* cd dif/tests
+* download dif from GitHub  'git clone https://github.com/koknat/dif.git'
+* cd dif/test
 * ./dif.t
 
 It should return with 'all tests passed'
 
 Perl versions 5.6.1 through 5.30 have been tested
 
-For convenience, copy it to your ~/bin directory
+For convenience, link to 'dif' from your ~/bin directory, or create an alias
 
 
 To see usage:

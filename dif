@@ -9,10 +9,9 @@ use File::Temp qw/ tempfile tempdir /;
 use Getopt::Long;
 sub say { print @_, "\n" }
 
-# Debugger from CPAN
+# Debugger from CPAN (disabled)
 sub D { say "Debug::Statements has been disabled to improve performance" }
 sub d { }
-#eval 'use lib "/home/ate/scripts/regression";  use Debug::Statements ":all";'; say "\nRemember to comment the Debug::Statements line before checking in the code !!\n";
 #use lib "/home/ate/scripts/regression";
 #use Debug::Statements ":all";
 
@@ -52,16 +51,15 @@ Afterwards, it runs the Linux tools gvimdiff, kompare, or meld on these intermed
 # Installation instructions
 
 To install $scriptName and run tests:
-* download $scriptName.tar.gz from GitHub
-* tar -xvf $scriptName.tar.gz
-* cd $scriptName/tests
+* download $scriptName from GitHub  'git clone https://github.com/koknat/dif.git'
+* cd $scriptName/test
 * ./$scriptName.t
 
 It should return with 'all tests passed'
 
 Perl versions 5.6.1 through 5.30 have been tested
 
-For convenience, copy it to your ~/bin directory
+For convenience, link to 'dif' from your ~/bin directory, or create an alias
 
 
 To see usage:
@@ -496,6 +494,7 @@ if ( $defaults{history} ) {
     }
 }
 
+# Options can be overridden with user config file ~/.dif.options  (key/value format)
 Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort|s', 'paragraphSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'ppOnly', 'white|w', 'noWhite', 'case', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'subroutine=s', 'subroutineSort', 'replaceTable=s', 'replaceDates', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'silent', 'quiet', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kompare|k', 'meld|m', 'md5sum', 'stdin', 'stdout', 'rp', 'ps', 'cleanup', 'gold|g', 'dir2=s', 'listFiles', 'noDirs', 'tartv', 'noBackground', 'installationInstructions' ) or usage();
 # noDirs is not in usage
 
@@ -1772,7 +1771,7 @@ sub sortSubroutines {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-This version created at Mon Jul 27 17:56:22 PDT 2020
+#19 Tue Jul 28 17:09:04 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify
