@@ -8,8 +8,9 @@ The graphical compare tools gvimdiff, kompare, or meld are used to compare text 
 In many cases, it is difficult and time-consuming to visually compare large files because of formatting differences
 
 For example:
-* log files are often many MB of unbroken text, with some "don't care" information such as timestamps
-* different versions of version-crontrolled-code may have significant formatting differences
+* different versions of code may differ only in comments or whitespace
+* log files are often many MB of unbroken text, with some "don't care" information such as timestamps or temporary filenames
+* json or yaml files may have ordering differences
 
 
 # Purpose
