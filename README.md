@@ -1,5 +1,5 @@
 # dif - a preprocessing front end to gvimdiff/meld/kompare
-![Alt text](dif.png?raw=true "Screenshot of gvimdiff")
+![Alt text](dif_before_after.png?raw=true "Comparison of  gvimdiff  vs  dif with option -comments")
 
 # Background
 
