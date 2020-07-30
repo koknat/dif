@@ -49,14 +49,14 @@ Solution 2:  Use -search <regex> -replace <regex> to supply one instance of subs
 
 Solution 3:  Use -replaceTable <file> to supply a file with many substitution/replacement regexes
 
-# Usage examples
+## Usage examples
 * dif file1 file2
 * dif file1 file2 -sort
 * dif file1 file2 -white -comments -case
 * dif file1 file2 -search 'foo' -replace 'bar'
 
 
-# Options
+## Options
 
     Filtering options:    
        -head              Compare only the first 10000 lines
@@ -317,7 +317,7 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
     
 
 
-# Installation instructions
+## Installation
 
 To install dif and run tests:
 * download dif from GitHub
