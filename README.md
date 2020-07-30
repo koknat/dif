@@ -15,7 +15,7 @@ For example:
 
 # Purpose
 
-This script 'dif' preprocesses input text files with a wide variety of options
+'dif' preprocesses input text files with a wide variety of options
 
 Afterwards, it runs the Linux tools gvimdiff, kompare, or meld on these intermediate files
 
@@ -42,7 +42,7 @@ Solution:   Use -replaceDates
 Solution:  Use -fold to wrap
 
 #### Problem: need to view your changes to a file on Perforce
-Solution:  'dif file#head' will show the differences between the file in p4, vs the local file
+Solution:  'dif file#head' will show the differences between the file in p4 vs the local file
 
 #### Problem: files both need to be filtered using regexes, to strip out certain characters or sequences
 Solution 1:  Use -grep <regex> or -ignore <regex> to filter in or out
