@@ -1,8 +1,6 @@
 # dif - a preprocessing front end to gvimdiff/meld/kompare
 ![Alt text](dif_before_after.png?raw=true "Comparison of  gvimdiff  vs  dif with option -comments")
 
-# Background
-
 The graphical compare tools gvimdiff, kompare, or meld are used to compare text files on Linux
 
 In many cases, it is difficult and time-consuming to visually compare large files because of formatting differences
@@ -13,7 +11,7 @@ For example:
 * json or yaml files may have ordering differences
 
 
-# Purpose
+## Purpose
 
 'dif' preprocesses input text files with a wide variety of options
 
@@ -22,7 +20,7 @@ Afterwards, it runs the Linux tools gvimdiff, kompare, or meld on these intermed
 'dif' can also be used as part of an automated testing framework against golden files, returning 0 for identical, and 1 for mismatch
 
 
-# Solutions
+## Solutions
 
 #### Problem: differences in whitespace or comments or case cause mismatches
 Solution:  Use options -white or -nowhite or -comments or -case
