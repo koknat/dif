@@ -1,4 +1,4 @@
-# dif - a preprocessing front end to gvimdiff/meld/kompare
+## dif - a preprocessing front end to gvimdiff/meld/kompare
 ![Alt text](dif_before_after.png?raw=true "Comparison of  gvimdiff  vs  dif with option -comments")
 
 The graphical compare tools gvimdiff, kompare, or meld are used to compare text files on Linux
