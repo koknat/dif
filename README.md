@@ -123,15 +123,15 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
                           For example, to compare Perl subroutines 'add' and 'subtract' within single file:
                               dif a.pm -start1 'sub add' -stop1 '^}' -start2 'sub subtract' -stop '^}'
 
-       -subroutine 'subroutine_name'
-                          Compare same subroutine from two source files
-                          Subroutines may be Perl (sub {}) or TCL (proc {}{})
-                          May specify multiple subroutines with -subroutine '(mysubA|mysubB|mysubC)'
+       -function 'function_name'
+                          Compare same function from two source files
+                          Functions may be Perl (sub {}) or TCL (proc {}{})
+                          May specify multiple subroutines with -function '(mysubA|mysubB|mysubC)'
                           Internally, this piggybacks on the -start -stop functionality
 
-       -subroutineSort
-                          Useful when Perl subroutines have been moved within a file
-                          This option preprocesses each file, so that the subroutine definitions
+       -functionSort
+                          Useful when Python/Perl/TCL function have been moved within a file
+                          This option preprocesses each file, so that the function definitions
                           are in alphabetical order
        
        -search 'regex'
