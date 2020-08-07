@@ -52,7 +52,8 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
 ## Usage examples
 * dif file1 file2
 * dif file1 file2 -sort
-* dif file1 file2 -white -comments -case
+* dif file1 file2 file3 -comments
+* dif file1 file2 -white -case
 * dif file1 file2 -search 'foo' -replace 'bar'
 
 
