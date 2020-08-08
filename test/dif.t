@@ -19,16 +19,16 @@ GetOptions( \%opt, 'test|t=s', 'extraTests', 'd' => sub { $d = 1 }, 'die' ) or d
 my $t = defined $opt{test} ? $opt{test} : 'ALL';
 die "ERROR:  Did not expect '@ARGV'.  Did you forget '-t' ? " if @ARGV;
 
-my ($dif, $testdir);
+my ($dif, $testDir);
 chomp( my $whoami = `whoami` );
 if ( $whoami eq 'ckoknat' ) {
     $dif = "/home/ckoknat/s/regression/dif/dif.pl";
     #$dif = "/home/ckoknat/s/regression/dif/dif";
     #$dif = "/home/ckoknat/s/regression/dif/git/dif";
-    $testdir = '/home/scratch.ckoknat_cad/ate/scripts/regression/dif/test';
+    $testDir = '/home/scratch.ckoknat_cad/ate/scripts/regression/dif/test';
 } else {
     $dif = '../dif';
-    $testdir = '.';
+    $testDir = '.';
 }
 die "ERROR:  executable not found:  $dif" unless -e $dif;
 
@@ -42,7 +42,7 @@ if ( runtests('quiet') ) {
     test_cmdquiet( $dif, "case01a_hosts.txt case01a_hosts.txt", "-quiet", $pass );
 }
 
-# Not tested:  'pponly', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'perldump', 'md5sum', 'dir2=s', 'listfiles', 'nodirs'
+# Not tested:  'pponly', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'perldump', 'md5sum', 'nodirs'
 
 if ( runtests('white') ) {
     testcmd( $dif, "case01a_hosts.txt case01a_hosts.txt",             "",         $pass );
@@ -60,8 +60,8 @@ if ( runtests('head') ) {
     testcmd( $dif, "case01a_hosts.txt case01d_hosts_missingline.txt", "-headlines 3", $pass );
 }
 if ( runtests('tail') ) {
-    testcmd( $dif, "case01a_hosts.txt case01e_hosts_scrambled.txt", "", $fail );
-    testcmd( $dif, "case01a_hosts.txt case01e_hosts_scrambled.txt", "-taillines 1", $pass );
+    testcmd( $dif, "case01a_hosts.txt case01j_hosts_uppercase.txt", "", $fail );
+    testcmd( $dif, "case01a_hosts.txt case01j_hosts_uppercase.txt", "-taillines 1", $pass );
 }
 
 if ( runtests('case') ) {
@@ -72,6 +72,9 @@ if ( runtests('case') ) {
 if ( runtests('comments') ) {
     testcmd( $dif, "case01a_hosts.txt case01f_hosts_comments.txt", "",          $fail );
     testcmd( $dif, "case01a_hosts.txt case01f_hosts_comments.txt", "-comments", $pass );
+    # Compare 3 files at once:
+    # dif case01a_hosts.txt case01f_hosts_comments.txt case01e_hosts_scrambled.txt
+    # dif case01a_hosts.txt case01f_hosts_comments.txt case01e_hosts_scrambled.txt -comment
 }
 
 if ( runtests('grep') ) {
@@ -151,6 +154,11 @@ if ( runtests('start_stop') ) {
     testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-start '( collect| k)' -stop '( csv_print| kwhite)' ", $pass );
 }
 
+if ( runtests('start1_stop1_start2_stop2') ) {
+    # -stopIgnoreLine is needed here because Python has no '^}' to delimit def blocks
+    testcmd( $dif, "case15a.py case15b.py", "-start1 '^def factor' -stop1 '^def ' -start2 '^def factor' -stop2 '^def ' -stopIgnoreLine", $pass );
+}
+
 if ( runtests('search_replace') ) {
     testcmd( $dif, "case01a_hosts.txt case01h_hosts_misspelling.txt", "",                                              $fail );
     testcmd( $dif, "case01a_hosts.txt case01a_hosts.txt",             "-search 'HOST' -replace 'host'",                $pass );
@@ -165,22 +173,22 @@ if ( runtests('replaceDates') ) {
 }
 
 if ( runtests('replaceTable') ) {
-    testcmd( $dif, "case01a_hosts.txt case01h_hosts_misspelling.txt", "-replaceTable $testdir/case03_replaceTable", $pass );
+    testcmd( $dif, "case01a_hosts.txt case01h_hosts_misspelling.txt", "-replaceTable $testDir/case03_replaceTable", $pass );
 }
 
 if ( runtests('stdin_stdout') ) {
     my ($cmd, $result);
-    $cmd = "cat $testdir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates | grep 'date' | wc -l";
+    $cmd = "cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates | grep 'date' | wc -l";
     chomp($result = `$cmd`);
     d '$cmd $result';
     is($result, 13, "stdin__stdout");
 
     # Test that -replaceDates works in conjunction with -search -replace
-    $cmd = "cat $testdir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -search 'A' -replace 'AA' | grep 'date' | wc -l";
+    $cmd = "cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -search 'A' -replace 'AA' | grep 'date' | wc -l";
     chomp($result = `$cmd`);
     d '$cmd $result';
     is($result, 13, "stdin__stdout -replaceDates in conjunction with -search -replace");
-    $cmd = "cat $testdir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -search 'foo' -replace 'bar' | grep 'bar' | wc -l";
+    $cmd = "cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -search 'foo' -replace 'bar' | grep 'bar' | wc -l";
     chomp($result = `$cmd`);
     d '$cmd $result';
     is($result, 1, "stdin__stdout -replaceDates in conjunction with -search -replace");
@@ -217,17 +225,14 @@ if ( runtests('gold') ) {
     testcmd( $dif, "case01b_hosts_spaces.golden.txt",      "-gold",         $fail );
 }
 
-if ( 0 and runtests('dir2') ) {
-    # TODO
-    # Bypassing since -dir2 is not supported with full path names, and the test runs with full path names like this:
-    #     > /home/ckoknat/s/regression/dif/dif /home/scratch.ckoknat_cad/ate/scripts/regression/dif/case01a_hosts.txt -dir2 dirA
-    #     2nd file will be dirA//home/scratch.ckoknat_cad/ate/scripts/regression/dif/case01a_hosts.txt
-    testcmd( $dif, "case01a_hosts.txt dirA/case01a_hosts.txt",             "",         $pass );
-    testcmd( $dif, "case01a_hosts.txt dirB/case01a_hosts.txt",             "",         $fail );
-    testcmd( $dif, "case01a_hosts.txt",                          "-dir2 dirA",         $pass );       # fails!
-    testcmd( $dif, "case01a_hosts.txt",                          "-dir2 dirB",         $fail );
-    testcmd( $dif, "case01a_hosts.txt",                "-dir2 dirA -comments",         $pass );
-    die;
+if ( runtests('dir2') ) {
+    testcmd( $dif, "case01a_hosts.txt dirA/case01a_hosts.txt",               "",         $pass );
+    testcmd( $dif, "case01a_hosts.txt dirB/case01a_hosts.txt",               "",         $fail );
+    testcmd( $dif, "case01a_hosts.txt",                            "-dir2 dirA",         $pass );
+    testcmd( $dif, "case01a_hosts.txt",                            "-dir2 dirB",         $fail );
+    testcmd( $dif, "case01a_hosts.txt",                  "-dir2 dirA -comments",         $pass );
+    testcmd( $dif, "case01b_hosts_spaces.txt", "-dir2 $testDir/dirB -listFiles",         $pass );
+    testcmd( $dif, "case01a_hosts.txt case01b_hosts_spaces.txt case01c_hosts_blank_lines.txt", "-dir2 $testDir/dirB -listFiles",   $fail );
 }
 
 if ( runtests('lsl') ) {
@@ -246,10 +251,20 @@ if ( runtests('perleval') ) {
     testcmd( $dif, "case11a_perlhash case11c_perlhash",             "-perleval",         $fail );
 }
 
-if ( runtests('subroutineSort') ) {
+if ( runtests('function') ) {
+    testcmd( $dif, "case13a.pl case13b.pl", "-function a", $pass );
+    testcmd( $dif, "case13a.pl case13c.pl", "-function a", $fail );
+    testcmd( $dif, "case15a.py case15b.py", "-function quickSort", $fail );
+    testcmd( $dif, "case15b.py case15c.py", "-function quickSort", $pass );
+}
+
+if ( runtests('functionSort') ) {
     testcmd( $dif, "case13a.pl case13b.pl", "", $fail );
-    testcmd( $dif, "case13a.pl case13b.pl", "-subroutineSort", $pass );
-    testcmd( $dif, "case13a.pl case13c.pl", "-subroutineSort", $fail );
+    testcmd( $dif, "case13a.pl case13b.pl", "-functionSort", $pass );
+    testcmd( $dif, "case13a.pl case13c.pl", "-functionSort", $fail );
+    testcmd( $dif, "case15b.py case15c.py", "", $fail );
+    testcmd( $dif, "case15b.py case15c.py", "-functionSort", $pass );
+    testcmd( $dif, "case15a.py case15c.py", "-functionSort", $fail );
 }
 
 if ( runtests('externalPreprocessScript') ) {
@@ -283,9 +298,10 @@ if ( $opt{extraTests}  or  -d "/home/ckoknat" ) {
         }
         
         if ( runtests('externalPreprocessScript') ) {
+            # May fail because of YAML library dependency
             testcmd( $dif, "case14a.yml case14b.yml", "",            $fail );
-            testcmd( $dif, "case14a.yml case14b.yml", "-externalPreprocessScript $testdir/case14_externalPreprocessScript.pl",       $pass );
-            testcmd( $dif, "case14a.yml case14c.yml", "-externalPreprocessScript $testdir/case14_externalPreprocessScript.pl",       $pass );
+            testcmd( $dif, "case14a.yml case14b.yml", "-externalPreprocessScript $testDir/case14_externalPreprocessScript.pl",       $pass );
+            testcmd( $dif, "case14a.yml case14c.yml", "-externalPreprocessScript $testDir/case14_externalPreprocessScript.pl",       $pass );
         }
     }
     
@@ -325,7 +341,7 @@ sub testcmd {
     print "#\n#\n";
     my ( $cmd, $filelist, $options, $expected_exitstatus ) = @_;
     my @filelist = split /\s+/, $filelist;
-    @filelist = map { "$testdir/$_" } @filelist unless $filelist[0] =~ m{^//};
+    @filelist = map { "$testDir/$_" } @filelist unless $filelist[0] =~ m{^//};
     my $command = "$cmd @filelist $options -gui ''";
     my $status  = system($command);
     die if ! is( $status, $expected_exitstatus, "$command  ;  echo \$status\nExpected $expected_exitstatus" ) and $opt{die};
@@ -337,7 +353,7 @@ sub test_cmdquiet {
     my ( $cmd, $filelist, $options, $expected_exitstatus ) = @_;
     my $tmpfile = "/tmp/dif_${$}_quiet.txt";
     my @filelist = split /\s+/, $filelist;
-    @filelist = map { "$testdir/$_" } @filelist;
+    @filelist = map { "$testDir/$_" } @filelist;
     my $command = "$cmd @filelist $options > $tmpfile";
     system($command);
     my $status = ( -f $tmpfile and -z $tmpfile ) ? 0 : $fail;
@@ -426,7 +442,7 @@ sub summary {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-#19 Tue Jul 28 17:09:04 PDT 2020
+#28 Fri Aug  7 15:44:30 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify

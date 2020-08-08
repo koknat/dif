@@ -1,9 +1,8 @@
 
 sub pin2vrgy {
     my $pin = shift;
-    $pin = uc($pin);
-    $pin =~ s/[\[\]]//g; # comment
-    $pin =~ s/\s+//g; # another comment
+    $pin =~ s/[\[\]]//g; # remove []
+    $pin =~ s/\s+//g; # remove all whitespace
     return $pin;
 }
 

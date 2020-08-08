@@ -1,7 +1,6 @@
 
 sub pin2vrgy {
     my $pin = shift;
-    $pin = uc($pin);
     $pin =~ s/[\[\]]//g;
     $pin =~ s/\s+//g;
     return $pin;
