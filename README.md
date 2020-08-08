@@ -1,27 +1,26 @@
-# dif - a preprocessing front end to gvimdiff/meld/kompare
-![Alt text](dif.png?raw=true "Screenshot of gvimdiff")
+## dif - a preprocessing front end to meld/gvimdiff/kompare
+![Alt text](dif_before_after.png?raw=true "Comparison of  meld  vs  dif with option -comments")
 
-# Background
-
-The graphical compare tools gvimdiff, kompare, or meld are used to compare text files on Linux
+The graphical compare tools meld, gvimdiff, or kompare are used to compare text files on Linux
 
 In many cases, it is difficult and time-consuming to visually compare large files because of formatting differences
 
 For example:
-* log files are often many MB of unbroken text, with some "don't care" information such as timestamps
-* different versions of version-crontrolled-code may have significant formatting differences
+* different versions of code may differ only in comments or whitespace
+* log files are often many MB of unbroken text, with some "don't care" information such as timestamps or temporary filenames
+* json or yaml files may have ordering differences
 
 
-# Purpose
+## Purpose
 
-This script 'dif' preprocesses input text files with a wide variety of options
+'dif' preprocesses input text files with a wide variety of options
 
-Afterwards, it runs the Linux tools gvimdiff, kompare, or meld on these intermediate files
+Afterwards, it runs the Linux tools meld, gvimdiff, or kompare on these intermediate files
 
 'dif' can also be used as part of an automated testing framework against golden files, returning 0 for identical, and 1 for mismatch
 
 
-# Solutions
+## Solutions
 
 #### Problem: differences in whitespace or comments or case cause mismatches
 Solution:  Use options -white or -nowhite or -comments or -case
@@ -41,7 +40,7 @@ Solution:   Use -replaceDates
 Solution:  Use -fold to wrap
 
 #### Problem: need to view your changes to a file on Perforce
-Solution:  'dif file#head' will show the differences between the file in p4, vs the local file
+Solution:  'dif file#head' will show the differences between the file in p4 vs the local file
 
 #### Problem: files both need to be filtered using regexes, to strip out certain characters or sequences
 Solution 1:  Use -grep <regex> or -ignore <regex> to filter in or out
@@ -50,16 +49,16 @@ Solution 2:  Use -search <regex> -replace <regex> to supply one instance of subs
 
 Solution 3:  Use -replaceTable <file> to supply a file with many substitution/replacement regexes
 
-# Usage examples
+## Usage examples
 * dif file1 file2
 * dif file1 file2 -sort
-* dif file1 file2 -white -comments -case
+* dif file1 file2 -white -case
+* dif file1 file2 file3 -comments
 * dif file1 file2 -search 'foo' -replace 'bar'
 
 
-# Options
+## Options
 
-    Filtering options:    
        -head              Compare only the first 10000 lines
        
        -headLines N       Compare only the first N lines
@@ -88,7 +87,7 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
        -white             Remove blank lines and leading/trailing whitespace
                           Condense multiple whitespace to a single space
        
-       -noWhite           Remove all whitespace.  Useful to check output of perltidy
+       -noWhite           Remove all whitespace
 
        -case              Convert files to lowercase before comparing
        
@@ -101,13 +100,14 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
        
        -trimChars N       Trims with specified number of characters, instead of 105
        
-       -comments          Remove any comments like // or # or single-line */ /*
+       -comments          Remove any comments like // or # or single-line */ /*.  Also removes trailing whitespace
 
-       -grep 'regex'      Only keep lines which match the user-specified regex
+       -grep 'regex'      Only show lines which match the user-specified regex
                           Multiple regexs can be specified, for example:  -grep '(regexA|regexB)'
+                          To grep for lines above/below matches, see the help text for option -externalPreprocessScript
 
        -ignore 'regex'    Ignore any lines which match the user-specified regex
-                          This is the exact opposite of the -grep function
+                          This is the opposite of the -grep function
                           
        -start 'regex'     Start comparing file when line matches regex
        
@@ -123,15 +123,15 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
                           For example, to compare Perl subroutines 'add' and 'subtract' within single file:
                               dif a.pm -start1 'sub add' -stop1 '^}' -start2 'sub subtract' -stop '^}'
 
-       -subroutine 'subroutine_name'
-                          Compare same subroutine from two source files
-                          Subroutines may be Perl (sub {}) or TCL (proc {}{})
-                          May specify multiple subroutines with -subroutine '(mysubA|mysubB|mysubC)'
+       -function 'function_name'
+                          Compare same function from two source files
+                          Functions may be Perl (sub {}) or TCL (proc {}{})
+                          May specify multiple subroutines with -function '(mysubA|mysubB|mysubC)'
                           Internally, this piggybacks on the -start -stop functionality
 
-       -subroutineSort
-                          Useful when Perl subroutines have been moved within a file
-                          This option preprocesses each file, so that the subroutine definitions
+       -functionSort
+                          Useful when Python/Perl/TCL function have been moved within a file
+                          This option preprocesses each file, so that the function definitions
                           are in alphabetical order
        
        -search 'regex'
@@ -163,11 +163,11 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
                                1970.01.01
                                1/1/1970
 
-       -tartv             Compare tarfiles using tar -tv, and look at the file size
-                          If file size is not desired in the comparison, also use -fields 1
+       -tartv             Compare tarfiles using tar -tv, and compare the names and file sizes
+                          If file sizes are not desired in the comparison (names only), also use -fields 1
        
        -lsl               Useful when comparing previously captured output of 'ls -l'
-                          Filters out everything except size and filename
+                          Filters out everything except names and file sizes
           
        -yaml              Used for comparing two yaml files via YAML::XS and Data::Dumper
        
@@ -192,12 +192,16 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
        -externalPreprocessScript <script>          
                           Run each input file through your custom preprocessing script
                           It must take input from STDIN and send output to STDOUT, similar to unix 'sort'
+                          
                           Trivial example:
                               -externalPreprocessScript 'sort'
+
+                          Example using grep to show 2 lines above and below lines matching 'opt'
+                              -ext 'grep -C 2 opt'
                           
                           Examples for comparing binary files:
-                              -e '/usr/bin/xxd'
-                              -e '/usr/bin/hexdump -c'
+                              -ext '/usr/bin/xxd'
+                              -ext '/usr/bin/hexdump -c'
                           Although for the case of comparing binary files,
                               a standalone diff tool may be preferable,
                               for example 'qdiff' by Johannes Overmann & Tong Sun
@@ -225,8 +229,9 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
 
        -verbose           Print names and file sizes of preprocessed temp files, before comparing
 
-       -gui cmd           Instead of using gvimdiff to graphically compare the files, use a different tool
-                          For example:
+       -gui cmd           Instead of using meld to graphically compare the files, use a different tool
+                          Examples:
+
                           -gui gvimdiff
                               Uses gvimdiff as a GUI
                           
@@ -235,12 +240,16 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
 
                           -gui meld
                               Uses meld as a GUI
+                              Note that meld does not display line numbers by default
+                              Meld / Preferences / Editor / Display / Show line numbers
+                              If the box is greyed out, install python-gtksourceview2
 
                           -gui md5sum
                               Prints the m5sum to stdout, after preprocessing
                           
                           -gui ''          
                               This is useful when comparing from a script
+                              in an automated process such as regression testing
                               After running dif, check the return status:
                                   0 = files are equal
                                   1 = files are different
@@ -257,19 +266,39 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
        -diff              Shortcut for '-gui diff'
 
     Other options:
-       -stdin             Parse input from stdin
-       -stdout            Cat all preprocessed files to stdout
-                          In this use case, dif can be called on only one file
-                          This allows dif to be part of a pipeline
-                          Example 1:
-                              dif file -stdout <options> | another_script
-                          If -stdin is given, then -stdout is assumed
-                          Example 2:
+       -stdin             Parse input from stdin and send output to stdout
+                          For example:
                               grep foo bar | dif -stdin <options> | baz | qux
 
-       -gold              When used with one filename (file.extension), assumes that 2nd file will be file.golden.extension
-                          When used with multiple filenames (file.extension), it runs dif multiple times, once for each of the pairs
+       -stdout            Cat all preprocessed files to stdout
+                          In this use case, dif could be called on only one file
+                          This allows dif to be part of a pipeline
+                          For example:
+                              dif file -stdout <options> | another_script
+                          If -stdin is given, then -stdout is assumed
+
+       -gold              When used with one filename (file or file.extension),
+                          assumes that 1st file will be (file.golden or file.golden.extension)
+                          
+                          For example:
+                              dif file1 -gold
+                          will run:
+                              dif file1.golden file1.csv
+                          
+                          For example:
+                              dif file1.csv -gold
+                          will run:
+                              dif file1.csv.golden file1.csv
+                          
+                          When used with multiple filenames
+                          it runs dif multiple times, once for each of the pairs
                           This option is useful when doing regressions against golden files
+                          
+                          For example:
+                              dif file1 file2.csv -gold
+                          will run:
+                              dif file1.golden file1
+                              dif file2.csv.golden file2.csv
 
        -dir2 <dir>        For each input file specified, run 'dif' on the file in the current directory
                               against the file in the specified directory
@@ -292,16 +321,19 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
            
 
     Default compare tool:
-        The default compare GUI is gvimdiff
-        To change this, create the text file ~/.dif.options with one of these content lines:
+        The default compare GUI is meld
+        To change this, create the text file ~/.dif.defaults with one of these content lines:
             gui: gvimdiff
             gui: kompare
             gui: meld
             gui: tkdiff
+        You may also want to change the default (uncompressed) file size limit, before gvimdiff takes over from kompare/meld
+        The default is 2000000 bytes
+            meldSizeLimit: 1000000
 
 
     For convenience, link to this code from ~/bin
-        ln -s dif ~/bin/dif
+        ln -s /path/dif ~/bin/dif
 
     
 
@@ -318,7 +350,7 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
     
 
 
-# Installation instructions
+## Installation
 
 To install dif and run tests:
 * download dif from GitHub
