@@ -1,7 +1,7 @@
-## dif - a preprocessing front end to meld/gvimdiff/kompare
+## dif - a preprocessing front end to meld/gvimdiff/tkdiff/kompare
 ![Alt text](dif_before_after.png?raw=true "Comparison of  meld  vs  dif with option -comments")
 
-The graphical compare tools meld, gvimdiff, or kompare are used to compare text files on Linux
+The graphical compare tools meld, gvimdiff, tkdiff, or kompare are used to compare text files on Linux
 
 In many cases, it is difficult and time-consuming to visually compare large files because of formatting differences
 
@@ -15,7 +15,7 @@ For example:
 
 'dif' preprocesses input text files with a wide variety of options
 
-Afterwards, it runs the Linux tools meld, gvimdiff, or kompare on these intermediate files
+Afterwards, it runs the Linux tools meld, gvimdiff, tkdiff, or kompare on these intermediate files
 
 'dif' can also be used as part of an automated testing framework against golden files, returning 0 for identical, and 1 for mismatch
 
