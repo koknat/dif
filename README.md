@@ -7,7 +7,7 @@ In many cases, it is difficult and time-consuming to visually compare large file
 
 For example:
 * different versions of code may differ only in comments or whitespace
-* log files are often many MB of unbroken text, with some "don't care" information such as timestamps or temporary filenames
+* log files are often many MB of text, with some "don't care" information such as timestamps or temporary filenames
 * json or yaml files may have ordering differences
 
 
@@ -33,14 +33,11 @@ Solution 2:  Use -start and -stop to specify a section of the file using regexes
 #### Problem: files are sorted differently
 Solution:  Use -sort
 
-#### Problem: log files contain dates and times
-Solution:   Use -replaceDates
-
 #### Problem: lines are too long to visually compare easily
 Solution:  Use -fold to wrap
 
-#### Problem: need to view your changes to a file on Perforce
-Solution:  'dif file#head' will show the differences between the file in p4 vs the local file
+#### Problem: log files contain dates and times
+Solution:   Use -replaceDates
 
 #### Problem: files both need to be filtered using regexes, to strip out certain characters or sequences
 Solution 1:  Use -grep <regex> or -ignore <regex> to filter in or out
@@ -48,6 +45,10 @@ Solution 1:  Use -grep <regex> or -ignore <regex> to filter in or out
 Solution 2:  Use -search <regex> -replace <regex> to supply one instance of substitution and replacement
 
 Solution 3:  Use -replaceTable <file> to supply a file with many substitution/replacement regexes
+       
+#### Problem: need to view your changes to a file on Perforce
+Solution:  'dif file#head' will show the differences between the file in p4 vs the local file
+
 
 ## Usage examples
 * dif file1 file2
