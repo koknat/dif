@@ -17,20 +17,20 @@ sub d { }
 
 # Defaults can be overridden with user config file ~/.dif.defaults  (key/value format)
 my %defaults;
-$defaults{gui}           = 'meld';                      # Alternately, gvimdiff or compare or tkdiff...
-$defaults{head}          = 10000;                       # lines printed by -head
-$defaults{history}       = 0;                           # log options used to ~/.dif.history
-$defaults{fold}          = 105;                         # columns used by -fold
-$defaults{bcpp}          = "/usr/bin/bcpp";             # location of bcpp
-$defaults{perltidy}      = "$^X" . "tidy -l=110 -ce";   # perltidy location and options
-$defaults{meldSizeLimit} = 2000000;                     # switch to gvimdiff once uncompressed file size is over this limit
+$defaults{gui}           = 'meld';                       # Alternately, gvimdiff or compare or tkdiff...
+$defaults{head}          = 10000;                        # lines printed by -head
+$defaults{history}       = 0;                            # log options used to ~/.dif.history
+$defaults{fold}          = 105;                          # columns used by -fold
+$defaults{bcpp}          = "/usr/bin/bcpp";              # location of bcpp
+$defaults{perltidy}      = "$^X" . "tidy -l=110 -ce";    # perltidy location and options
+$defaults{meldSizeLimit} = 2000000;                      # switch to gvimdiff once uncompressed file size is over this limit
 my %opt;
 
 my $scriptName = 'dif';
 
 sub usage {
     my $backgroundPurpose = "
-The graphical compare tools meld, gvimdiff, and kompare are used to compare text files on Linux
+The graphical compare tools meld, gvimdiff, tkdiff, and kompare are used to compare text files on Linux
 
 In many cases, it is difficult and time-consuming to visually compare large files because of formatting differences
 
@@ -44,7 +44,7 @@ For example:
 
 '$scriptName' preprocesses input text files with a wide variety of options
 
-Afterwards, it runs the Linux tools meld, gvimdiff, or kompare on these intermediate files
+Afterwards, it runs the Linux tools meld, gvimdiff, tkdiff, or kompare on these intermediate files
 
 '$scriptName' can also be used as part of an automated testing framework, returning 0 for identical, and 1 for mismatch";
 
@@ -74,9 +74,10 @@ To run $scriptName
 '$scriptName' by Chris Koknat  https://github.com/koknat/dif
 
     Purpose:
-        The graphical compare tools meld, gvimdiff, and kompare are used to compare text files on Linux
+        The graphical compare tools meld, gvimdiff, tkdiff, and kompare are used to compare text files on Linux
         In many cases, it is difficult to visually compare the files because of formatting differences
-        This script runs the Linux meld, gvimdiff, or kompare tool on 2 files after preprocessing each of them with a wide variety of options
+        This script runs the Linux meld, gvimdiff, tkdiff, or kompare tool on 2 files
+        after preprocessing each of them with a wide variety of options
 
     Sample Problems and Solutions:
         Problem:    Differences in whitespace or comments or case cause mismatches
@@ -87,11 +88,11 @@ To run $scriptName
                     or
         Solution2:  Use -start and -stop to specify a section of the file using regexes
 
-        Problem:    Lines are too long to visually compare easily
-        Solution:   Use -fold to wrap
-
         Problem:    Files are sorted differently
         Solution:   Use -sort
+        
+        Problem:    Lines are too long to visually compare easily
+        Solution:   Use -fold to wrap
 
         Problem:    Log files contain dates and times
         Solution:   Use -replaceDates
@@ -102,6 +103,9 @@ To run $scriptName
         Solution2:  Use -search <regex> -replace <regex> to supply one instance of substitution and replacement
                     or
         Solution3:  Use -replaceTable <file> to supply a file with many substitution/replacement
+
+        Problem:    Need to view your changes to a file on Perforce
+        Solution:   'dif file#head' will show the differences between the file in p4 vs the local file
 
     Usage Examples:
         $scriptName file1 file2
@@ -282,11 +286,17 @@ To run $scriptName
        -verbose           Print names and file sizes of preprocessed temp files, before comparing
 
        -gui cmd           Instead of using $defaults{gui} to graphically compare the files, use a different tool
+                          This supports any tool which has command line usage similar to gvimdiff
+                          i.e. 'gvimdiff file1 file2'.  This has been tested on meld, gvimdiff, tkdiff, and kompare
+                          (and likely works with diffmerge, diffuse, kdiff, kdiff3, wdiff, xxdiff, colordiff, beyond compare, etc)
                           Examples:
 
                           -gui gvimdiff
                               Uses gvimdiff as a GUI
                           
+                          -gui tkdiff
+                              Uses tkdiff as a GUI
+
                           -gui kompare
                               Uses kompare as a GUI
 
@@ -360,7 +370,7 @@ To run $scriptName
                               $scriptName file1 ../file1
                               $scriptName file2 ../file2
                               $scriptName file3 ../file3
-       
+
       -listFiles         Print report showing which files match, when using -gold or -dir2
     
 
@@ -376,6 +386,7 @@ To run $scriptName
         The default compare GUI is $defaults{gui}
         To change this, create the text file ~/.$scriptName.defaults with one of these content lines:
             gui: gvimdiff
+            gui: tkdiff
             gui: kompare
             gui: meld
             gui: tkdiff
@@ -393,19 +404,20 @@ To run $scriptName
     Perforce version control support:
             Perforce uses # to signify version numbers
     Perforce examples:
+            $scriptName file            compares p4 head version with local version (shortcut)
+            $scriptName file#head       compares p4 head version with local version (shortcut)
+            $scriptName file#head #-    compares p4 head version with previous version (shortcut)
+            $scriptName file#7          compares p4 version 7 with local version (shortcut)
             $scriptName file#6 file#7   compares p4 version 6 with p4 version 7
             $scriptName file#6 file#+   compares p4 version 6 with p4 version 7
-            $scriptName file#6 file#-   compares p4 version 6 with previous version
-            $scriptName file#head #-    compares p4 head version with previous version (shortcut)
-            $scriptName file#head       compares p4 head version with local version (shortcut)
-            $scriptName file#7          compares p4 version 7 with local version (shortcut)
+            $scriptName file#6 file#-   compares p4 version 6 with p4 version 5
             $scriptName file#6..#8      compares p4 version 6 with p4 version 7, and then compares 7 with 8
     ";
 
-    say "$backgroundPurpose\n\n$installationInstructions" and exit if $opt{installationInstructions};  # for README.txt and README.md
+    say "$backgroundPurpose\n\n$installationInstructions" and exit if $opt{installationInstructions};    # for README.txt and README.md
     say "\n$usage";
     my $whichP4 = `which p4`;
-    say "$p4usage" if  $whichP4 ne ''  and  $whichP4 !~ /Command not found/;
+    say "$p4usage" if $whichP4 ne '' and $whichP4 !~ /Command not found/;
     say "\n";
     exit 0;
 }
@@ -491,7 +503,7 @@ for my $type ( 'options', 'defaults' ) {
 }
 d '%opt %defaults';
 my %customFilenameMappings;
-for my $type ( 'fileMappings' ) {
+for my $type ('fileMappings') {
     d '$type';
     my $userConfigFile = "$ENV{HOME}/.$scriptName.$type";
     if ( -e $userConfigFile ) {
@@ -534,7 +546,7 @@ Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 
 # noDirs is not in usage
 
 my $globaltmpdir;
-my $windows = ( $^O =~ /Win/ ) ? 1 : 0;      # Are we running on Windows?
+my $windows = ( $^O =~ /Win/ ) ? 1 : 0;    # Are we running on Windows?
 if ($windows) {
     $globaltmpdir = tempdir( 'C:\Windows\Temp\d_XXXX', CLEANUP => $opt{cleanup} );
 } else {
@@ -554,8 +566,8 @@ if ( $opt{stdin} ) {
     close $TMP;
     $files[0] = $tmpfile;
 }
-usage() if ( $opt{help}  or  not @files  or  $opt{installationInstructions} );
-$opt{quiet} = 1 if $opt{silent};  # For backwards compatibility of -silent
+usage() if ( $opt{help} or not @files or $opt{installationInstructions} );
+$opt{quiet} = 1 if $opt{silent};    # For backwards compatibility of -silent
 $files[0] .= 'ead' if $files[0] =~ /#h$/;    # enable #h instead of #head
 $files[1] .= 'ead' if $files[0] =~ /#h$/;    # enable #h instead of #head
 d '%opt @files';
@@ -573,11 +585,11 @@ if ( $opt{split} or defined $opt{splitChar} ) {
         say "ERROR:  Cannot use -search/-replace with -split or -splitChar";
         exit 1;
     } elsif ( $opt{split} ) {
-        $opt{search} = "\\s+";
+        $opt{search}  = "\\s+";
         $opt{replace} = "\\n";
     } elsif ( defined $opt{splitChar} ) {
         my $splitChar = quotemeta( $opt{splitChar} );
-        $opt{search} = "$splitChar";
+        $opt{search}  = "$splitChar";
         $opt{replace} = "\\n";
     } else {
         die "Program bug";
@@ -611,21 +623,24 @@ if ( $opt{function} ) {
 # Decide which diff tool to use
 # Start with $defaults{gui}, which is hard-coded or in ~/.dif.defaults
 # Next look at options -diff -gvimdiff -kompare -meld  -gui <tool>
-chomp( my $uid = `whoami` );
 my $gui = $defaults{gui};
 if ( $opt{diff} ) {
     $gui = 'diff';
 } elsif ( $opt{gvimdiff} ) {
     $gui = 'gvimdiff';
 } elsif ( $opt{tkdiff} ) {
-    $gui = '/home/utils/tkdiff-4.2/bin/tkdiff';
+    if ( -e '/home/utils/tkdiff-4.2/bin/tkdiff' ) {
+        $gui = '/home/utils/tkdiff-4.2/bin/tkdiff';
+    } else {
+        $gui = 'tkdiff';
+    }
 } elsif ( $opt{kompare} ) {
     $gui = 'kompare';
 } elsif ( $opt{meld} ) {
     $gui = 'meld';
 } elsif ( $opt{md5sum} ) {
     $gui = 'md5sum';
-} elsif ( defined $opt{difftool} ) {  # Renamed to -gui, but retained for backwards compatibility for Amit
+} elsif ( defined $opt{difftool} ) {    # Renamed to -gui, but retained for backwards compatibility for Amit
     $gui = $opt{difftool};
 } elsif ( defined $opt{gui} ) {
     $gui = $opt{gui};
@@ -677,10 +692,9 @@ for my $file (@files) {
             # do nothing, will be handled later
         } else {
             $preprocessRequired = 1;
-            $gui           = 'gvimdiff';
+            $gui                = 'gvimdiff';
         }
     }
-    if ( $file =~ /#(\d+|head)$/ or $file =~ m{^//} ) { $preprocessRequired = 1 }
     if ( $file =~ /\.gz$/ ) {
         if ( $gui =~ /(diff|kompare|meld)/ ) {
             $preprocessRequired = 1;
@@ -704,7 +718,7 @@ d '$preprocessRequired $gui';
 my @zipExtension = @files;
 for my $f (@zipExtension) {
     $f =~ s/^.*(\.(gz|bz2|xz|zip))$/$1/;
-    $f = '.gz' if !defined $f;  # .gz zdiff is the default since it handles uncompressed files
+    $f = '.gz' if !defined $f;    # .gz zdiff is the default since it handles uncompressed files
 }
 $zipExtension[1] = $zipExtension[0] if !defined $zipExtension[1];    # perforce#NNN without 2nd file
 d '@files @zipExtension';
@@ -713,14 +727,19 @@ if ( grep { /\.xz/ } @zipExtension ) {
     # Due to bug in xzdiff, which returns status 0 regardless if files differ or not, require preprocessing (unzipping)
     $preprocessRequired = 1;
     $zipDiff            = 'zdiff';
-} elsif ( grep { /\.zip/ } @zipExtension ) {
+} elsif (
+    grep {
+        /\.zip/
+    } @zipExtension
+  )
+{
     # There is no zdiff type of tool for zip
     $preprocessRequired = 1;
-    $zipDiff            = 'zdiff';  # zdiff handles uncompresed files.  The preprocessing will unzip them
+    $zipDiff            = 'zdiff';    # zdiff handles uncompresed files.  The preprocessing will unzip them
 } elsif ( $zipExtension[0] eq $zipExtension[1] ) {
     my %diffref = ( '.gz' => 'zdiff', '.bz2' => 'bzdiff', '.xz' => 'xzdiff' );
     $zipDiff = $diffref{ $zipExtension[0] };
-    $zipDiff = 'zdiff' if !$zipDiff;                                 # .txt
+    $zipDiff = 'zdiff' if !$zipDiff;    # .txt
 } else {
     # Files have different zip formats
     $preprocessRequired = 1;
@@ -728,15 +747,15 @@ if ( grep { /\.xz/ } @zipExtension ) {
 }
 d '$zipDiff $preprocessRequired';
 
-$opt{quiet} = 1                                                         if $opt{stdout};
-$opt{head}   = 99999999999                                              if $opt{head} == 0;
-$opt{head}   = $defaults{head}                                          if $opt{head} == 1;
-$opt{head}   = $opt{headLines}                                          if $opt{headLines};
-$opt{tail}   = $defaults{head}                                          if $opt{tail} == 1;
-$opt{tail}   = $opt{tailLines}                                          if $opt{tailLines};
-$opt{sort}   = "| sort"                                                 if $opt{sort} ne "";
-$opt{sort}   = "| perl -n00 -e 'push \@a, \$_; END { print sort \@a }'" if $opt{paragraphSort};
-$opt{uniq}   = "| uniq"                                                 if $opt{uniq} ne "";
+$opt{quiet} = 1                                                        if $opt{stdout};
+$opt{head}  = 99999999999                                              if $opt{head} == 0;
+$opt{head}  = $defaults{head}                                          if $opt{head} == 1;
+$opt{head}  = $opt{headLines}                                          if $opt{headLines};
+$opt{tail}  = $defaults{head}                                          if $opt{tail} == 1;
+$opt{tail}  = $opt{tailLines}                                          if $opt{tailLines};
+$opt{sort}  = "| sort"                                                 if $opt{sort} ne "";
+$opt{sort}  = "| perl -n00 -e 'push \@a, \$_; END { print sort \@a }'" if $opt{paragraphSort};
+$opt{uniq}  = "| uniq"                                                 if $opt{uniq} ne "";
 if ( $opt{strings} ne "" ) {
 
     if ( `which strings` eq '' ) {
@@ -771,35 +790,35 @@ my ( $replaceTable_ref, @sub_keys_ordered );
 $opt{replaceTable} = "/home/ckoknat/s/regression/rp/ktable.txt" if $opt{rp};    # work-specific
 $opt{replaceTable} = "/home/ckoknat/s/regression/ps_ktable.txt" if $opt{ps};    # work-specific
 if ( $opt{search} or $opt{replace} or $opt{replaceTable} or $opt{replaceDates} ) {
-    if ( ( defined $opt{search}  and ! defined $opt{replace} )  or  ( ! defined $opt{search}  and defined $opt{replace} ) ) {
+    if ( ( defined $opt{search} and !defined $opt{replace} ) or ( !defined $opt{search} and defined $opt{replace} ) ) {
         die "Options -search and -replace must be used together";
     }
     if ( $opt{replaceTable} ) {
-        $replaceTable_ref = readTableFile( $opt{replaceTable}, 0, 1 );    # readTableFile($opt{tablefile},$opt{reverse},$opt{regex})
+        $replaceTable_ref = readTableFile( $opt{replaceTable}, 0, 1 );          # readTableFile($opt{tablefile},$opt{reverse},$opt{regex})
         d '$replaceTable_ref';
         if ( !%{$replaceTable_ref} ) {
             say "ERROR:  Did not find any entries in table file!  Exiting.\n";
             exit 1;
         }
     }
-    if ( defined $opt{search}  or  $opt{replace} ) {
-        $replaceTable_ref->{$opt{search}} = eval "qq($opt{replace})";
+    if ( defined $opt{search} or $opt{replace} ) {
+        $replaceTable_ref->{ $opt{search} } = eval "qq($opt{replace})";
     }
     if ( $opt{replaceDates} ) {
-        my $weekdayRegex = qr/(Mo(n(day)?)?|Tu(e(s(day)?)?)?|We(d(nesday)?)?|Th(u(r(s(day)?)?)?)?|Fr(i(day)?)?|Sa(t(urday)?)?|Su(n(day)?)?)/;
-        my $monthRegex = qr/(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|(Nov|Dec)(?:ember)?)/;
-        my $timeRegex = qr/\d{2}:\d{2}(:\d{2})?/;  # 17:36:34
-        my $timezoneRegex = qr/([ECMP][SD]T|UTC)/;
-        my $dayRegex = qr/\d{1,2}/;
-        my $yearRegex = qr/\d{4}/;
-        my $dateYMDregex = qr<\d{4,98}[/\-.]\d{1,2}[/\-.]\d{1,2}>;  # YYYY-MM-DD   ,99 is a kludge to make the regex longer, and therefore appear before $dateDMYregex
-        my $dateDMYregex = qr<\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}>;  # DD-MM-YYYY
+        my $weekdayRegex     = qr/(Mo(n(day)?)?|Tu(e(s(day)?)?)?|We(d(nesday)?)?|Th(u(r(s(day)?)?)?)?|Fr(i(day)?)?|Sa(t(urday)?)?|Su(n(day)?)?)/;
+        my $monthRegex       = qr/(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|(Nov|Dec)(?:ember)?)/;
+        my $timeRegex        = qr/\d{2}:\d{2}(:\d{2})?/;                                                                                                                     # 17:36:34
+        my $timezoneRegex    = qr/([ECMP][SD]T|UTC)/;
+        my $dayRegex         = qr/\d{1,2}/;
+        my $yearRegex        = qr/\d{4}/;
+        my $dateYMDregex     = qr<\d{4,98}[/\-.]\d{1,2}[/\-.]\d{1,2}>;                                                                                                       # YYYY-MM-DD   ,99 is a kludge to make the regex longer, and therefore appear before $dateDMYregex
+        my $dateDMYregex     = qr<\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}>;                                                                                                        # DD-MM-YYYY
         my $replaceDates_ref = {
             qr/($weekdayRegex\s+)?$monthRegex\s*$dayRegex(\s+$timeRegex)?(\s*$timezoneRegex)?(\s*$yearRegex)?/ => 'date',
-            qr/${dateYMDregex}T${timeRegex}(\+\d\d:\d\d|Z)/ => 'date',  # 2020-07-27T21:13:23+00:00
-            qr/\d{8}T\d{6}Z/ => 'date',  # 20200727T211323Z
-            $dateYMDregex => 'date',     # 'YYYY-MM-DD'
-            $dateDMYregex => 'date',     # 'DD-MM-YYYY'
+            qr/${dateYMDregex}T${timeRegex}(\+\d\d:\d\d|Z)/                                                    => 'date',                                                    # 2020-07-27T21:13:23+00:00
+            qr/\d{8}T\d{6}Z/                                                                                   => 'date',                                                    # 20200727T211323Z
+            $dateYMDregex                                                                                      => 'date',                                                    # 'YYYY-MM-DD'
+            $dateDMYregex                                                                                      => 'date',                                                    # 'DD-MM-YYYY'
         };
         while ( my ( $search, $replace ) = each %$replaceDates_ref ) {
             $replaceTable_ref->{$search} = $replace;
@@ -839,9 +858,6 @@ if ( $opt{gold} or $opt{dir2} ) {
         # This does not work in conjunction with any of the preprocessing options
         # For regression testing
         #     ~/r/k/dif -gold file1 file3 file4 file5
-        # For as2
-        #     cd processStil
-        #     ~/r/k/dif -dir2 /home/ate/scripts/release/tv5s/a01 * CAD/* dftqtracker/* -listFiles
         say "\nOption -listFiles compares sets of files (without doing any preprocessing).  It works with option -dir2 <dir> or -gold";
         d '@files';
         my @filePairs;
@@ -877,17 +893,17 @@ if ( $opt{gold} or $opt{dir2} ) {
             my $file1 = shift(@filePairs);
             my $file2 = shift(@filePairs);
             d '$file1 $file2';
-            chomp(my $md5sum1 = `md5sum $file1 2>/dev/null | cut -d ' ' -f 1` || '_________DOES_NOT_EXIST_________');
-            chomp(my $md5sum2 = `md5sum $file2 2>/dev/null | cut -d ' ' -f 1` || '_________DOES_NOT_EXIST_________');
+            chomp( my $md5sum1 = `md5sum $file1 2>/dev/null | cut -d ' ' -f 1` || '_________DOES_NOT_EXIST_________' );
+            chomp( my $md5sum2 = `md5sum $file2 2>/dev/null | cut -d ' ' -f 1` || '_________DOES_NOT_EXIST_________' );
             d '$md5sum1 $md5sum2';
             if ( $md5sum1 ne $md5sum2 ) {
-                push @mismatches, sprintf($format, $file1, $md5sum1, $file2, $md5sum2);
+                push @mismatches, sprintf( $format, $file1, $md5sum1, $file2, $md5sum2 );
             }
         }
         d '@mismatches';
         if (@mismatches) {
             say "Found " . scalar(@mismatches) . " mismatching pairs of files:";
-            printf("$format\n", 'file1', 'md5sum                          ', 'file2', 'md5sum');
+            printf( "$format\n", 'file1', 'md5sum                          ', 'file2', 'md5sum' );
             say join "\n", @mismatches;
             exit 1;
         } else {
@@ -964,64 +980,85 @@ if ( $opt{dir2} ) {
     push @files, $dir2file;
 }
 
-# dif //path/file#1..#3
-# opens window for #1 vs #2, then #2 vs #3
-if ( not $files[1] and $files[0] =~ /^([^#\s]+)#(\d+)\.\.#?(\d+|h|head)$/ ) {
-    my ( $file, $begin, $end ) = ( $1, $2, $3 );
-    d '$file $begin $end';
-    d '$originalCmdLine';
-    $originalCmdLine =~ s/$files[0]//;
-    d '$originalCmdLine';
-    if ( $end =~ /(h|head)/ ) {
-        $end = lastP4rev($file);
-    }
-    # internally, convert this to:
-    #     file #1 #n
-    #     file #2 #n
-    for my $rev ( $begin .. $end - 1 ) {
-        my $cmd = "$originalCmdLine $file#$rev #n -noBackground";
-        d '$cmd';
-        system "$cmd";
-    }
-    exit 0;
+my %scms;
+if ( defined $ENV{P4CONFIG} or defined $ENV{P4CLIENT} ) {
+    $scms{Perforce} = 1;
 }
-
-# If only one file was specified, and it's a perforce p4 rev, get the current non-revved version
-# dif file#123
-if ( not $opt{stdout}  and  not $files[1] and $files[0] =~ /^([^#\s]+)#(\d+|head|n|next|\+|\-)$/ ) {
-    my $nonrevp4file = $1;
-    say "2nd file will be $nonrevp4file" unless $opt{quiet};
-    push @files, $nonrevp4file;
-}
-d '@files';
-# Enable  'dif file#1 #2'
-d '@files';
-my ($lastBase, $lastRev);
-sub lastP4rev {
-    my $base = shift;
-    chomp ($lastRev = `cd $pwd ; p4 fstat $base | grep headRev | sed 's/.*headRev \\(.*\\)/\\1/'`);
-    return $lastRev;
-}
-for my $n ( 0 .. $#files ) {
-    if ( $files[$n] =~ /(.*)#(\d+|head|n|next|\+|\-)$/ ) {
-        my ( $base, $rev ) = ( $1, $2 );
-        d '$n $base $rev';
-        $base = $lastBase if $base eq '';  # file#8 #n
-        d '$base';
-        if ( $rev =~ /^(n|next|\+)$/ ) {
-            $files[$n] = $base . '#' . ( $lastRev + 1 );
-        } elsif ( $rev =~ /^(\-)$/ ) {
-            if ( $lastRev =~ /(h|head)/ ) {
-                $lastRev = lastP4rev($base);
-                d '$lastRev';
-            }
-            $files[$n] = $base . '#' . ( $lastRev - 1 );
-        } else {
-            $files[$n] = $base . '#' . ( $rev );
+if ( $scms{Perforce} ) {
+    if ( not $files[1] and $files[0] =~ /^([^#\s]+)#(\d+)\.\.#?(\d+|h|head)$/ ) {
+        # dif //path/file#1..#3
+        # opens window for #1 vs #2, then #2 vs #3
+        my ( $file, $begin, $end ) = ( $1, $2, $3 );
+        d '$file $begin $end';
+        d '$originalCmdLine';
+        $originalCmdLine =~ s/$files[0]//;
+        d '$originalCmdLine';
+        if ( $end =~ /(h|head)/ ) {
+            $end = lastP4rev($file);
         }
-        $lastBase = $base;
-        $lastRev = $rev;
-        d '$lastRev';
+        # internally, convert this to:
+        #     file #1 #n
+        #     file #2 #n
+        for my $rev ( $begin .. $end - 1 ) {
+            my $cmd = "$originalCmdLine $file#$rev #n -noBackground";
+            d '$cmd';
+            system "$cmd";
+        }
+        exit 0;
+    }
+
+    if ( not $opt{stdout} and not defined $files[1] ) {
+        if ( $files[0] =~ /^([^#\s]+)#(\d+|head|n|next|\+|\-)$/ ) {
+            # If only one file was specified, and it's a perforce p4 rev, get the current non-revved version
+            # dif file#123  => dif file#123 file
+            # dif file#head => dif file#head file
+            my $nonrevp4file = $1;
+            say "2nd file will be $nonrevp4file" unless $opt{quiet};
+            push @files, $nonrevp4file;
+        } else {
+            # If only one file was specified, compare to the head rev
+            # dif file      => dif file#head file
+            say "1st file will be $files[0]#head" unless $opt{quiet};
+            $files[1] = "$files[0]";
+            $files[0] = "$files[0]#head";
+        }
+    }
+    d '@files';
+    # Enable  'dif file#1 #2'
+    d '@files';
+    my ( $lastBase, $lastRev );
+
+    sub lastP4rev {
+        my $base = shift;
+        chomp( $lastRev = `cd $pwd ; p4 fstat $base | grep headRev | sed 's/.*headRev \\(.*\\)/\\1/'` );
+        return $lastRev;
+    }
+    for my $n ( 0 .. $#files ) {
+        if ( $files[$n] =~ m{^//} ) {
+            $preprocessRequired = 1;
+        }
+        if ( $files[$n] =~ /(.*)#(\d+|head|n|next|\+|\-)$/ ) {
+            # Handle revs of files
+            $preprocessRequired = 1;
+            my ( $base, $rev ) = ( $1, $2 );
+            d '$n $base $rev';
+            $base = $lastBase if $base eq '';    # file#8 #n
+            d '$base';
+            if ( $rev =~ /^(n|next|\+)$/ ) {
+                $files[$n] = $base . '#' . ( $lastRev + 1 );
+            } elsif ( $rev =~ /^(\-)$/ ) {
+                if ( $lastRev =~ /(h|head)/ ) {
+                    $lastRev = lastP4rev($base);
+                    d '$lastRev';
+                }
+                $files[$n] = $base . '#' . ( $lastRev - 1 );
+            } else {
+                $files[$n] = $base . '#' . ($rev);
+            }
+            $lastBase = $base;
+            $lastRev  = $rev;
+            d '$lastRev';
+        }
     }
 }
 d '@files';
@@ -1109,7 +1146,7 @@ if (@dirs) {
     #     Would also be nice if it do something to each of those files, for example md5sum or -externalPreprocessScript <script>
     #
     # If this option is not used, it will simply gvimdiff the tarballs:
-    #     dif //ate/patterns/conversion/srmFiles/tv5s/a01/d/tv5s_a01_d.timingdb_cp_jtagbyptst_d_2_std_FUNC_13_1_dir.tar.gz#2 #3 -comments
+    #     dif //ate/foo_dir.tar.gz#2 #3 -comments
     my @origFiles = @files;
     @files = ();
     my $count = 1;
@@ -1225,16 +1262,7 @@ if ( $preprocessRequired and $opt{verbose} ) {
 
 # Exit early (after preprocess) for -ppOnly
 if ( $opt{ppOnly} ) {
-    #no, this option is called -stdout
-    #if ( $opt{ppCat} ) {
-    #    for my $file (@processedFiles) {
-    #        say `ls -l $file` unless $opt{quiet};
-    #        say `cat $file`;
-    #    }
-    #    say "Exiting because of option -ppCat\n" unless $opt{quiet};
-    #} else {
-        say "Exiting because of option -ppOnly\n" unless $opt{quiet};
-    #}
+    say "Exiting because of option -ppOnly\n" unless $opt{quiet};
     exit 0;
 }
 
@@ -1282,6 +1310,7 @@ if ( $gui =~ /meld|kompare/ ) {
         # This is not the case for meld, as we have already done  gunzip -c $file > $processedFile
         $defaults{meldSizeLimit} /= 10;
     }
+    chomp( my $uid = `whoami` );
     if ( -d '/home/ckoknat' and $gui eq 'meld' ) {
         # work environment
         my $guiWithLineNumbers;
@@ -1291,12 +1320,12 @@ if ( $gui =~ /meld|kompare/ ) {
             $guiWithLineNumbers = 'gvimdiff';
         }
         my $executable_regex = '.(c|cpp|h|java|js|pl|pm|py|tn|tcl)($|#)';
-        if ( basename($processedFiles[0]) =~ /$executable_regex/ ) {
+        if ( basename( $processedFiles[0] ) =~ /$executable_regex/ ) {
             # Switch to kompare, since line numbers are needed when viewing source code, and my meld environment does not support them
             say "Switching to $guiWithLineNumbers to support line numbers because files are source code";
             $gui = $guiWithLineNumbers;
         }
-        if ( 0  and  defined $files[2]  or  defined $files[1] and $opt{gold} ) {
+        if ( 0 and defined $files[2] or defined $files[1] and $opt{gold} ) {
             # My meld environment seems to have issues with opening many files
             $gui = 'kompare';
         }
@@ -1325,7 +1354,7 @@ if ( $opt{stdout} ) {
 d '$command';
 #say "Executing  $command" unless $opt{quiet} or $gui eq 'md5sum';
 say "Executing  $command" if $opt{verbose};
-if ($d and not $opt{stdout}) {
+if ( $d and not $opt{stdout} ) {
     say "Exiting because d = $d\n";
     exit 0;
 }
@@ -1373,7 +1402,7 @@ sub preprocessFile {
     my ( $file, $ref, $filenum ) = @_;
     d '.';
     d '$file $ref $filenum';
-    $file = handlePerforce($file);    # p4 print file in perforce
+    $file = handlePerforce($file) if $scms{Perforce};    # p4 print file in perforce
     push @localFiles, $file;
 
     my ( $start, $stop );
@@ -1480,7 +1509,7 @@ sub preprocessFile {
         } elsif ( ( $start or $stop ) and not $startFound ) {
             d "Because of -start and/or -stop, ignoring line $linenum:  $line";
             next;
-        } elsif ( ($opt{function})  and  $line =~ /^\s*$/ ) {
+        } elsif ( ( $opt{function} ) and $line =~ /^\s*$/ ) {
             # Ignore blank lines
             next;
         } elsif ( $linenum < $firstLine ) {
@@ -1698,18 +1727,6 @@ sub handlePerforce {
         $file = Cwd::abs_path($1) . ( $2 || '' );
     }
     if ( $file =~ /\S+#(\d+|head)$/ or $file =~ m{^//} ) {
-        if ( 0 ) {
-            # Is this needed?
-            if ( $file =~ /^#(\d+|head)$/ and $file !~ m{^//} ) {
-                # This should work for /ate/scripts and all subdirectories, but it's not foolproof
-                my $perforcepath = "";
-                if ( Cwd::cwd() =~ m{/(scripts/.*)} ) {
-                    $perforcepath = "//ate/$1/";
-                    say "Assuming that your file $file is in $perforcepath";
-                }
-                $file = "$perforcepath$file";
-            }
-        }
         # Print the filelog info for the most current version
         my $command1 = "p4 filelog '$file' | head -n 2 | tail -n 1";
         d '$command1';
@@ -1721,12 +1738,10 @@ sub handlePerforce {
         }
         d '$p4tmpfile';
         my $command2 = "p4 print -q '$file' > $p4tmpfile";
-        if ( 1 ) {
+        if (1) {
             # Work around p4 "Path '/home/ckoknat/s/releasePatterns.pl' is not under client's root '/home/ate/ptracker'." issue, which happens because current directory is a soft link ~/s to /home/scratch.ckoknat_cad/ate/scripts
-            #if ( -d '/home/ate' ) {
-                d '$pwd';
-                $command2 = "cd $pwd; $command2";
-            #}
+            d '$pwd';
+            $command2 = "cd $pwd; $command2";
         }
         say "Executing  $command2 &" if $opt{verbose};
         system($command2);
@@ -1833,7 +1848,7 @@ sub functionSort {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-#28 Fri Aug  7 15:44:30 PDT 2020
+v30 Mon Aug 10 17:41:48 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify
