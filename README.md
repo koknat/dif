@@ -1,13 +1,13 @@
-## dif - a preprocessing front end to meld/gvimdiff/kompare
+## dif - a preprocessing front end to meld/gvimdiff/tkdiff/kompare
 ![Alt text](dif_before_after.png?raw=true "Comparison of  meld  vs  dif with option -comments")
 
-The graphical compare tools meld, gvimdiff, or kompare are used to compare text files on Linux
+The graphical compare tools meld, gvimdiff, tkdiff, or kompare are used to compare text files on Linux
 
 In many cases, it is difficult and time-consuming to visually compare large files because of formatting differences
 
 For example:
 * different versions of code may differ only in comments or whitespace
-* log files are often many MB of unbroken text, with some "don't care" information such as timestamps or temporary filenames
+* log files are often many MB of text, with some "don't care" information such as timestamps or temporary filenames
 * json or yaml files may have ordering differences
 
 
@@ -15,7 +15,7 @@ For example:
 
 'dif' preprocesses input text files with a wide variety of options
 
-Afterwards, it runs the Linux tools meld, gvimdiff, or kompare on these intermediate files
+Afterwards, it runs the Linux tools meld, gvimdiff, tkdiff, or kompare on these intermediate files
 
 'dif' can also be used as part of an automated testing framework against golden files, returning 0 for identical, and 1 for mismatch
 
@@ -33,14 +33,11 @@ Solution 2:  Use -start and -stop to specify a section of the file using regexes
 #### Problem: files are sorted differently
 Solution:  Use -sort
 
-#### Problem: log files contain dates and times
-Solution:   Use -replaceDates
-
 #### Problem: lines are too long to visually compare easily
 Solution:  Use -fold to wrap
 
-#### Problem: need to view your changes to a file on Perforce
-Solution:  'dif file#head' will show the differences between the file in p4 vs the local file
+#### Problem: log files contain dates and times
+Solution:   Use -replaceDates
 
 #### Problem: files both need to be filtered using regexes, to strip out certain characters or sequences
 Solution 1:  Use -grep <regex> or -ignore <regex> to filter in or out
@@ -48,6 +45,10 @@ Solution 1:  Use -grep <regex> or -ignore <regex> to filter in or out
 Solution 2:  Use -search <regex> -replace <regex> to supply one instance of substitution and replacement
 
 Solution 3:  Use -replaceTable <file> to supply a file with many substitution/replacement regexes
+       
+#### Problem: need to view your changes to a file on Perforce
+Solution:  'dif file#head' will show the differences between the file in p4 vs the local file
+
 
 ## Usage examples
 * dif file1 file2
@@ -58,7 +59,6 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
 
 
 ## Options
-
        -head              Compare only the first 10000 lines
        
        -headLines N       Compare only the first N lines
@@ -112,28 +112,28 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
        -start 'regex'     Start comparing file when line matches regex
        
        -stop 'regex'      Stop comparing file when line matches regex
+                          The last matching line contains the 'stop' regex
 
-                          For example, to compare Perl subroutines 'add' and 'subtract' inside files a.pm and b.pm:
-                              dif a.pm b.pm -start '^sub (add|subtract) ' -stop '^}'
+       -stopIgnoreLine    This modifies the 'stop' operation, so that
+                          The last matching line does not contain the 'stop' regex
 
        -start1 -stop1 -start2 -stop2
                           Similar to -start and -stop
                           The '1' and '2' refer the files
                           Enables comparing different sections within the same file, or different sections within different files
-                          For example, to compare Perl subroutines 'add' and 'subtract' within single file:
+                          
+                          For example, to compare Perl functions 'add' and 'subtract' within single file:
                               dif a.pm -start1 'sub add' -stop1 '^}' -start2 'sub subtract' -stop '^}'
 
        -function 'function_name'
-                          Compare same function from two source files
-                          Functions may be Perl (sub {}) or TCL (proc {}{})
-                          May specify multiple subroutines with -function '(mysubA|mysubB|mysubC)'
+                          Compare same  Python def / Perl sub / TCL proc  function from two source files
                           Internally, this piggybacks on the -start -stop functionality
 
        -functionSort
                           Useful when Python/Perl/TCL function have been moved within a file
                           This option preprocesses each file, so that the function definitions
                           are in alphabetical order
-       
+
        -search 'regex'
        -replace 'regex'   On each line, do global regex search and replace
                               For example, to replace 'line 1234' with 'line':
@@ -347,8 +347,6 @@ Solution 3:  Use -replaceTable <file> to supply a file with many substitution/re
             dif file#head       compares p4 head version with local version (shortcut)
             dif file#7          compares p4 version 7 with local version (shortcut)
             dif file#6..#8      compares p4 version 6 with p4 version 7, and then compares 7 with 8
-    
-
 
 ## Installation
 
