@@ -230,11 +230,17 @@ Solution:  'dif file#head' will show the differences between the file in p4 vs t
        -verbose           Print names and file sizes of preprocessed temp files, before comparing
 
        -gui cmd           Instead of using meld to graphically compare the files, use a different tool
+                          This supports any tool which has command line usage similar to gvimdiff
+                          i.e. 'gvimdiff file1 file2'.  This has been tested on meld, gvimdiff, tkdiff, and kompare
+                          (and likely works with diffmerge, diffuse, kdiff, kdiff3, wdiff, xxdiff, colordiff, beyond compare, etc)
                           Examples:
 
                           -gui gvimdiff
                               Uses gvimdiff as a GUI
                           
+                          -gui tkdiff
+                              Uses tkdiff as a GUI
+
                           -gui kompare
                               Uses kompare as a GUI
 
@@ -308,7 +314,7 @@ Solution:  'dif file#head' will show the differences between the file in p4 vs t
                               dif file1 ../file1
                               dif file2 ../file2
                               dif file3 ../file3
-       
+
       -listFiles         Print report showing which files match, when using -gold or -dir2
     
 
@@ -324,6 +330,7 @@ Solution:  'dif file#head' will show the differences between the file in p4 vs t
         The default compare GUI is meld
         To change this, create the text file ~/.dif.defaults with one of these content lines:
             gui: gvimdiff
+            gui: tkdiff
             gui: kompare
             gui: meld
             gui: tkdiff
@@ -340,12 +347,13 @@ Solution:  'dif file#head' will show the differences between the file in p4 vs t
     Perforce version control support:
             Perforce uses # to signify version numbers
     Perforce examples:
+            dif file            compares p4 head version with local version (shortcut)
+            dif file#head       compares p4 head version with local version (shortcut)
+            dif file#head #-    compares p4 head version with previous version (shortcut)
+            dif file#7          compares p4 version 7 with local version (shortcut)
             dif file#6 file#7   compares p4 version 6 with p4 version 7
             dif file#6 file#+   compares p4 version 6 with p4 version 7
-            dif file#6 file#-   compares p4 version 6 with previous version
-            dif file#head #-    compares p4 head version with previous version (shortcut)
-            dif file#head       compares p4 head version with local version (shortcut)
-            dif file#7          compares p4 version 7 with local version (shortcut)
+            dif file#6 file#-   compares p4 version 6 with p4 version 5
             dif file#6..#8      compares p4 version 6 with p4 version 7, and then compares 7 with 8
 
 ## Installation
