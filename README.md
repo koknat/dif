@@ -47,7 +47,7 @@ Solution 2:  Use -search <regex> -replace <regex> to supply one instance of subs
 Solution 3:  Use -replaceTable <file> to supply a file with many substitution/replacement regexes
        
 #### Problem: need to view your changes to a file on Perforce or SVN
-Solution:  'dif file#head' will show the differences between the file in P4/SVN vs the local file
+Solution:  'dif file' will show the differences between the head revision and the local file
 
 
 ## Usage examples
