@@ -4,16 +4,10 @@ use warnings;
 use strict;
 use Cwd;
 use Data::Dumper;
-use File::Basename;
-use File::Temp qw/ tempfile tempdir /;
+use File::Basename qw(basename dirname);
+use File::Temp qw(tempfile tempdir);
 use Getopt::Long;
 sub say { print @_, "\n" }
-
-# Debugger from CPAN (disabled)
-sub D { say "Debug::Statements has been disabled to improve performance" }
-sub d { }
-#use lib "/home/ate/scripts/regression";
-#use Debug::Statements ":all";
 
 # Defaults can be overridden with user config file ~/.dif.defaults  (key/value format)
 my %defaults;
@@ -29,47 +23,6 @@ my %opt;
 my $scriptName = 'dif';
 
 sub usage {
-    my $backgroundPurpose = "
-The graphical compare tools meld, gvimdiff, tkdiff, and kompare are used to compare text files on Linux
-
-In many cases, it is difficult and time-consuming to visually compare large files because of formatting differences
-
-For example:
-* different versions of code may differ only in comments or whitespace
-* log files are often many MB of unbroken text, with some \"don't care\" information such as timestamps or temporary filenames
-* json or yaml files may have ordering differences
-
-
-## Purpose
-
-'$scriptName' preprocesses input text files with a wide variety of options
-
-Afterwards, it runs the Linux tools meld, gvimdiff, tkdiff, or kompare on these intermediate files
-
-'$scriptName' can also be used as part of an automated testing framework, returning 0 for identical, and 1 for mismatch";
-
-    my $installationInstructions = "
-## Installation
-
-To install $scriptName and run tests:
-* cd $scriptName/test
-* ./$scriptName.t
-
-It should return with 'all tests passed'
-
-Perl versions 5.6.1 through 5.30 have been tested
-
-For convenience, link to 'dif' from your ~/bin directory, or create an alias
-
-
-To see usage:
-* cd ..  (back into $scriptName main directory)
-* ./$scriptName
-
-
-To run $scriptName
-* ./$scriptName file1 file2 <options>
-    ";
     my $usage = "\n
 '$scriptName' by Chris Koknat  https://github.com/koknat/dif
 
@@ -409,9 +362,52 @@ To run $scriptName
             $scriptName file#head #-    compares p4 head version with previous version (shortcut)
             $scriptName file#7          compares p4 version 7 with local version (shortcut)
             $scriptName file#6 file#7   compares p4 version 6 with p4 version 7
-            $scriptName file#6 file#+   compares p4 version 6 with p4 version 7
-            $scriptName file#6 file#-   compares p4 version 6 with p4 version 5
+            $scriptName file#6 #7       compares p4 version 6 with p4 version 7
+            $scriptName file#6 #+       compares p4 version 6 with p4 version 7
+            $scriptName file#6 #-       compares p4 version 6 with p4 version 5
             $scriptName file#6..#8      compares p4 version 6 with p4 version 7, and then compares 7 with 8
+    ";
+
+    my $backgroundPurpose = "
+The graphical compare tools meld, gvimdiff, tkdiff, and kompare are used to compare text files on Linux
+
+In many cases, it is difficult and time-consuming to visually compare large files because of formatting differences
+
+For example:
+* different versions of code may differ only in comments or whitespace
+* log files are often many MB of unbroken text, with some \"don't care\" information such as timestamps or temporary filenames
+* json or yaml files may have ordering differences
+
+
+## Purpose
+
+'$scriptName' preprocesses input text files with a wide variety of options
+
+Afterwards, it runs the Linux tools meld, gvimdiff, tkdiff, or kompare on these intermediate files
+
+'$scriptName' can also be used as part of an automated testing framework, returning 0 for identical, and 1 for mismatch";
+
+    my $installationInstructions = "
+## Installation
+
+To install $scriptName and run tests:
+* cd $scriptName/test
+* ./$scriptName.t
+
+It should return with 'all tests passed'
+
+Perl versions 5.6.1 through 5.30 have been tested
+
+For convenience, link to 'dif' from your ~/bin directory, or create an alias
+
+
+To see usage:
+* cd ..  (back into $scriptName main directory)
+* ./$scriptName
+
+
+To run $scriptName
+* ./$scriptName file1 file2 <options>
     ";
 
     say "$backgroundPurpose\n\n$installationInstructions" and exit if $opt{installationInstructions};    # for README.txt and README.md
@@ -421,6 +417,12 @@ To run $scriptName
     say "\n";
     exit 0;
 }
+
+# Debugger from CPAN (disabled)
+sub D { say "Debug::Statements has been disabled to improve performance" }
+sub d { }
+#use lib "/home/ate/scripts/regression";
+#use Debug::Statements ":all";
 
 my $originalCmdLine = "$0 " . join( ' ', @ARGV );
 # Parse options
@@ -472,12 +474,12 @@ my $originalCmdLine = "$0 " . join( ' ', @ARGV );
 my $d = 0;
 
 # Parse user config files ~/.dif.options ~/.dif.defaults ~/.dif.fileMappings
-#     ~/.dif.options
+#     ~/.dif.options  (same names as command line options)
 #         verbose: 1
-#     ~/.dif.defaults
+#     ~/.dif.defaults  (see available defaults at top of script)
 #         gui: kompare
 #         bcpp: /home/ckoknat/cs2/linux/bcpp -s -bcl -tbcl -ylcnc
-#     ~/.dif.fileMappings
+#     ~/.dif.fileMappings  (enables shortcuts for commonly used names)
 #         {
 #             CPN => 'CheckPatternName.pm',
 #             cpn => 'check_pattern_names.pl',
@@ -526,7 +528,6 @@ for my $type ('fileMappings') {
     }
 }
 d '%customFilenameMappings';
-
 my $pwd = Cwd::cwd();
 if ( $defaults{history} ) {
     #if ( $pwd =~ m{/dif/test} ) {}  # all unit tests were still triggering it
@@ -550,18 +551,16 @@ my $windows = ( $^O =~ /Win/ ) ? 1 : 0;    # Are we running on Windows?
 if ($windows) {
     $globaltmpdir = tempdir( 'C:\Windows\Temp\d_XXXX', CLEANUP => $opt{cleanup} );
 } else {
-    # want to keep the directory name relatively short because it appears on top of the gui window
+    # keep the directory name relatively short because it appears on top of the gui window
     $globaltmpdir = tempdir( '/tmp/d_XXXX', CLEANUP => $opt{cleanup} );
 }
 # Check if files exist
 my @files = @ARGV;
 if ( $opt{stdin} ) {
     $opt{stdout} = 1;
-    #my @lines = <STDIN>;
     my $content = do { local $/; <STDIN> };
     my $tmpfile = sprintf( "%s/%d__%s", $globaltmpdir, 1, 'stdin' );
     open( my $TMP, '>', $tmpfile ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";
-    #print $TMP @lines;
     print $TMP $content;
     close $TMP;
     $files[0] = $tmpfile;
@@ -573,51 +572,11 @@ $files[1] .= 'ead' if $files[0] =~ /#h$/;    # enable #h instead of #head
 d '%opt @files';
 # To use with Windows, download http://strawberryperl.com and WinMerge.  Windows support is very limited, expect some features to not work
 
-# Handle custom file mappings
+# Handle custom file mappings from ~/.dif.fileMappings
 ( my $filePrefix = $files[0] ) =~ s/(#.*)//;
 my $p4rev = $1 || '#head';
 if ( defined $customFilenameMappings{$filePrefix} ) {
     $files[0] = "$customFilenameMappings{$filePrefix}$p4rev";
-}
-
-if ( $opt{split} or defined $opt{splitChar} ) {
-    if ( defined $opt{search} or $opt{replace} ) {
-        say "ERROR:  Cannot use -search/-replace with -split or -splitChar";
-        exit 1;
-    } elsif ( $opt{split} ) {
-        $opt{search}  = "\\s+";
-        $opt{replace} = "\\n";
-    } elsif ( defined $opt{splitChar} ) {
-        my $splitChar = quotemeta( $opt{splitChar} );
-        $opt{search}  = "$splitChar";
-        $opt{replace} = "\\n";
-    } else {
-        die "Program bug";
-    }
-}
-
-$opt{start} = $opt{start2} if defined $opt{start2};
-$opt{stop}  = $opt{stop2}  if defined $opt{stop2};
-$opt{start} = $opt{start1} if defined $opt{start1};
-$opt{stop}  = $opt{stop1}  if defined $opt{stop1};
-if ( not $files[1] and $opt{start2} ) {
-    $files[1] = $files[0];
-}
-
-if ( $opt{function} ) {
-    if ( $opt{start} or $opt{stop} ) {
-        say "ERROR:  Cannot use -function with -start or -stop";
-        exit 1;
-    }
-    # def quickSort(a):
-    # sub usage {
-    # proc getMd5sum { file } {
-    my $functionStartRegex = '\s*(sub|proc|def)';
-    $opt{start} = "^$functionStartRegex\\s+$opt{function}";
-    $opt{stop}  = "^($functionStartRegex|})";
-    if ( $files[0] =~ /\.py$/ ) {
-        $opt{stopIgnoreLine} = 1;
-    }
 }
 
 # Decide which diff tool to use
@@ -681,6 +640,47 @@ if ($windows) {
     #$gui = "fc.exe";  # like diff
     $gui = "start WinMerge";    # Need to install from internet
 }
+
+if ( $opt{split} or defined $opt{splitChar} ) {
+    if ( defined $opt{search} or $opt{replace} ) {
+        say "ERROR:  Cannot use -search/-replace with -split or -splitChar";
+        exit 1;
+    } elsif ( $opt{split} ) {
+        $opt{search}  = "\\s+";
+        $opt{replace} = "\\n";
+    } elsif ( defined $opt{splitChar} ) {
+        my $splitChar = quotemeta( $opt{splitChar} );
+        $opt{search}  = "$splitChar";
+        $opt{replace} = "\\n";
+    } else {
+        die "Program bug";
+    }
+}
+
+$opt{start} = $opt{start2} if defined $opt{start2};
+$opt{stop}  = $opt{stop2}  if defined $opt{stop2};
+$opt{start} = $opt{start1} if defined $opt{start1};
+$opt{stop}  = $opt{stop1}  if defined $opt{stop1};
+if ( not $files[1] and $opt{start2} ) {
+    $files[1] = $files[0];
+}
+
+if ( $opt{function} ) {
+    if ( $opt{start} or $opt{stop} ) {
+        say "ERROR:  Cannot use -function with -start or -stop";
+        exit 1;
+    }
+    # def quickSort(a):
+    # sub usage {
+    # proc getMd5sum { file } {
+    my $functionStartRegex = '\s*(sub|proc|def)';
+    $opt{start} = "^$functionStartRegex\\s+$opt{function}";
+    $opt{stop}  = "^($functionStartRegex|})";
+    if ( $files[0] =~ /\.py$/ ) {
+        $opt{stopIgnoreLine} = 1;
+    }
+}
+
 
 # Decide if file needs to go through the preprocessing code
 # If not, then we can later do a quick md5sum check to determine equality
@@ -815,10 +815,10 @@ if ( $opt{search} or $opt{replace} or $opt{replaceTable} or $opt{replaceDates} )
         my $dateDMYregex     = qr<\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}>;                                                                                                        # DD-MM-YYYY
         my $replaceDates_ref = {
             qr/($weekdayRegex\s+)?$monthRegex\s*$dayRegex(\s+$timeRegex)?(\s*$timezoneRegex)?(\s*$yearRegex)?/ => 'date',
-            qr/${dateYMDregex}T${timeRegex}(\+\d\d:\d\d|Z)/                                                    => 'date',                                                    # 2020-07-27T21:13:23+00:00
-            qr/\d{8}T\d{6}Z/                                                                                   => 'date',                                                    # 20200727T211323Z
-            $dateYMDregex                                                                                      => 'date',                                                    # 'YYYY-MM-DD'
-            $dateDMYregex                                                                                      => 'date',                                                    # 'DD-MM-YYYY'
+            qr/${dateYMDregex}T${timeRegex}(\+\d\d:\d\d|Z)/                                                    => 'date',    # 2020-07-27T21:13:23+00:00
+            qr/\d{8}T\d{6}Z/                                                                                   => 'date',    # 20200727T211323Z
+            $dateYMDregex                                                                                      => 'date',    # 'YYYY-MM-DD'
+            $dateDMYregex                                                                                      => 'date',    # 'DD-MM-YYYY'
         };
         while ( my ( $search, $replace ) = each %$replaceDates_ref ) {
             $replaceTable_ref->{$search} = $replace;
@@ -849,7 +849,6 @@ if ( $opt{noDirs} ) {
 # If -gold is used, get the golden/non-golden version
 # If -dir2 is used, get the file from the other directory
 # If more than one file was specified, call dif multiple times with options
-# dif file#123
 if ( $opt{gold} and $opt{dir2} ) {
     die "ERROR:  Cannot use -gold with -dir2";
 }
@@ -982,7 +981,14 @@ if ( $opt{dir2} ) {
 
 my %scms;
 if ( defined $ENV{P4CONFIG} or defined $ENV{P4CLIENT} ) {
+    # Some inspiration taken from tkdiff 5.0 proc scm-detect
     $scms{Perforce} = 1;
+}
+if (1) {
+    my $file0dir = dirname($files[0]);
+    if ( -d "$file0dir/.svn" ) {
+        $scms{SVN} = 1;
+    }
 }
 if ( $scms{Perforce} ) {
     if ( not $files[1] and $files[0] =~ /^([^#\s]+)#(\d+)\.\.#?(\d+|h|head)$/ ) {
@@ -1060,6 +1066,13 @@ if ( $scms{Perforce} ) {
             d '$lastRev';
         }
     }
+} elsif ( $scms{SVN} ) {
+    if ( not $opt{stdout} and not defined $files[1] ) {
+        # If only one file was specified, compare to the head rev
+        say "1st file will be $files[0] HEAD" unless $opt{quiet};
+        $files[1] = "$files[0]";
+        $files[0] = "$files[0]#head";
+    }
 }
 d '@files';
 
@@ -1073,7 +1086,6 @@ for my $file (@files) {
         say "$file not found.  Exiting";
         exit 1;
     }
-
     # ls -l
     if ( -f $file or -l $file ) {
         print `ls -l $file` if $opt{verbose};
@@ -1099,42 +1111,23 @@ if (@dirs) {
         my $lslr;
         my @lslr;
         my $text;
-        if (0) {
-            # First attempt
-            # ls -l
-            for my $line (`ls -lR $dir`) {
-                # -rw-rw-r--  1 ckoknat hardware   527 Jul 12 12:36 filename
-                #12          3456      78        9 10111213141516  1718
-                if ( $line =~ /^(\s*)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)(.*)/ ) {
-                    $lslr .= "$1$2$3$6$7$8$9$10 $18\n";
-                } elsif ( $line =~ m{^total \d+} ) {
-                    # print nothing
-                } elsif ( $line =~ m{^($dir)[:/](.*)} ) {
-                    $lslr .= "$2\n" if $2;
+        if ( `which tree` eq '' ) {
+            @lslr = `ls -lR $dir`;
+            d '@lslr';
+            for my $line (@lslr) {
+                d '$line';
+                my @fields = split /\s+/, $line;
+                d '@fields';
+                if ( $line =~ /^d/ ) {
+                    $text .= $line;
                 } else {
-                    $lslr .= $line;
+                    my ( $size, $filename ) = @fields[ 2, 5 ];
+                    #$filename =~ s|^$basefile/||;
+                    $text .= "$size  $filename\n";
                 }
             }
         } else {
-            if ( `which tree` eq '' ) {
-                @lslr = `ls -lR $dir`;
-                d '@lslr';
-                for my $line (@lslr) {
-                    d '$line';
-                    my @fields = split /\s+/, $line;
-                    d '@fields';
-                    if ( $line =~ /^d/ ) {
-                        $text .= $line;
-                    } else {
-                        my ( $size, $filename ) = @fields[ 2, 5 ];
-                        #$filename =~ s|^$basefile/||;
-                        $text .= "$size  $filename\n";
-                    }
-                }
-            } else {
-                $text = `tree -s $dir`;
-            }
-            d '$text';
+            $text = `tree -s $dir`;
         }
         print $TMP $text;
         push @files, $tmpfile;
@@ -1163,7 +1156,6 @@ if (@dirs) {
         my @tar = `$zipCat $f | tar -tv`;
         d '@tar';
         my $text;
-
         for my $line ( sort @tar ) {
             my @fields = split /\s+/, $line;
             #if ( $line =~ /^d/ ) {
@@ -1341,7 +1333,7 @@ if ( $gui =~ /meld|kompare/ ) {
     d '$gui';
 }
 
-# Run meld/gvimdiff/kompare
+# Run meld/gvimdiff/tkdiff/kompare
 my $command;
 if ( $opt{stdout} ) {
     $command = $windows ? "type $processedFiles" : "cat $processedFiles";
@@ -1352,7 +1344,6 @@ if ( $opt{stdout} ) {
     $command = "$gui $processedFiles &";
 }
 d '$command';
-#say "Executing  $command" unless $opt{quiet} or $gui eq 'md5sum';
 say "Executing  $command" if $opt{verbose};
 if ( $d and not $opt{stdout} ) {
     say "Exiting because d = $d\n";
@@ -1382,7 +1373,6 @@ sub extension2zipcat {
     $file =~ s/(#(\d+|head|\-|\+))?$//;
     $file =~ s/^.*(\.(gz|bz2|xz|zip))$/$1/;
     $file = '.gz' if !defined $file;
-    #my %catref = ( '.gz' => 'zcat -f', '.bz2' => 'bzcat -f', '.xz' => 'xzcat -f', '.zip' => 'unzip' );
     my %catref = ( '.gz' => 'zcat -c', '.bz2' => 'bzcat -c', '.xz' => 'xzcat -c', '.zip' => 'unzip -cq' );
     my $zipCat = $catref{$file};
     if ( !$zipCat ) {
@@ -1402,7 +1392,13 @@ sub preprocessFile {
     my ( $file, $ref, $filenum ) = @_;
     d '.';
     d '$file $ref $filenum';
-    $file = handlePerforce($file) if $scms{Perforce};    # p4 print file in perforce
+    if ( $scms{Perforce} ) {
+        $file = handlePerforce($file);    # p4 print file in perforce
+    } elsif ( $scms{SVN} ) {
+        # TODO svn cat -r HEAD foo.c
+    } else {
+        # do nothing
+    }
     push @localFiles, $file;
 
     my ( $start, $stop );
@@ -1459,7 +1455,7 @@ sub preprocessFile {
             if ( !-x $perltidy_executable ) {
                 die "ERROR:  $perltidy_executable not found";
             }
-            # -st sends output to stdout
+            # perltidy -st sends output to stdout
             $preprocess_pipe = "| $defaults{perltidy} -st";
         }
         open( $F, "$zipCat $file $preprocess_pipe |" ) or die "ERROR: Cannot open file for reading:  $file\n\n";
@@ -1485,41 +1481,41 @@ sub preprocessFile {
     d( '$startFound', 'nc*' );    # Turn on line numbers and chomp
 
     while ( my $line = <$F> ) {
-        d '.';
-        d '$line';
+        #d '.';
+        #d '$line';
         $linenum++;
         if ( $linenum > $opt{head} ) {
-            d "Ignoring rest of file because of option -head";
+            #d "Ignoring rest of file because of option -head";
             last;
         } elsif ( $stop and $startFound and $line =~ /($stop)/ ) {
             my $match = $1;
-            d "Stopping at line $linenum because -stop ($match =~ $stop):  $line";
+            #d "Stopping at line $linenum because -stop ($match =~ $stop):  $line";
             $startFound   = 0;
             $stopFound    = 1;
             $anyStopFound = 1;
             if ( $opt{stopIgnoreLine} ) {
-                d "Because of -start and/or -stop, ignoring line $linenum:  $line";
+                #d "Because of -start and/or -stop, ignoring line $linenum:  $line";
                 next;
             }
         } elsif ( $start and not $startFound and $line =~ /($start)/ ) {
             my $match = $1;
-            d "Starting at line $linenum because -start ($match =~ $start):  $line";
+            #d "Starting at line $linenum because -start ($match =~ $start):  $line";
             $startFound    = 1;
             $anyStartFound = 1;
         } elsif ( ( $start or $stop ) and not $startFound ) {
-            d "Because of -start and/or -stop, ignoring line $linenum:  $line";
+            #d "Because of -start and/or -stop, ignoring line $linenum:  $line";
             next;
         } elsif ( ( $opt{function} ) and $line =~ /^\s*$/ ) {
             # Ignore blank lines
             next;
         } elsif ( $linenum < $firstLine ) {
-            d "Ignoring line because of option -tail";
+            #d "Ignoring line because of option -tail";
             next;
         } elsif ( defined $opt{ignore} and $line =~ /$opt{ignore}/ ) {
-            d "Ignoring line because of -ignore option ($opt{ignore}):  $line";
+            #d "Ignoring line because of -ignore option ($opt{ignore}):  $line";
             next;
         } elsif ( defined $opt{grep} and $line !~ /$opt{grep}/ ) {
-            d "Bypassing line because it doesn't match -grep option ($opt{grep}):  $line";
+            #d "Bypassing line because it doesn't match -grep option ($opt{grep}):  $line";
             next;
         } else {
         }    # do nothing
@@ -1540,7 +1536,7 @@ sub preprocessFile {
             my $fieldSeparator = decideFieldSeparator($file);
             chomp($line);
             my @fields = split /$fieldSeparator/, $line;
-            d '@fields';
+            #d '@fields';
             my $newline = '';
             if ($fieldsNegate) {
                 for my $i ( 0 .. $#fields ) {
@@ -1555,7 +1551,7 @@ sub preprocessFile {
                 }
             } else {
                 for my $f ( split /,/, $opt{fields} ) {
-                    d '$f';
+                    #d '$f';
                     if ( $f =~ s/\+$// ) {
                         $newline .= join "  ", @fields[ $f .. $#fields ];
                         last;
@@ -1568,27 +1564,27 @@ sub preprocessFile {
         }
 
         if ( $opt{search_replace} ) {
-            d '$opt{search_replace}';
-            d '\n$line';
-            d '\n@sub_keys_ordered';
-            d '\n$replaceTable_ref';
+            #d '$opt{search_replace}';
+            #d '\n$line';
+            #d '\n@sub_keys_ordered';
+            #d '\n$replaceTable_ref';
             for my $key (@sub_keys_ordered) {
                 #d('$key $replaceTable_ref->{$key}'); # Global symbol "$key" requires explicit package name at (eval 15) line 1, <F> line 1
-                if ($d) { say "DEBUG preprocess_file:  key = $key    replaceTable_ref->{$key} = $replaceTable_ref->{$key}" }
+                if ($d) { say "preprocess_file:  key = $key    replaceTable_ref->{$key} = $replaceTable_ref->{$key}" }
                 my $cnt = ( $line =~ s/$key/$replaceTable_ref->{$key}/g );
                 #my $cnt = ($line =~ s/HASH(0x\S+)/$replaceTable_ref->{$key}/g);
-                d("Found $key and replaced with $replaceTable_ref->{$key} on:  $line") if $cnt;
+                #d("Found $key and replaced with $replaceTable_ref->{$key} on:  $line") if $cnt;
             }
         }
 
         if ( $opt{lsl} ) {
             if ( $line =~ /^total \S+$/ ) {
-                d "Ignoring line because of -lsl option:  $line";
+                #d "Ignoring line because of -lsl option:  $line";
                 next;
             }
             if ( $line =~ /(.*)(\S[-rwx]{9})\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+\s+\S+\s+\S+)(\s+\S.*)/ ) {
                 my ( $prefix, $perms, $links, $owner, $group, $size, $datetime, $name ) = ( $1, $2, $3, $4, $5, $6, $7, $8 );
-                d "Modifying ls -l line:  $line";
+                #d "Modifying ls -l line:  $line";
                 $line = sprintf( "%sperms links owner group %10d datetime %s\n", $prefix, $size, $name );
             }
         }
@@ -1661,26 +1657,21 @@ sub readTableFile {
     open( my $F, '<', $table_file ) or die "ERROR: Cannot open file for reading:  $table_file\n\n";
     while ( my $line = <$F> ) {
         $lineNumber++;
-        #d('$line');
-
+        #d '$line';
         # __END__
         if ( $line =~ /^__END__$/ ) {
             last;
         }
-
         # blank line or # comment, but not #!
         if ( $line =~ /^\s*$/ or $line =~ /^\s*#[^!]/ ) {
             # do nothing
-        }
-
-        # search_term    replace_term
-        # xtals_in       XTAL_SSIN
-        elsif ( $line =~ /^\s*(\S+)\s+(.*)\n/ ) {    # Allow nothing for value (replace something with nothing, good for removing newlines)
+        } elsif ( $line =~ /^\s*(\S+)\s+(.*)\n/ ) {    # Allow nothing for value (replace something with nothing, good for removing newlines)
+            # search_term    replace_term
+            # xtals_in       XTAL_SSIN
             my ( $key, $value ) = ( $1, $2 );
             $value = '' if not $value;
             $value =~ s/\s*$//;
             d "table valid line = $line";
-
             if ($reverse) {
                 if ( defined $map{$value} ) {
                     say "ERROR:  Table file $table_file contains 2 entries for $value in the right column!";
@@ -1706,10 +1697,7 @@ sub readTableFile {
                     $map{$key} = eval "qq($value)";
                 }
             }
-        }
-
-        # Unknown
-        else {
+        } else {
             print "ERROR:  Did not understand line in config file:  $line";
             exit 1;
         }
@@ -1738,11 +1726,9 @@ sub handlePerforce {
         }
         d '$p4tmpfile';
         my $command2 = "p4 print -q '$file' > $p4tmpfile";
-        if (1) {
-            # Work around p4 "Path '/home/ckoknat/s/releasePatterns.pl' is not under client's root '/home/ate/ptracker'." issue, which happens because current directory is a soft link ~/s to /home/scratch.ckoknat_cad/ate/scripts
-            d '$pwd';
-            $command2 = "cd $pwd; $command2";
-        }
+        # Work around p4 "Path <path> is not under client's root <path>." issue, which happens because current directory is a soft link ~/s to /home/scratch.ckoknat_cad/ate/scripts
+        d '$pwd';
+        $command2 = "cd $pwd; $command2";
         say "Executing  $command2 &" if $opt{verbose};
         system($command2);
         if ( -z $p4tmpfile ) {
@@ -1770,8 +1756,8 @@ sub sortYamlPerlJson {
     close $fh;
     d '$data';
     my $ref;
-
     if ( $type eq 'yaml' ) {
+        # eval because YAML::XS might not be installed, and Perl < 5.8.1 doesn't support YAML::XS
         eval 'use YAML::XS ()';
         #eval 'use YAML::Syck ()';
         if ($@) {
@@ -1784,6 +1770,7 @@ sub sortYamlPerlJson {
     } elsif ( $type eq 'perlEval' ) {
         $ref = eval($data);
     } elsif ( $type eq 'json' ) {
+        # eval because JSON::XS might not be installed
         eval 'use JSON::XS ()';
         if ($@) {
             die "ERROR:  Install JSON::XS from CPAN to use option -json";
@@ -1848,7 +1835,7 @@ sub functionSort {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v30 Mon Aug 10 17:41:48 PDT 2020
+v32 Wed Aug 12 13:25:37 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify

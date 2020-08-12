@@ -3,7 +3,7 @@ use warnings;
 use strict;
 use File::Basename qw(basename dirname);
 use Getopt::Long;
-use Test::More qw( no_plan );
+use Test::More qw( no_plan );  # 5.8.1 or newer
 sub say { print @_, "\n" };
 sub D{say "Debug::Statements has been disabled to improve performance"}; sub d{}; sub d2{}; sub ls{};
 #use lib "/home/ate/scripts/regression";
@@ -20,15 +20,15 @@ my $t = defined $opt{test} ? $opt{test} : 'ALL';
 die "ERROR:  Did not expect '@ARGV'.  Did you forget '-t' ? " if @ARGV;
 
 my ($dif, $testDir);
-chomp( my $whoami = `whoami` );
-if ( $whoami eq 'ckoknat' ) {
-    $dif = "/home/ckoknat/s/regression/dif/dif.pl";
-    #$dif = "/home/ckoknat/s/regression/dif/dif";
-    #$dif = "/home/ckoknat/s/regression/dif/git/dif";
-    $testDir = '/home/scratch.ckoknat_cad/ate/scripts/regression/dif/test';
-} else {
+chomp( my $pwd = `pwd` );
+if ( $pwd =~ m{/dif/test$} ) {
     $dif = '../dif';
     $testDir = '.';
+} elsif ( $pwd =~ m{/dif$} ) {
+    $dif = 'dif';
+    $testDir = "$pwd/test";
+} else {
+    die "ERROR:  This must be run from the dif/test directory!\n";
 }
 die "ERROR:  executable not found:  $dif" unless -e $dif;
 
@@ -41,8 +41,6 @@ if ( runtests('quiet') ) {
     test_cmdquiet( $dif, "case01a_hosts.txt case01a_hosts.txt", "",        $fail );
     test_cmdquiet( $dif, "case01a_hosts.txt case01a_hosts.txt", "-quiet", $pass );
 }
-
-# Not tested:  'pponly', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'perldump', 'md5sum', 'nodirs'
 
 if ( runtests('white') ) {
     testcmd( $dif, "case01a_hosts.txt case01a_hosts.txt",             "",         $pass );
@@ -226,12 +224,12 @@ if ( runtests('gold') ) {
 }
 
 if ( runtests('dir2') ) {
-    testcmd( $dif, "case01a_hosts.txt dirA/case01a_hosts.txt",               "",         $pass );
-    testcmd( $dif, "case01a_hosts.txt dirB/case01a_hosts.txt",               "",         $fail );
-    testcmd( $dif, "case01a_hosts.txt",                            "-dir2 dirA",         $pass );
-    testcmd( $dif, "case01a_hosts.txt",                            "-dir2 dirB",         $fail );
-    testcmd( $dif, "case01a_hosts.txt",                  "-dir2 dirA -comments",         $pass );
-    testcmd( $dif, "case01b_hosts_spaces.txt", "-dir2 $testDir/dirB -listFiles",         $pass );
+    testcmd( $dif, "case01a_hosts.txt dirA/case01a_hosts.txt",                                 "",         $pass );
+    testcmd( $dif, "case01a_hosts.txt dirB/case01a_hosts.txt",                                 "",         $fail );
+    testcmd( $dif, "case01a_hosts.txt",                                                        "-dir2 $testDir/dirA",         $pass );
+    testcmd( $dif, "case01a_hosts.txt",                                                        "-dir2 $testDir/dirB",         $fail );
+    testcmd( $dif, "case01a_hosts.txt",                                                        "-dir2 $testDir/dirA -comments",         $pass );
+    testcmd( $dif, "case01b_hosts_spaces.txt",                                                 "-dir2 $testDir/dirB -listFiles",         $pass );
     testcmd( $dif, "case01a_hosts.txt case01b_hosts_spaces.txt case01c_hosts_blank_lines.txt", "-dir2 $testDir/dirB -listFiles",   $fail );
 }
 
@@ -267,44 +265,43 @@ if ( runtests('functionSort') ) {
     testcmd( $dif, "case15a.py case15c.py", "-functionSort", $fail );
 }
 
-if ( runtests('externalPreprocessScript') ) {
+if ( runtests('ext') ) {
     testcmd( $dif, "case01a_hosts.txt case01e_hosts_scrambled.txt",    "",                                    $fail );
     testcmd( $dif, "case01a_hosts.txt case01a_hosts.txt",              "-externalPreprocessScript sort",          $pass );  # trivial
     testcmd( $dif, "case01a_hosts.txt case01e_hosts_scrambled.txt",    "-externalPreprocessScript sort",          $pass );
     testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt", "-externalPreprocessScript sort",          $pass );  # handle .gz
 }
 
-if ( $opt{extraTests}  or  -d "/home/ckoknat" ) {
-    say "\n\n***************************************************************************************************************************************";
-    say "* Running additional tests, which may fail if there are missing executables or Perl libraries (yaml, json, tree, bcpp, perltidy, bz2) *";
-    say "***************************************************************************************************************************************";
-
-    if ( $] < '5.008001' ) {
-        say "Skipping tests which use JSON::XS and YAML::XS";
-    } else {
-        # For example 5.008008
-        if ( runtests('json') ) {
-            testcmd( $dif, "case14a.json case14b.json", "",            $fail );
-            testcmd( $dif, "case14a.json case14b.json", "-json",       $pass );
-            testcmd( $dif, "case14a.json case14a.json.gz", "",         $pass );
-            testcmd( $dif, "case14a.json case14c.json", "-json -case", $pass );
-        }
-
-        if ( runtests('yaml') ) {
-            testcmd( $dif, "case14a.yml case14b.yml", "",            $fail );
-            testcmd( $dif, "case14a.yml case14b.yml", "-yaml",       $pass );
-            testcmd( $dif, "case14a.yml case14a.yml.gz", "",         $pass );
-            testcmd( $dif, "case14a.yml case14c.yml", "-yaml -case", $pass );
-        }
-        
-        if ( runtests('externalPreprocessScript') ) {
-            # May fail because of YAML library dependency
-            testcmd( $dif, "case14a.yml case14b.yml", "",            $fail );
-            testcmd( $dif, "case14a.yml case14b.yml", "-externalPreprocessScript $testDir/case14_externalPreprocessScript.pl",       $pass );
-            testcmd( $dif, "case14a.yml case14c.yml", "-externalPreprocessScript $testDir/case14_externalPreprocessScript.pl",       $pass );
-        }
+eval 'use YAML::XS ()';
+if (! $@) {
+    if ( runtests('json') ) {
+        testcmd( $dif, "case14a.json case14b.json", "",            $fail );
+        testcmd( $dif, "case14a.json case14b.json", "-json",       $pass );
+        testcmd( $dif, "case14a.json case14a.json.gz", "",         $pass );
+        testcmd( $dif, "case14a.json case14c.json", "-json -case", $pass );
     }
-    
+    if ( runtests('externalPreprocessScript') ) {
+        # May fail because of YAML library dependency
+        testcmd( $dif, "case14a.yml case14b.yml", "",            $fail );
+        testcmd( $dif, "case14a.yml case14b.yml", "-externalPreprocessScript $testDir/case14_externalPreprocessScript.pl",       $pass );
+        testcmd( $dif, "case14a.yml case14c.yml", "-externalPreprocessScript $testDir/case14_externalPreprocessScript.pl",       $pass );
+    }
+}
+
+eval 'use JSON::XS ()';
+if (! $@) {
+    if ( runtests('yaml') ) {
+        testcmd( $dif, "case14a.yml case14b.yml", "",            $fail );
+        testcmd( $dif, "case14a.yml case14b.yml", "-yaml",       $pass );
+        testcmd( $dif, "case14a.yml case14a.yml.gz", "",         $pass );
+        testcmd( $dif, "case14a.yml case14c.yml", "-yaml -case", $pass );
+    }
+}
+
+if ( $opt{extraTests}  or  -d "/home/ckoknat" ) {
+    say "\n\n***************************************************************************************************************************";
+    say "* Running additional tests, which may fail if there are missing executables or Perl libraries (tree, bcpp, perltidy, bz2) *";
+    say "***************************************************************************************************************************";
     if ( runtests('bcpp') ) {
         testcmd( $dif, "case09a.c case09b.c", "", $fail );
         testcmd( $dif, "case09a.c case09b.c", "-bcpp", $pass );
@@ -329,6 +326,7 @@ if ( $opt{extraTests}  or  -d "/home/ckoknat" ) {
 # Print pass/fail summary
 my $num_failed = summary();
 d '$num_failed';
+chomp( my $whoami = `whoami` );
 if ( $whoami eq 'ckoknat' ) {
     if ( ! defined $opt{test}  and  ! $num_failed ) {
         say "If everything passes do this:";
@@ -361,40 +359,28 @@ sub test_cmdquiet {
     die if ! is( $status, $expected_exitstatus, "$command  ;  echo $status\nExpected $expected_exitstatus" ) and $opt{die};
 }
 
-# Copied from /home/ate/scripts/regression/regression.pm, because want to make tests standalone
 # Controls running of test suites (a test suite is a set of tests)
 sub runtests {
     my $testgroup = shift;
-    # $t is a shared 'our' variable which was specifed on the command line with -t
+    # $t is specifed on the command line with -t
     #     it is either
     #     -t <testgroup>
     #     or
     #     -t <regex>
     #     or
     #     -t ALL  or  no -t specified on command line
-    #     or
-    #     -t torture
-    #     or
-    #     -t torture,<regex>
-    #
-    # Implemented it as follows within .t:
-    #     $regression::t = defined $opt{test} ? $opt{test} : 'ALL';
     #
     # .t contains blocks such as these, each passing $testgroup to runtests():
-    #     if ( runtests('chiplet2firstChipRev') ) {}
-    #     if ( runtests('FailureAnalysis|chiplet2firstChipRev') ) {}
+    #     if ( runtests('yaml') ) {}
+    #     if ( runtests('yaml|json') ) {}
     #
     # If the regex is followed by '+', then run that test and all tests following it
     #
-    my $d = 0; # 1 = debug statements for runtests() and tortureTest()  2 = debug statements also for .t which tortureTest() runs
+    my $d = 0; # 1 = debug statements for runtests()
     my $local_t = $t; # for debug statement
-    if ( $t =~ /^(torture,?)?($testgroup|ALL)?(\+)*$/ ) {
-        my ($torture, $t_regex, $plus) = ($1,$2,$3);
-        d '$testgroup $local_t $torture $t_regex $plus';
-        if ( $torture ) {
-            $t_regex = 'ALL' if ! defined $t_regex;
-            exit tortureTest( { options => "-t $t_regex -die", mailme => 1, debug => $d } );
-        }
+    if ( $t =~ /^($testgroup|ALL)?(\+)*$/ ) {
+        my ($t_regex, $plus) = ($1,$2,$3);
+        d '$testgroup $local_t $t_regex $plus';
         print "\n*** $testgroup ***\n";
         if ( $plus ) {
             $t = 'ALL';
@@ -404,7 +390,6 @@ sub runtests {
         return 0;
     }
 }
-# Copied from /home/ate/scripts/regression/regression.pm, because want to make tests standalone
 sub summary {
     # Print message if any test failed
     my ($href) = @_;
@@ -425,24 +410,16 @@ sub summary {
         $message = "\n################################ all tests passed ################################\n";
     }
     #done_testing(); # TODO uncomment?
-    if ( $href->{return_only_fail_message} ) {
-        # for emulating die_on_fail within regression::run_tests()
-        if ($failed) {
-            return $message;
-        } else {
-            return;
-        }
-    } else {
-        # the usual case
-        print $message;
-        return $failed;
-    }
+    print $message;
+    return $failed;
 }
+
+# Not tested:  'pponly', 'perldump', 'md5sum', 'nodirs'
 
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v30 Mon Aug 10 17:41:48 PDT 2020
+v32 Wed Aug 12 13:25:37 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify
