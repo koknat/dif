@@ -57,8 +57,8 @@ sub usage {
                     or
         Solution3:  Use -replaceTable <file> to supply a file with many substitution/replacement
 
-        Problem:    Need to view your changes to a file on Perforce
-        Solution:   'dif file#head' will show the differences between the file in p4 vs the local file
+        Problem:    Need to view your changes to a file on Perforce or SVN
+        Solution:   'dif file#head' will show the differences between the file in P4/SVN vs the local file
 
     Usage Examples:
         $scriptName file1 file2
@@ -354,17 +354,16 @@ sub usage {
     ";
 
     my $p4usage = "
-    Perforce version control support:
+    Perforce or SVN version control support:
             Perforce uses # to signify version numbers
-    Perforce examples:
+    Perforce or SVN examples:
             $scriptName file            compares p4 head version with local version (shortcut)
             $scriptName file#head       compares p4 head version with local version (shortcut)
             $scriptName file#head #-    compares p4 head version with previous version (shortcut)
             $scriptName file#7          compares p4 version 7 with local version (shortcut)
             $scriptName file#6 file#7   compares p4 version 6 with p4 version 7
-            $scriptName file#6 #7       compares p4 version 6 with p4 version 7
-            $scriptName file#6 #+       compares p4 version 6 with p4 version 7
-            $scriptName file#6 #-       compares p4 version 6 with p4 version 5
+            $scriptName file#6 file#+   compares p4 version 6 with p4 version 7
+            $scriptName file#6 file#-   compares p4 version 6 with p4 version 5
             $scriptName file#6..#8      compares p4 version 6 with p4 version 7, and then compares 7 with 8
     ";
 
@@ -393,7 +392,7 @@ Afterwards, it runs the Linux tools meld, gvimdiff, tkdiff, or kompare on these 
 To install $scriptName and run tests:
 * cd $scriptName/test
 * ./$scriptName.t
-
+This will run dif on the example* unit tests
 It should return with 'all tests passed'
 
 Perl versions 5.6.1 through 5.30 have been tested
@@ -980,17 +979,18 @@ if ( $opt{dir2} ) {
 }
 
 my %scms;
+my $scm;
 if ( defined $ENV{P4CONFIG} or defined $ENV{P4CLIENT} ) {
     # Some inspiration taken from tkdiff 5.0 proc scm-detect
     $scms{Perforce} = 1;
+    $scm = 'p4';
 }
-if (1) {
-    my $file0dir = dirname($files[0]);
-    if ( -d "$file0dir/.svn" ) {
-        $scms{SVN} = 1;
-    }
+my $file0dir = dirname($files[0]);
+if ( -d "$file0dir/.svn" ) {
+    $scms{SVN} = 1;
+    $scm = 'svn';
 }
-if ( $scms{Perforce} ) {
+if ( $scms{Perforce} or $scms{SVN} ) {
     if ( not $files[1] and $files[0] =~ /^([^#\s]+)#(\d+)\.\.#?(\d+|h|head)$/ ) {
         # dif //path/file#1..#3
         # opens window for #1 vs #2, then #2 vs #3
@@ -1000,7 +1000,7 @@ if ( $scms{Perforce} ) {
         $originalCmdLine =~ s/$files[0]//;
         d '$originalCmdLine';
         if ( $end =~ /(h|head)/ ) {
-            $end = lastP4rev($file);
+            $end = lastRev($file);
         }
         # internally, convert this to:
         #     file #1 #n
@@ -1034,9 +1034,13 @@ if ( $scms{Perforce} ) {
     d '@files';
     my ( $lastBase, $lastRev );
 
-    sub lastP4rev {
+    sub lastRev {
         my $base = shift;
-        chomp( $lastRev = `cd $pwd ; p4 fstat $base | grep headRev | sed 's/.*headRev \\(.*\\)/\\1/'` );
+        if ( $scms{Perforce} ) {
+            chomp( $lastRev = `cd $pwd ; p4 fstat $base | grep headRev | sed 's/.*headRev \\(.*\\)/\\1/'` );
+        } elsif ( $scms{SVN} ) {
+            chomp( $lastRev = `svn info $base | grep Revision | cut -d " " -f 2` );
+        }
         return $lastRev;
     }
     for my $n ( 0 .. $#files ) {
@@ -1054,7 +1058,7 @@ if ( $scms{Perforce} ) {
                 $files[$n] = $base . '#' . ( $lastRev + 1 );
             } elsif ( $rev =~ /^(\-)$/ ) {
                 if ( $lastRev =~ /(h|head)/ ) {
-                    $lastRev = lastP4rev($base);
+                    $lastRev = lastRev($base);
                     d '$lastRev';
                 }
                 $files[$n] = $base . '#' . ( $lastRev - 1 );
@@ -1066,13 +1070,7 @@ if ( $scms{Perforce} ) {
             d '$lastRev';
         }
     }
-} elsif ( $scms{SVN} ) {
-    if ( not $opt{stdout} and not defined $files[1] ) {
-        # If only one file was specified, compare to the head rev
-        say "1st file will be $files[0] HEAD" unless $opt{quiet};
-        $files[1] = "$files[0]";
-        $files[0] = "$files[0]#head";
-    }
+    say "Files are: @files" if $opt{verbose};
 }
 d '@files';
 
@@ -1392,10 +1390,8 @@ sub preprocessFile {
     my ( $file, $ref, $filenum ) = @_;
     d '.';
     d '$file $ref $filenum';
-    if ( $scms{Perforce} ) {
-        $file = handlePerforce($file);    # p4 print file in perforce
-    } elsif ( $scms{SVN} ) {
-        # TODO svn cat -r HEAD foo.c
+    if ( $scms{Perforce} or $scms{SVN} ) {
+        $file = handlePerforceSVN($file);    # p4 print file  or  svn cat file
     } else {
         # do nothing
     }
@@ -1707,35 +1703,45 @@ sub readTableFile {
     return \%map;
 }
 
-sub handlePerforce {
+sub handlePerforceSVN {
     # Perforce
     my $file = shift;
     if ( $file =~ /^([^#]+)(#\d+|#head)?$/ and $file !~ m{^//} ) {
         # Resolve symbolic link
         $file = Cwd::abs_path($1) . ( $2 || '' );
     }
-    if ( $file =~ /\S+#(\d+|head)$/ or $file =~ m{^//} ) {
-        # Print the filelog info for the most current version
-        my $command1 = "p4 filelog '$file' | head -n 2 | tail -n 1";
-        d '$command1';
-        system($command1);
-        my $p4tmpfile = sprintf( "/tmp/%s_%s_%s_p4", basename($0), $$, basename($file) );
-        d '$p4tmpfile';
-        if ( $p4tmpfile =~ /\.([^\.]+)_p4$/ ) {
-            $p4tmpfile =~ s/\.([^\.]+)_p4$/_p4.$1/;    # file.gz_p4 => file_p4.gz
+    if ( $file =~ /(\S+)#(\d+|head)$/ or $file =~ m{^//} ) {
+        my ($bfile, $rev) = ($1, $2);
+        $rev = uc($rev) || 'HEAD';
+        d '$bfile $rev';
+        if ( 0 and $scm eq 'p4' ) {
+            # Print the filelog info for the most current version.  Is this needed?
+            my $command1 = "p4 filelog '$file' | head -n 2 | tail -n 1";
+            d '$command1';
+            system($command1);
         }
-        d '$p4tmpfile';
-        my $command2 = "p4 print -q '$file' > $p4tmpfile";
-        # Work around p4 "Path <path> is not under client's root <path>." issue, which happens because current directory is a soft link ~/s to /home/scratch.ckoknat_cad/ate/scripts
-        d '$pwd';
-        $command2 = "cd $pwd; $command2";
+        my $scmTmpFile = sprintf( "/tmp/%s_%s_%s_p4", basename($0), $$, basename($file) );
+        d '$scmTmpFile';
+        if ( $scmTmpFile =~ /\.([^\.]+)_p4$/ ) {
+            $scmTmpFile =~ s/\.([^\.]+)_p4$/_p4.$1/;    # file.gz_p4 => file_p4.gz
+        }
+        d '$scmTmpFile';
+        my $command2;
+        if ( $scm eq 'svn' ) {
+            $command2 = "svn cat -r $rev '$bfile' > $scmTmpFile";
+        } else {
+            $command2 = "p4 print -q '$file' > $scmTmpFile";
+            # Work around p4 "Path <path> is not under client's root <path>." issue, which happens because current directory is a soft link ~/s to /home/scratch.ckoknat_cad/ate/scripts
+            d '$pwd';
+            $command2 = "cd $pwd; $command2";
+        }
         say "Executing  $command2 &" if $opt{verbose};
         system($command2);
-        if ( -z $p4tmpfile ) {
-            say "ERROR:  p4 print created a file with zero size for $file\nDoes the p4 file exist?\nExiting\n";
+        if ( -z $scmTmpFile ) {
+            say "ERROR:  $scm created a file with zero size for $file\nDoes the $scm file exist?\nExiting\n";
             exit 1;
         }
-        $file = $p4tmpfile;
+        $file = $scmTmpFile;
     }
     return $file;
 }
@@ -1761,7 +1767,10 @@ sub sortYamlPerlJson {
         eval 'use YAML::XS ()';
         #eval 'use YAML::Syck ()';
         if ($@) {
-            die "ERROR:  Install YAML::XS from CPAN to use option -yaml";
+            say "ERROR:  Install YAML::XS from CPAN to use option -yaml";
+            say "        sudo cpan";
+			say "            install YAML::XS";
+            exit 1;
         } else {
             $ref = YAML::XS::LoadFile($file);
             #$ref = YAML::Syck::LoadFile($file);
@@ -1773,7 +1782,10 @@ sub sortYamlPerlJson {
         # eval because JSON::XS might not be installed
         eval 'use JSON::XS ()';
         if ($@) {
-            die "ERROR:  Install JSON::XS from CPAN to use option -json";
+            say "ERROR:  Install JSON::XS from CPAN to use option -json";
+            say "        sudo cpan";
+			say "            install YAML::XS";
+            exit 1;
         } else {
             my $json;
             local $/;
@@ -1835,7 +1847,7 @@ sub functionSort {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v32 Wed Aug 12 13:25:37 PDT 2020
+v33 Wed Aug 12 16:37:02 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify

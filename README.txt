@@ -23,7 +23,7 @@ Afterwards, it runs the Linux tools meld, gvimdiff, tkdiff, or kompare on these 
 To install dif and run tests:
 * cd dif/test
 * ./dif.t
-
+This will run dif on the example* unit tests
 It should return with 'all tests passed'
 
 Perl versions 5.6.1 through 5.30 have been tested
