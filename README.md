@@ -46,8 +46,8 @@ Solution 2:  Use -search <regex> -replace <regex> to supply one instance of subs
 
 Solution 3:  Use -replaceTable <file> to supply a file with many substitution/replacement regexes
        
-#### Problem: need to view your changes to a file on Perforce
-Solution:  'dif file#head' will show the differences between the file in p4 vs the local file
+#### Problem: need to view your changes to a file on Perforce or SVN
+Solution:  'dif file#head' will show the differences between the file in P4/SVN vs the local file
 
 
 ## Usage examples
@@ -342,11 +342,10 @@ Solution:  'dif file#head' will show the differences between the file in p4 vs t
     For convenience, link to this code from ~/bin
         ln -s /path/dif ~/bin/dif
 
-    
 
-    Perforce version control support:
+    Perforce or SVN version control support:
             Perforce uses # to signify version numbers
-    Perforce examples:
+    Perforce or SVN examples:
             dif file            compares p4 head version with local version (shortcut)
             dif file#head       compares p4 head version with local version (shortcut)
             dif file#head #-    compares p4 head version with previous version (shortcut)
@@ -355,6 +354,7 @@ Solution:  'dif file#head' will show the differences between the file in p4 vs t
             dif file#6 file#+   compares p4 version 6 with p4 version 7
             dif file#6 file#-   compares p4 version 6 with p4 version 5
             dif file#6..#8      compares p4 version 6 with p4 version 7, and then compares 7 with 8
+    
 
 ## Installation
 
@@ -363,6 +363,7 @@ To install dif and run tests:
 * cd dif/test
 * ./dif.t
 
+This will run dif on the example* unit tests
 It should return with 'all tests passed'
 
 Perl versions 5.6.1 through 5.30 have been tested
