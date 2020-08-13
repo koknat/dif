@@ -371,7 +371,9 @@ It should return with 'all tests passed'
 
 Perl versions 5.6.1 through 5.30 have been tested
 
-For convenience, copy 'dif' to your ~/bin directory
+For convenience, copy the dif executable to your ~/bin directory, or create an alias:
+    alias dif /path/dif/dif
+
 
 
 To see usage:
