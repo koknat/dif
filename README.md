@@ -136,8 +136,8 @@ Solution:  'dif file' will show the differences between the head revision and th
 
        -search 'regex'
        -replace 'regex'   On each line, do global regex search and replace
-                              For example, to replace 'line 1234' with 'line':
-                                  -search 'line \d+'  -replace 'line'
+                              For example, to replace temporary filenames such as '/tmp/foo123456/bar.log' with '/tmp/file':
+                                  -search '/tmp/\S+' -replace '/tmp/file'
                                   
                               Since the search/replace terms are interpreted as regex,
                               remember to escape any parentheses
