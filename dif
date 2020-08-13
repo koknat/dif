@@ -57,8 +57,8 @@ sub usage {
                     or
         Solution3:  Use -replaceTable <file> to supply a file with many substitution/replacement
 
-        Problem:    Need to view your changes to a file on Perforce or SVN
-        Solution:   'dif file#head' will show the differences between the file in P4/SVN vs the local file
+        Problem:    Need to view your changes to a file on Perforce or SVN or GIT
+        Solution:   'dif file#head' will show the differences between the head revision and the local file
 
     Usage Examples:
         $scriptName file1 file2
@@ -355,16 +355,20 @@ sub usage {
 
     my $p4usage = "
     Perforce or SVN version control support:
-            Perforce uses # to signify version numbers
+            Perforce uses '#' to signify version numbers.  dif borrows the same notation for SVN
     Perforce or SVN examples:
-            $scriptName file            compares p4 head version with local version (shortcut)
-            $scriptName file#head       compares p4 head version with local version (shortcut)
-            $scriptName file#head #-    compares p4 head version with previous version (shortcut)
-            $scriptName file#7          compares p4 version 7 with local version (shortcut)
-            $scriptName file#6 file#7   compares p4 version 6 with p4 version 7
-            $scriptName file#6 file#+   compares p4 version 6 with p4 version 7
-            $scriptName file#6 file#-   compares p4 version 6 with p4 version 5
-            $scriptName file#6..#8      compares p4 version 6 with p4 version 7, and then compares 7 with 8
+            $scriptName file              compares head version with local version (shortcut)
+            $scriptName file#head         compares head version with local version (shortcut)
+            $scriptName file file#head    compares head version with local version
+            $scriptName file#head #-      compares head version with previous version (shortcut)
+            $scriptName file#7            compares version 7 with local version (shortcut)
+            $scriptName file#6 file#7     compares version 6 with p4 version 7
+            $scriptName file#6 file#+     compares version 6 with p4 version 7
+            $scriptName file#6 file#-     compares version 6 with p4 version 5
+            $scriptName file#6..#8        compares version 6 with p4 version 7, and then compares 7 with 8
+    Git example:
+            $scriptName file              compares committed version to local version
+
     ";
 
     my $backgroundPurpose = "
@@ -978,19 +982,25 @@ if ( $opt{dir2} ) {
     push @files, $dir2file;
 }
 
-my %scms;
-my $scm;
-if ( defined $ENV{P4CONFIG} or defined $ENV{P4CLIENT} ) {
-    # Some inspiration taken from tkdiff 5.0 proc scm-detect
-    $scms{Perforce} = 1;
-    $scm = 'p4';
-}
+# Perforce / SVN / GIT
+my (%scms, $scm);
 my $file0dir = dirname($files[0]);
 if ( -d "$file0dir/.svn" ) {
     $scms{SVN} = 1;
     $scm = 'svn';
+} elsif ( defined $ENV{P4CONFIG} or defined $ENV{P4CLIENT} ) {
+    # Some inspiration taken from tkdiff 5.0 proc scm-detect
+    $scms{Perforce} = 1;
+    $scm = 'p4';
+} else {
+    chomp(my $isGit = `git rev-parse --is-inside-work-tree 2>/dev/null`);
+    d '$isGit';
+    if ( $isGit eq 'true' ) {
+        $scms{GIT} = 1;
+        $scm = 'git';
+    }
 }
-if ( $scms{Perforce} or $scms{SVN} ) {
+if ( $scms{Perforce} or $scms{SVN} or $scms{GIT} ) {
     if ( not $files[1] and $files[0] =~ /^([^#\s]+)#(\d+)\.\.#?(\d+|h|head)$/ ) {
         # dif //path/file#1..#3
         # opens window for #1 vs #2, then #2 vs #3
@@ -1390,8 +1400,9 @@ sub preprocessFile {
     my ( $file, $ref, $filenum ) = @_;
     d '.';
     d '$file $ref $filenum';
-    if ( $scms{Perforce} or $scms{SVN} ) {
-        $file = handlePerforceSVN($file);    # p4 print file  or  svn cat file
+    if ( $scms{Perforce} or $scms{SVN} or $scms{GIT} ) {
+        # p4 print file  or  svn cat file  or  git show file
+        $file = handleSCM($file);
     } else {
         # do nothing
     }
@@ -1703,47 +1714,62 @@ sub readTableFile {
     return \%map;
 }
 
-sub handlePerforceSVN {
-    # Perforce
-    my $file = shift;
-    if ( $file =~ /^([^#]+)(#\d+|#head)?$/ and $file !~ m{^//} ) {
-        # Resolve symbolic link
-        $file = Cwd::abs_path($1) . ( $2 || '' );
+sub handleSCM {
+    my $fileNrev = shift;
+    if ( $fileNrev =~ /^([^#]+)(#\d+|#head)?$/ and $fileNrev !~ m{^//} ) {
+        # Resolve symbolic link, not just for perforce
+        $fileNrev = Cwd::abs_path($1) . ( $2 || '' );
     }
-    if ( $file =~ /(\S+)#(\d+|head)$/ or $file =~ m{^//} ) {
-        my ($bfile, $rev) = ($1, $2);
+    my ($file, $rev);
+    if ( $fileNrev =~ /(\S+)#(\d+|head)$/ ) {
+        ($file, $rev) = ($1, $2);
         $rev = uc($rev) || 'HEAD';
-        d '$bfile $rev';
-        if ( 0 and $scm eq 'p4' ) {
-            # Print the filelog info for the most current version.  Is this needed?
-            my $command1 = "p4 filelog '$file' | head -n 2 | tail -n 1";
-            d '$command1';
-            system($command1);
-        }
-        my $scmTmpFile = sprintf( "/tmp/%s_%s_%s_p4", basename($0), $$, basename($file) );
-        d '$scmTmpFile';
-        if ( $scmTmpFile =~ /\.([^\.]+)_p4$/ ) {
-            $scmTmpFile =~ s/\.([^\.]+)_p4$/_p4.$1/;    # file.gz_p4 => file_p4.gz
-        }
-        d '$scmTmpFile';
-        my $command2;
-        if ( $scm eq 'svn' ) {
-            $command2 = "svn cat -r $rev '$bfile' > $scmTmpFile";
-        } else {
-            $command2 = "p4 print -q '$file' > $scmTmpFile";
-            # Work around p4 "Path <path> is not under client's root <path>." issue, which happens because current directory is a soft link ~/s to /home/scratch.ckoknat_cad/ate/scripts
-            d '$pwd';
-            $command2 = "cd $pwd; $command2";
-        }
-        say "Executing  $command2 &" if $opt{verbose};
-        system($command2);
-        if ( -z $scmTmpFile ) {
-            say "ERROR:  $scm created a file with zero size for $file\nDoes the $scm file exist?\nExiting\n";
-            exit 1;
-        }
-        $file = $scmTmpFile;
+    } elsif ( $fileNrev =~ m{^//} ) {
+        $file = $fileNrev;
+    } else {
+        return $fileNrev;
     }
-    return $file;
+    d '$file $rev';
+    if ( 0 and $scm eq 'p4' ) {
+        # Print the filelog info for the most current version.  Is this needed?
+        my $command1 = "p4 filelog '$fileNrev' | head -n 2 | tail -n 1";
+        d '$command1';
+        system($command1);
+    }
+    my $scmTmpFile = sprintf( "/tmp/%s_%s_%s_p4", basename($0), $$, basename($file) );
+    d '$scmTmpFile';
+    if ( $scmTmpFile =~ /\.([^\.]+)_p4$/ ) {
+        $scmTmpFile =~ s/\.([^\.]+)_p4$/_p4.$1/;    # file.gz_p4 => file_p4.gz
+    }
+    d '$scmTmpFile $scm';
+    my $command2;
+    if ( $scm eq 'svn' ) {
+        $command2 = "svn cat -r $rev '$file' > $scmTmpFile";
+    } elsif ( $scm eq 'p4' ) {
+        $command2 = "p4 print -q '$fileNrev' > $scmTmpFile";
+        # Work around p4 "Path <path> is not under client's root <path>." issue, which happens because current directory is a soft link ~/s to /home/scratch.ckoknat_cad/ate/scripts
+        d '$pwd';
+        $command2 = "cd $pwd; $command2";
+    } elsif ( $scm eq 'git' ) {
+        chomp (my $gitPath = `git ls-files --full-name $file`);
+        d '$gitPath';
+        if ( $gitPath eq '' ) {
+            die "ERROR:  Could not get git path of $file\n";
+        } else {
+            # This only works with the head revision
+            $command2 = "git show HEAD:$gitPath > $scmTmpFile";
+        }
+    } else {
+        die "Program bug";
+    }
+    d '$command2';
+    say "Executing  $command2 &" if $opt{verbose};
+    system($command2);
+    if ( -z $scmTmpFile ) {
+        say "ERROR:  $scm created a file with zero size for $fileNrev\nDoes the $scm fileNrev exist?\nExiting\n";
+        exit 1;
+    }
+    return $scmTmpFile;
 }
 
 sub indent {
@@ -1847,7 +1873,7 @@ sub functionSort {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v33 Wed Aug 12 16:37:02 PDT 2020
+v34 Thu Aug 13 11:24:42 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify

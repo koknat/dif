@@ -419,7 +419,7 @@ sub summary {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v33 Wed Aug 12 16:37:02 PDT 2020
+v34 Thu Aug 13 11:24:42 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify
