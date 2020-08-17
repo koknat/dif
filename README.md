@@ -249,10 +249,7 @@ Solution:  'dif file' will show the differences between the head revision and th
                               Note that meld does not display line numbers by default
                               Meld / Preferences / Editor / Display / Show line numbers
                               If the box is greyed out, install python-gtksourceview2
-
-                          -gui md5sum
-                              Prints the m5sum to stdout, after preprocessing
-                          
+                           
                           -gui ''          
                               This is useful when comparing from a script
                               in an automated process such as regression testing
