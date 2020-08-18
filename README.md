@@ -205,6 +205,7 @@ Solution:  'dif file' will show the differences between the head revision and th
                           Although for the case of comparing binary files,
                               a standalone diff tool may be preferable,
                               for example 'qdiff' by Johannes Overmann & Tong Sun
+                              or 'colorbindiff' by Jerome Lelasseux
 
 
     Postprocessing options (after filtering):
