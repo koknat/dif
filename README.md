@@ -359,8 +359,10 @@ Solution:  'dif file' will show the differences between the head revision and th
 
 ## Installation
 
-To install dif and run tests:
-* download dif from GitHub
+No installation is needed, just copy the 'dif' executable
+
+To run the tests:
+* download dif from GitHub and untar it
 * cd dif/test
 * ./dif.t
 
