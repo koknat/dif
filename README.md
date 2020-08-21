@@ -17,6 +17,8 @@ For example:
 
 Afterwards, it runs the Linux tools meld, gvimdiff, tkdiff, or kompare on these intermediate files
 
+This allows you to concentrate on the important differences, and ignore the rest
+
 
 ## Solutions
 
