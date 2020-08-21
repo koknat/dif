@@ -17,8 +17,6 @@ For example:
 
 Afterwards, it runs the Linux tools meld, gvimdiff, tkdiff, or kompare on these intermediate files
 
-'dif' can also be used as part of an automated testing framework against golden files, returning 0 for identical, and 1 for mismatch
-
 
 ## Solutions
 
