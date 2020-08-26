@@ -185,9 +185,9 @@ Solution:  'dif file' will show the differences between the head revision and th
 
       
     Preprocessing options (before filtering):
-       -bcpp              Run each input file through bcpp with options:  /home/ckoknat/cs2/linux/bcpp -s -bcl -tbcl -ylcnc
+       -bcpp              Run each input file through bcpp with options:  -s -bcl -tbcl -ylcnc
 
-       -perltidy          Run each input file through perltidy with options:  /home/utils/perl-5.8.8/bin/perltidy -l=110 -ce
+       -perltidy          Run each input file through perltidy with options:  -l=110 -ce
        
        -externalPreprocessScript <script>          
                           Run each input file through your custom preprocessing script
