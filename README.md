@@ -8,7 +8,7 @@ In many cases, it is difficult and time-consuming to visually compare large file
 For example:
 * different versions of code may differ only in comments or whitespace
 * log files are often many MB of text, with some "don't care" information such as timestamps or temporary filenames
-* json or yaml files may have ordering differences
+* json or yaml files may have ordering differences due to the library used to write the file
 
 
 ## Purpose
