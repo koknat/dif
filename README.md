@@ -281,39 +281,45 @@ Solution:  'dif file' will show the differences between the head revision and th
                               dif file -stdout <options> | another_script
                           If -stdin is given, then -stdout is assumed
 
-       -gold              When used with one filename (file or file.extension),
-                          assumes that 1st file will be (file.golden or file.golden.extension)
+       -gold                 When used with one filename (file or file.extension),
+                             assumes that 1st file will be (file.golden or file.golden.extension)
+                             
+                             For example:
+                                 dif file1 -gold
+                             will run:
+                                 dif file1.golden file1.csv
                           
-                          For example:
-                              dif file1 -gold
-                          will run:
-                              dif file1.golden file1.csv
+                             For example:
+                                 dif file1.csv -gold
+                             will run:
+                                 dif file1.csv.golden file1.csv
                           
-                          For example:
-                              dif file1.csv -gold
-                          will run:
-                              dif file1.csv.golden file1.csv
-                          
-                          When used with multiple filenames
-                          it runs dif multiple times, once for each of the pairs
-                          This option is useful when doing regressions against golden files
-                          
-                          For example:
-                              dif file1 file2.csv -gold
-                          will run:
-                              dif file1.golden file1
-                              dif file2.csv.golden file2.csv
+                             When used with multiple filenames
+                             it runs dif multiple times, once for each of the pairs
+                             This option is useful when doing regressions against golden files
+                             
+                             For example:
+                                 dif file1 file2.csv -gold
+                             will run:
+                                 dif file1.golden file1
+                                 dif file2.csv.golden file2.csv
 
-       -dir2 <dir>        For each input file specified, run 'dif' on the file in the current directory
-                              against the file in the specified directory
-                          For example:
-                              dif file1 file2 file3 -dir ..
-                          will run:
-                              dif file1 ../file1
-                              dif file2 ../file2
-                              dif file3 ../file3
+       -dir2 <dir>           For each input file specified, run 'dif'
+                                 on the file in the current directory
+                                 against the file in the specified directory
+                             For example:
+                                 cd to the directory containing the files
+                                 dif file1 file2 file3 -dir ../old
+                             will run:
+                                 dif file1 ../old/file1
+                                 dif file2 ../old/file2
+                                 dif file3 ../old/file3
 
-      -listFiles         Print report showing which files match, when using -gold or -dir2
+      -recursive <regex>    For use with -dir2 <dir> or -gold
+                            Recursively find files matching the Perl regex
+                            For example:  -recursive '*log'
+
+      -listFiles            Print report showing which files match, when using -gold or -dir2
     
 
     File formats:
