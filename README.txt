@@ -20,21 +20,21 @@ Afterwards, it runs the Linux tools meld, gvimdiff, tkdiff, or kompare on these 
 
 ## Installation
 
-To install dif and run tests:
+No installation is needed, just copy the 'dif' executable
+
+To run the tests:
 * cd dif/test
 * ./dif.t
-This will run dif on the example* unit tests
-It should return with 'all tests passed'
+* This will run dif on the example* unit tests
+* It should return with 'all tests passed'
+* Perl versions 5.6.1 through 5.30 have been tested
 
-Perl versions 5.6.1 through 5.30 have been tested
-
-For convenience, link to 'dif' from your ~/bin directory, or create an alias
-
+For convenience, copy the dif executable to your ~/bin directory, or create an alias:
+    alias dif /path/dif/dif
 
 To see usage:
 * cd ..  (back into dif main directory)
 * ./dif
-
 
 To run dif
 * ./dif file1 file2 <options>

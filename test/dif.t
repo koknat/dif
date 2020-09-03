@@ -1,4 +1,5 @@
 #!/usr/bin/perl
+# #!/home/utils/perl-5.8.8/bin/perl
 use warnings;
 use strict;
 use File::Basename qw(basename dirname);
@@ -19,17 +20,21 @@ GetOptions( \%opt, 'test|t=s', 'extraTests', 'd' => sub { $d = 1 }, 'die' ) or d
 my $t = defined $opt{test} ? $opt{test} : 'ALL';
 die "ERROR:  Did not expect '@ARGV'.  Did you forget '-t' ? " if @ARGV;
 
-my ($dif, $testDir);
+my $dif;  # dif executable
+my $testDir;  # dif/test directory
 chomp( my $pwd = `pwd` );
 if ( $pwd =~ m{/dif/test$} ) {
-    $dif = '../dif';
-    $testDir = '.';
+    $dif = dirname($pwd) . '/dif';
+    $testDir = "$pwd";
 } elsif ( $pwd =~ m{/dif$} ) {
-    $dif = 'dif';
+    $dif = "$pwd/dif";
     $testDir = "$pwd/test";
 } else {
     die "ERROR:  This must be run from the dif/test directory!\n";
 }
+#say "\$pwd = $pwd";
+#say "\$dif = $dif";
+#say "\$testDir = $testDir";
 die "ERROR:  executable not found:  $dif" unless -e $dif;
 
 my $pass = 0;
@@ -197,10 +202,11 @@ if ( runtests('paragraphSort') ) {
 }
 
 if ( runtests('tartv') ) {
-    #testcmd( $dif, "case10a.tar.gz case10b.tar.gz",             "",         $fail );          # same 2 files, but it fails since the name of the file is inside the .tar.gz
-    testcmd( $dif, "case10a.tar.gz case10b.tar.gz",             "-tartv",            $pass );      # same 2 files
-    testcmd( $dif, "case10a.tar.gz case10c.tar.gz",             "-tartv",            $fail );  # additional 3rd file
-    testcmd( $dif, "case10a.tar.gz case10c.tar.gz",             "-tartv -fields 1",  $fail );  # additional 3rd file, only print the filenames
+    #testcmd( $dif, "case10a_tar.tar.gz case10b_tar.tar.gz",             "",         $fail );          # same 3 files, but it fails since the name of the file is inside the .tar.gz
+    testcmd( $dif, "case10a_tar.tar.gz case10b_tar.tar.gz",             "-tartv",            $pass );  # same 3 files
+    testcmd( $dif, "case10a_tar.tar.gz case10c_tar.tar.gz",             "-tartv",            $fail );  # removed 1st file, additional 4th file
+    testcmd( $dif, "case10a_tar.tar.gz case10c_tar.tar.gz",             "-tartv -fields 1",  $fail );  # removed 1st file, additional 4th file, only print the filenames
+    # tar -cvf case10a_tar.tar case10a_tar ; tar -cvf case10b_tar.tar case10b_tar ; tar -cvf case10c_tar.tar case10c_tar ; gzip case10*_tar.tar
 }
 
 if ( runtests('compressed') ) {
@@ -231,6 +237,12 @@ if ( runtests('dir2') ) {
     testcmd( $dif, "case01a_hosts.txt",                                                        "-dir2 $testDir/dirA -comments",         $pass );
     testcmd( $dif, "case01b_hosts_spaces.txt",                                                 "-dir2 $testDir/dirB -listFiles",         $pass );
     testcmd( $dif, "case01a_hosts.txt case01b_hosts_spaces.txt case01c_hosts_blank_lines.txt", "-dir2 $testDir/dirB -listFiles",   $fail );
+}
+if ( runtests('recursive') ) {
+    chdir("$testDir/dirA");
+    testcmd( $dif, "", "-recursive 'case01[ac]' -dir2 ../dirA -listFiles",   $pass );
+    testcmd( $dif, "", "-recursive 'case01[ac]' -dir2 ../dirB -listFiles",   $fail );
+    chdir("$pwd");
 }
 
 if ( runtests('lsl') ) {
@@ -269,8 +281,13 @@ if ( runtests('ext') ) {
     testcmd( $dif, "case01a_hosts.txt case01e_hosts_scrambled.txt",    "",                                    $fail );
     testcmd( $dif, "case01a_hosts.txt case01a_hosts.txt",              "-externalPreprocessScript sort",          $pass );  # trivial
     testcmd( $dif, "case01a_hosts.txt case01e_hosts_scrambled.txt",    "-externalPreprocessScript sort",          $pass );
+    testcmd( $dif, "case01a_hosts.txt case01e_hosts_scrambled.txt",    "-externalPreprocessScript /usr/bin/nonexisting",          $fail );
     testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt", "-externalPreprocessScript sort",          $pass );  # handle .gz
 }
+#if ( runtests('bin') ) {
+#    testcmd( $dif, "case01a_hosts.txt case01a_hosts.txt",              "-bin",          $pass );  # trivial
+#    testcmd( $dif, "case01a_hosts.txt case01e_hosts_scrambled.txt",    "-bin",          $fail );
+#}
 
 eval 'use YAML::XS ()';
 if (! $@) {
@@ -339,8 +356,11 @@ sub testcmd {
     print "#\n#\n";
     my ( $cmd, $filelist, $options, $expected_exitstatus ) = @_;
     my @filelist = split /\s+/, $filelist;
-    @filelist = map { "$testDir/$_" } @filelist unless $filelist[0] =~ m{^//};
+    if ( @filelist ) {
+        @filelist = map { "$testDir/$_" } @filelist unless $filelist[0] =~ m{^//};
+    }
     my $command = "$cmd @filelist $options -gui ''";
+    d '$command';
     my $status  = system($command);
     die if ! is( $status, $expected_exitstatus, "$command  ;  echo \$status\nExpected $expected_exitstatus" ) and $opt{die};
 }
@@ -351,7 +371,9 @@ sub test_cmdquiet {
     my ( $cmd, $filelist, $options, $expected_exitstatus ) = @_;
     my $tmpfile = "/tmp/dif_${$}_quiet.txt";
     my @filelist = split /\s+/, $filelist;
-    @filelist = map { "$testDir/$_" } @filelist;
+    if ( @filelist ) {
+        @filelist = map { "$testDir/$_" } @filelist unless $filelist[0] =~ m{^//};
+    }
     my $command = "$cmd @filelist $options > $tmpfile";
     system($command);
     my $status = ( -f $tmpfile and -z $tmpfile ) ? 0 : $fail;
@@ -414,12 +436,12 @@ sub summary {
     return $failed;
 }
 
-# Not tested:  'pponly', 'perldump', 'md5sum', 'nodirs'
+# Not tested yet:  'perldump', 'nodirs'
 
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v34 Thu Aug 13 11:24:42 PDT 2020
+v45 Thu Sep  3 11:32:47 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify
