@@ -309,15 +309,15 @@ Solution:  'dif file' will show the differences between the head revision and th
                                  against the file in the specified directory
                              For example:
                                  cd to the directory containing the files
-                                 dif file1 file2 file3 -dir ../old
+                                 dif file1 file2 file3 -dir2 ../old
                              will run:
                                  dif file1 ../old/file1
                                  dif file2 ../old/file2
                                  dif file3 ../old/file3
 
       -recursive <regex>    For use with -dir2 <dir> or -gold
-                            Recursively find files matching the Perl regex
-                            For example:  -recursive '*log'
+                            Recursively find files in the present directory matching the Perl regex
+                            For example:  -recursive '*log' -dir2 ../old 
 
       -listFiles            Print report showing which files match, when using -gold or -dir2
     
