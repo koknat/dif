@@ -269,6 +269,7 @@ Solution:  'dif file' will show the differences between the head revision and th
 
        -diff              Shortcut for '-gui diff'
 
+
     Options to compare a large set of files:
        -dir2 <dir>           For each input file specified, run 'dif'
                                  on the file in the current directory
