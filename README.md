@@ -269,18 +269,18 @@ Solution:  'dif file' will show the differences between the head revision and th
 
        -diff              Shortcut for '-gui diff'
 
-    Other options:
-       -stdin             Parse input from stdin and send output to stdout
-                          For example:
-                              grep foo bar | dif -stdin <options> | baz | qux
-
-       -stdout            Cat all preprocessed files to stdout
-                          In this use case, dif could be called on only one file
-                          This allows dif to be part of a pipeline
-                          For example:
-                              dif file -stdout <options> | another_script
-                          If -stdin is given, then -stdout is assumed
-
+    Options to compare a large set of files:
+       -dir2 <dir>           For each input file specified, run 'dif'
+                                 on the file in the current directory
+                                 against the file in the specified directory
+                             For example:
+                                 cd to the directory containing the files
+                                 dif file1 file2 file3 -dir2 ../old
+                             will run:
+                                 dif file1 ../old/file1
+                                 dif file2 ../old/file2
+                                 dif file3 ../old/file3
+                                 
        -gold                 When used with one filename (file or file.extension),
                              assumes that 1st file will be (file.golden or file.golden.extension)
                              
@@ -304,23 +304,24 @@ Solution:  'dif file' will show the differences between the head revision and th
                                  dif file1.golden file1
                                  dif file2.csv.golden file2.csv
 
-       -dir2 <dir>           For each input file specified, run 'dif'
-                                 on the file in the current directory
-                                 against the file in the specified directory
-                             For example:
-                                 cd to the directory containing the files
-                                 dif file1 file2 file3 -dir2 ../old
-                             will run:
-                                 dif file1 ../old/file1
-                                 dif file2 ../old/file2
-                                 dif file3 ../old/file3
-
       -recursive <regex>    For use with -dir2 <dir> or -gold
                             Recursively find files in the present directory matching the Perl regex
                             For example:  -recursive '*log' -dir2 ../old 
 
       -listFiles            Print report showing which files match, when using -gold or -dir2
-    
+      
+      
+    Other options:
+       -stdin             Parse input from stdin and send output to stdout
+                          For example:
+                              grep foo bar | dif -stdin <options> | baz | qux
+
+       -stdout            Cat all preprocessed files to stdout
+                          In this use case, dif could be called on only one file
+                          This allows dif to be part of a pipeline
+                          For example:
+                              dif file -stdout <options> | another_script
+                          If -stdin is given, then -stdout is assumed
 
     File formats:
         dif will automatically uncompress files from these formats into intermediate files:
