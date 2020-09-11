@@ -114,7 +114,7 @@ sub usage {
        
        -comments          Remove any comments like // or # or single-line */ /*.  Also removes trailing whitespace
 
-       -grep 'regex'      Only show lines which match the user-specified regex
+       -grep 'regex'      Only show lines which match the user-specified Perl regex
                           Multiple regexs can be specified, for example:  -grep '(regexA|regexB)'
                           To grep for lines above/below matches, see the help text for option -externalPreprocessScript
 
@@ -287,17 +287,18 @@ sub usage {
 
        -diff              Shortcut for '-gui diff'
 
-    Other options:
-       -stdin             Parse input from stdin and send output to stdout
-                          For example:
-                              grep foo bar | dif -stdin <options> | baz | qux
 
-       -stdout            Cat all preprocessed files to stdout
-                          In this use case, $scriptName could be called on only one file
-                          This allows $scriptName to be part of a pipeline
-                          For example:
-                              dif file -stdout <options> | another_script
-                          If -stdin is given, then -stdout is assumed
+    Options to compare a large set of files:
+       -dir2 <dir>           For each input file specified, run '$scriptName'
+                                 on the file in the current directory
+                                 against the file in the specified directory
+                             For example:
+                                 cd to the directory containing the files
+                                 $scriptName file1 file2 file3 -dir ../old
+                             will run:
+                                 $scriptName file1 ../old/file1
+                                 $scriptName file2 ../old/file2
+                                 $scriptName file3 ../old/file3
 
        -gold                 When used with one filename (file or file.extension),
                              assumes that 1st file will be (file.golden or file.golden.extension)
@@ -322,23 +323,25 @@ sub usage {
                                  $scriptName file1.golden file1
                                  $scriptName file2.csv.golden file2.csv
 
-       -dir2 <dir>           For each input file specified, run '$scriptName'
-                                 on the file in the current directory
-                                 against the file in the specified directory
-                             For example:
-                                 cd to the directory containing the files
-                                 $scriptName file1 file2 file3 -dir ../old
-                             will run:
-                                 $scriptName file1 ../old/file1
-                                 $scriptName file2 ../old/file2
-                                 $scriptName file3 ../old/file3
-
       -recursive <regex>    For use with -dir2 <dir> or -gold
-                            Recursively find files matching the Perl regex
+                            Recursively find files in the current directory matching the Perl regex
                             For example:  -recursive '*log' -dir2 ../old
 
       -listFiles            Print report showing which files match, when using -gold or -dir2
+                            It does not do any preprocessing, and displays the md5sum hash of each file
     
+    Other options:
+       -stdin             Parse input from stdin and send output to stdout
+                          For example:
+                              grep foo bar | dif -stdin <options> | baz | qux
+
+       -stdout            Cat all preprocessed files to stdout
+                          In this use case, $scriptName could be called on only one file
+                          This allows $scriptName to be part of a pipeline
+                          For example:
+                              dif file -stdout <options> | another_script
+                          If -stdin is given, then -stdout is assumed
+
 
     File formats:
         $scriptName will automatically uncompress files from these formats into intermediate files:
@@ -581,12 +584,17 @@ if ( $opt{stdin} ) {
     close $TMP;
     $files[0] = $tmpfile;
 }
+$opt{quiet} = 1 if $opt{silent};    # For backwards compatibility of -silent
 if ( $opt{recursive} ) {
     # For use with -dir or -gold
+    # To test this:
+    #     cd test/dirA
+    #     dif.pl -recursive 'case01[ac]' -dir2 ../dirA    (passes)
+    #     dif.pl -recursive 'case01[ac]' -dir2 ../dirB    (fails)
     my $recursive = $opt{recursive};
     #$recursive =~ s/[^.]\*/.*/g;  # Don't want to use this, because it may corrupt valid Perl regexes
     $recursive =~ s/^\*/.*/;    # *.pm to .*.pm
-    say "Searching recursively for files matching /$recursive/" unless $opt{silent};
+    say "Searching recursively for files matching /$recursive/" unless $opt{quiet};
     find(
         sub {
             if ( $File::Find::name =~ /$recursive/ ) {
@@ -604,8 +612,11 @@ if ( $opt{recursive} ) {
     }
     #die "\@files = @files";
 }
-usage() if ( $opt{help} or not @files or $opt{installationInstructions} );
-$opt{quiet} = 1 if $opt{silent};    # For backwards compatibility of -silent
+usage() if ( $opt{help} or $opt{installationInstructions} );
+if ( ! @files ) {
+    say "\nPrinting usage because no files were specified\n\n";
+    usage();
+}
 $files[0] .= 'ead' if $files[0] =~ /#h$/;    # enable #h instead of #head
 $files[1] .= 'ead' if $files[0] =~ /#h$/;    # enable #h instead of #head
 d '%opt @files';
@@ -656,7 +667,7 @@ if ( $gui eq 'meld' ) {
     } elsif ( -f '/usr/bin/meld' ) {
         $meld = '/usr/bin/meld';
     } else {
-        say "WARNING:  meld not found.  Using gvimdiff instead";
+        say "WARNING:  meld not found.  Using gvimdiff instead" unless $opt{quiet};
         $meld = 'gvimdiff';
     }
     $gui = $meld;
@@ -950,10 +961,10 @@ if ( $opt{gold} or $opt{dir2} ) {
         $originalCmdLine =~ s/@files_orig//;
         d '$originalCmdLine';
         if ( $defaults{openMultipleGUIs} ) {
-            say "Opening multiple GUI at once.  To change this behavior, add this inside your ~/.$scriptName.defaults file:    openMultipleGUIs: 0";
+            say "Opening multiple GUI at once.  To change this behavior, add this inside your ~/.$scriptName.defaults file:    openMultipleGUIs: 0" unless $opt{quiet};
         } else {
             if ( scalar @files > 1 ) {
-                say "Opening only one GUI at a time.  To change this behavior, add this inside your ~/.$scriptName.defaults file:    openMultipleGUIs: 1";
+                say "Opening only one GUI at a time.  To change this behavior, add this inside your ~/.$scriptName.defaults file:    openMultipleGUIs: 1" unless $opt{quiet};
             }
         }
         die "ERROR:  Directory $opt{dir2} not found!\n" if $opt{dir2} and !-d $opt{dir2};
@@ -964,6 +975,7 @@ if ( $opt{gold} or $opt{dir2} ) {
             #     pgrep -l /home/ate/scripts/dif    and then kill the processes
             #     pkill /home/ate/scripts/dif
             my $cmd = "$originalCmdLine $file";
+            # Could check if dir2 or gold file exists, before running another instance of dif
             $cmd =~ s/ -rec(ursive)?\s+(\S+)//;    # -recursive <regex> or -rec <regex> but not -replace <regex>
             d '$cmd';
             # dif normally runs the gui tool in the backgrounds 'dif file1 file2 &', so that the command line remains available
@@ -1394,8 +1406,8 @@ if ( $gui =~ /meld|kompare/ ) {
         my $sizeProcessedFile0 = -s $processedFiles[0];
         if ( $sizeProcessedFile0 > $defaults{meldSizeLimit} ) {
             # Using -e because do not want to run these checks if run with p4 revs:  dif releasePatternsRev.pl#136 #140
-            say "Switching to gvimdiff to speed up comparison because size of 1st file ($sizeProcessedFile0) is > $defaults{meldSizeLimit} bytes";
-            say "If you really want to stay with $gui, change the meldSizeLimit in ~/.$scriptName.defaults";
+            say "Switching to gvimdiff to speed up comparison because size of 1st file ($sizeProcessedFile0) is > $defaults{meldSizeLimit} bytes" unless $opt{quiet};
+            say "If you really want to stay with $gui, change the meldSizeLimit in ~/.$scriptName.defaults" unless $opt{quiet};
             $gui = 'gvimdiff';
         }
     }
@@ -1424,10 +1436,10 @@ if ( scalar(@files) > 2 and $gui =~ /^(kompare|tkdiff)$/ ) {
 }
 system($command);
 if ( $files[0] =~ /\.p[lm]$/ and not $opt{perltidy} ) {
-    say "You seem to be comparing Perl source files.  You may want to use the -perltidy option next time.";
+    say "You seem to be comparing Perl source files.  You may want to use the -perltidy option next time." unless $opt{quiet};
 }
 if ( $files[0] =~ /\.binl$/ and not $opt{strings} ) {
-    say "You seem to be comparing binl files.  You may want to use the -strings option next time to remove the binary characters.";
+    say "You seem to be comparing binl files.  You may want to use the -strings option next time to remove the binary characters." unless $opt{quiet};
 }
 say "";
 exit 0;
@@ -1566,6 +1578,31 @@ sub preprocessFile {
         #d '.';
         #d '$line';
         $linenum++;
+        
+        # -case and -comments and -white are at top of loop, so that the change will affect -start -stop -grep etc
+        if ( $opt{case} ) {
+            $line = lc($line);
+        }
+
+        if ( $opt{comments} ) {
+            $line =~ s{/\*.*}{};                                                 # C
+            $line =~ s{//.*}{};                                                  # C++
+            $line =~ s{#.*}{};                                                   # Perl
+            $line =~ s/\s+$//;                                                   # After stripping comments, there are sometimes trailing spaces
+            $line .= "\n" if $line =~ /\S/;
+        }
+        
+        if ( $opt{white} ) {
+            $line =~ s/^\s+//;
+            $line =~ s/[ |\t]+/ /g;
+            $line =~ s/ $//g;
+        }
+        if ( $opt{noWhite} ) {
+            $line =~ s/^\s+//g;
+            $line =~ s/[ \t]+//g;
+            $line =~ s/^\n//g;
+        }
+
         if ( $linenum > $opt{head} ) {
             #d "Ignoring rest of file because of option -head";
             last;
@@ -1677,30 +1714,6 @@ sub preprocessFile {
             $line =~ s/ at 0x\S+>/>/g;                                           # Python
         }
 
-        if ( $opt{comments} ) {
-            $line =~ s{/\*.*}{};                                                 # C
-            $line =~ s{//.*}{};                                                  # C++
-            $line =~ s{#.*}{};                                                   # Perl
-                                                                                 # After stripping comments, there are sometimes trailing spaces
-            $line =~ s/\s+$//;                                                   # trailing whitespace
-            $line .= "\n" if $line =~ /\S/;
-        }
-
-        if ( $opt{noWhite} ) {
-            $line =~ s/^\s+//g;
-            $line =~ s/[ \t]+//g;
-            $line =~ s/^\n//g;
-        } elsif ( $opt{white} ) {
-            $line =~ s/^\s+//;
-            $line =~ s/[ |\t]+/ /g;
-            $line =~ s/ $//g;
-        } else {
-        }    # do nothing, continue
-
-        if ( $opt{case} ) {
-            $line = lc($line);
-        }
-
         if ( $opt{trim} ) {
             chomp( $line = substr( $line, 0, $opt{trim} ) );
             $line .= "\n";
@@ -1734,7 +1747,7 @@ sub readTableFile {
     my ( $table_file, $reverse, $regex ) = @_;
     d '$table_file $reverse $regex';
     my %map;
-    say "Reading from table file $table_file" if $opt{replaceTable};
+    say "Reading from table file $table_file" if $opt{replaceTable} and ! $opt{quiet};
     my $lineNumber = 0;
     open( my $F, '<', $table_file ) or die "ERROR: Cannot open file for reading:  $table_file\n\n";
     while ( my $line = <$F> ) {
@@ -1959,7 +1972,7 @@ sub whichCommand {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v45 Thu Sep  3 11:32:46 PDT 2020
+v47 Fri Sep 11 14:53:53 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify

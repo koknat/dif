@@ -42,11 +42,6 @@ my $fail = 256;
 my $err = 512;
 print "\n\n\n\n";
 
-if ( runtests('quiet') ) {
-    test_cmdquiet( $dif, "case01a_hosts.txt case01a_hosts.txt", "",        $fail );
-    test_cmdquiet( $dif, "case01a_hosts.txt case01a_hosts.txt", "-quiet", $pass );
-}
-
 if ( runtests('white') ) {
     testcmd( $dif, "case01a_hosts.txt case01a_hosts.txt",             "",         $pass );
     testcmd( $dif, "case01a_hosts.txt case01b_hosts_spaces.txt",      "",         $fail );
@@ -197,6 +192,12 @@ if ( runtests('stdin_stdout') ) {
     is($result, 1, "stdin__stdout -replaceDates in conjunction with -search -replace");
 }
 
+if ( runtests('quiet') ) {
+    # Putting these here because Max saw unexplained error on his system
+    test_cmdquiet( $dif, "case01a_hosts.txt case01a_hosts.txt", "",       $fail );
+    test_cmdquiet( $dif, "case01a_hosts.txt case01a_hosts.txt", "-quiet", $pass );
+}
+
 if ( runtests('paragraphSort') ) {
     testcmd( $dif, "case07a_perlSub.pm case07c_paragraphSort.pm", "-paragraphSort", $pass );
 }
@@ -316,9 +317,12 @@ if (! $@) {
 }
 
 if ( $opt{extraTests}  or  -d "/home/ckoknat" ) {
-    say "\n\n***************************************************************************************************************************";
-    say "* Running additional tests, which may fail if there are missing executables or Perl libraries (tree, bcpp, perltidy, bz2) *";
-    say "***************************************************************************************************************************";
+    unless ( $opt{test} ) {
+        say "\n\n***************************************************************************************************************************";
+        say "* Running additional tests, which may fail if there are missing executables or Perl libraries (tree, bcpp, perltidy, bz2) *";
+        say "***************************************************************************************************************************";
+    }
+    
     if ( runtests('bcpp') ) {
         testcmd( $dif, "case09a.c case09b.c", "", $fail );
         testcmd( $dif, "case09a.c case09b.c", "-bcpp", $pass );
@@ -441,7 +445,7 @@ sub summary {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v45 Thu Sep  3 11:32:47 PDT 2020
+v47 Fri Sep 11 14:53:53 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify
