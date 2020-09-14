@@ -369,7 +369,14 @@ Solution:  'dif file' will show the differences between the head revision and th
 
 No installation is needed, just copy the 'dif' executable
 
-To run the tests:
+To see usage:
+* cd ..  (back into dif main directory)
+* ./dif
+
+To run dif:
+* ./dif file1 file2 <options>
+       
+To run the tests (optional):
 * download dif from GitHub and untar it
 * cd dif/test
 * ./dif.t
@@ -379,16 +386,7 @@ It should return with 'all tests passed'
 
 Perl versions 5.6.1 through 5.30 have been tested
 
+
 For convenience, copy the dif executable to your ~/bin directory, or create an alias:
 
     alias dif /path/dif/dif
-
-
-
-To see usage:
-* cd ..  (back into dif main directory)
-* ./dif
-
-
-To run dif:
-* ./dif file1 file2 <options>
