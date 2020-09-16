@@ -101,6 +101,9 @@ Solution:  'dif file' will show the differences between the head revision and th
        -trimChars N       Trims with specified number of characters, instead of 105
        
        -comments          Remove any comments like // or # or single-line */ /*.  Also removes trailing whitespace
+       
+       -round 'string'    Round all numbers according to the sprintf string
+                          For example -round '%0.2f'
 
        -grep 'regex'      Only show lines which match the user-specified regex
                           Multiple regexs can be specified, for example:  -grep '(regexA|regexB)'
