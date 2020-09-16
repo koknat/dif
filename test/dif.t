@@ -124,6 +124,11 @@ if ( runtests('split') ) {
     testcmd( $dif, "case01a_hosts.txt case01d_hosts_missingline.txt", "-splitchar '.'",  $fail );
 }
 
+if ( runtests('round') ) {
+    testcmd( $dif, "case16a_round.csv case16b_round.csv",             "",                $fail );
+    testcmd( $dif, "case16a_round.csv case16b_round.csv",             "-round '%0.2f'",  $pass );
+}
+
 if ( runtests('trim') ) {
     # The case01k_hosts_trimmed.txt looks odd since this script considers each tab to be one character, but vim thinks they are 4 or 8
     testcmd( $dif, "case01a_hosts.txt case01k_hosts_trimmed.txt",     "-trimchars 40",   $pass );
@@ -193,8 +198,9 @@ if ( runtests('stdin_stdout') ) {
 }
 
 if ( runtests('quiet') ) {
-    # Putting these here because Max saw unexplained error on his system
     test_cmdquiet( $dif, "case01a_hosts.txt case01a_hosts.txt", "",       $fail );
+    # The next test will fail if a different user environment causes messages to be written to screen
+    # For example, if a system doesn't have meld installed, and the message isn't guarded with 'unless $opt{quiet}'
     test_cmdquiet( $dif, "case01a_hosts.txt case01a_hosts.txt", "-quiet", $pass );
 }
 
@@ -444,8 +450,10 @@ sub summary {
 
 __END__
 
+__END__
+
 dif by Chris Koknat  https://github.com/koknat/dif
-v47 Fri Sep 11 14:53:53 PDT 2020
+v48 Tue Sep 15 18:34:43 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify
@@ -458,6 +466,4 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details:
 <http://www.gnu.org/licenses/gpl.txt>
-
-
 
