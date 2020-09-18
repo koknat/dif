@@ -160,6 +160,7 @@ Solution:  'dif file' will show the differences between the head revision and th
                               The replace term is run through eval
 
        -replaceDates      Remove dates and times, for example:
+                               17:36:34
                                Monday July 20 17:36:34 PDT 2020
                                Dec  3  2019
                                Jul 10 17:42
