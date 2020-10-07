@@ -5,6 +5,7 @@ use strict;
 use File::Basename qw(basename dirname);
 use Getopt::Long;
 use Test::More qw( no_plan );  # 5.8.1 or newer
+$SIG{__WARN__} = sub { die @_ };  # die instead of produce warnings
 sub say { print @_, "\n" };
 sub D{say "Debug::Statements has been disabled to improve performance"}; sub d{}; sub d2{}; sub ls{};
 #use lib "/home/ate/scripts/regression";
@@ -237,18 +238,29 @@ if ( runtests('gold') ) {
 }
 
 if ( runtests('dir2') ) {
-    testcmd( $dif, "case01a_hosts.txt dirA/case01a_hosts.txt",                                 "",         $pass );
-    testcmd( $dif, "case01a_hosts.txt dirB/case01a_hosts.txt",                                 "",         $fail );
-    testcmd( $dif, "case01a_hosts.txt",                                                        "-dir2 $testDir/dirA",         $pass );
-    testcmd( $dif, "case01a_hosts.txt",                                                        "-dir2 $testDir/dirB",         $fail );
-    testcmd( $dif, "case01a_hosts.txt",                                                        "-dir2 $testDir/dirA -comments",         $pass );
-    testcmd( $dif, "case01b_hosts_spaces.txt",                                                 "-dir2 $testDir/dirB -listFiles",         $pass );
-    testcmd( $dif, "case01a_hosts.txt case01b_hosts_spaces.txt case01c_hosts_blank_lines.txt", "-dir2 $testDir/dirB -listFiles",   $fail );
+    # MAIN    dirA         dirB
+    # 01a     normal       -comments
+    # 01b     (missing)    -white
+    # 01c     normal       (missing)
+    testcmd( $dif, "case01a_hosts.txt dirA/case01a_hosts.txt",                                 "",                                 $pass );
+    testcmd( $dif, "case01a_hosts.txt dirB/case01a_hosts.txt",                                 "",                                 $fail );
+    testcmd( $dif, "case01a_hosts.txt",                                                        "-dir2 $testDir/dirA",              $pass );
+    testcmd( $dif, "case01a_hosts.txt",                                                        "-dir2 $testDir/dirB",              $fail );
+    testcmd( $dif, "case01a_hosts.txt",                                                        "-dir2 $testDir/dirB -comments",    $pass );
+    testcmd( $dif, "case01b_hosts_spaces.txt",                                                 "-dir2 $testDir/dirB -report -white",   $pass );
+    testcmd( $dif, "case01a_hosts.txt case01b_hosts_spaces.txt",                               "-dir2 $testDir/dirB -report",   $fail );
+    testcmd( $dif, "case01a_hosts.txt case01b_hosts_spaces.txt",                               "-dir2 $testDir/dirB -report -comments -white",   $pass );
+    testcmd( $dif, "case01a_hosts.txt case01b_hosts_spaces.txt case01c_hosts_blank_lines.txt", "-dir2 $testDir/dirB -report",   $fail );  # case01c does not exist in dirB
 }
-if ( runtests('recursive') ) {
+
+if ( runtests('findFiles') ) {
+    testcmd( $dif, "", "-findFiles 'case01a' dirA dirB -report",   $fail );
+    testcmd( $dif, "", "-findFiles 'case01a' dirA dirB -report -comments -white",   $pass );
     chdir("$testDir/dirA");
-    testcmd( $dif, "", "-recursive 'case01[ac]' -dir2 ../dirA -listFiles",   $pass );
-    testcmd( $dif, "", "-recursive 'case01[ac]' -dir2 ../dirB -listFiles",   $fail );
+    testcmd( $dif, "", "-findFiles 'case01[ac]' -dir2 ../dirA -report",   $pass );
+    testcmd( $dif, "", "-findFiles 'case01[ac]' -dir2 ../dirB -report",   $fail );  # case01c does not exist in dirB
+    testcmd( $dif, "", "-findFiles 'case01a' -dir2 ../dirB -report",   $fail );
+    testcmd( $dif, "", "-findFiles 'case01a' -dir2 ../dirB -report -comments -white",   $pass );
     chdir("$pwd");
 }
 
@@ -338,10 +350,15 @@ if ( $opt{extraTests}  or  -d "/home/ckoknat" ) {
         testcmd( $dif, "case05a_pl.txt case05a_pl.txt.tdy", "-perltidy", $pass );
     }
 
-    if ( runtests('dir') ) {
+    if ( runtests('dirs') ) {
+        # Compare two directories.  -report is used for facilitating testing
+        testcmd( $dif, "dirA dirAcopy", "-report", $pass );
+        testcmd( $dif, "dirA dirB",     "-report", $fail );
+    }
+    if ( runtests('tree') ) {
         # Compare two directories, these use 'tree'
-        testcmd( $dif, "dirA dirAcopy", "-ignore dir", $pass );  # -ignore dir is needed for the comparison because the directory name is listed in the header
-        testcmd( $dif, "dirA dirB",     "-ignore dir", $fail );
+        testcmd( $dif, "dirA dirAcopy", "-tree -ignore dir", $pass );  # -ignore dir is needed for the comparison because the directory name is listed in the header
+        testcmd( $dif, "dirA dirB",     "-tree -ignore dir", $fail );
     }
     if ( runtests('bz') ) {
         testcmd( $dif, "case01a_hosts.txt.bz2 case01e_hosts_scrambled.txt.bz2",           "",      $fail );
@@ -369,7 +386,7 @@ sub testcmd {
     if ( @filelist ) {
         @filelist = map { "$testDir/$_" } @filelist unless $filelist[0] =~ m{^//};
     }
-    my $command = "$cmd @filelist $options -gui ''";
+    my $command = "$cmd @filelist $options -gui none";
     d '$command';
     my $status  = system($command);
     die if ! is( $status, $expected_exitstatus, "$command  ;  echo \$status\nExpected $expected_exitstatus" ) and $opt{die};
@@ -453,7 +470,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v48 Tue Sep 15 18:34:43 PDT 2020
+v3 Wed Oct  7 15:15:21 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify
