@@ -49,9 +49,9 @@ Solution 4:  Use -replaceDates to remove dates and timestamps
 Solution:  'dif file' will show the differences between the head revision and the local file
 
 #### Problem: need to recursively compare directories
-Solution 1:  'dif <dir1> <dir2>' will iteratively compare pairs of files
+Solution 1:  'dif dir1 dir2' will iteratively compare pairs of files
 
-Solution 2:  'dif <dir1> <dir2> -report' will open a GUI to compare the directories
+Solution 2:  'dif dir1 dir2 -report' will open a GUI to compare the directories
 
 Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when comparing directories
 
