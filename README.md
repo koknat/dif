@@ -36,9 +36,6 @@ Solution:  Use -sort
 #### Problem: lines are too long to visually compare easily
 Solution:  Use -fold to wrap
 
-#### Problem: log files contain dates and times
-Solution:   Use -replaceDates
-
 #### Problem: files both need to be filtered using regexes, to strip out certain characters or sequences
 Solution 1:  Use -grep <regex> or -ignore <regex> to filter in or out
 
@@ -46,8 +43,15 @@ Solution 2:  Use -search <regex> -replace <regex> to supply one instance of subs
 
 Solution 3:  Use -replaceTable <file> to supply a file with many substitution/replacement regexes
        
+Solution 4:  Use -replaceDates to remove dates and timestamps
+       
 #### Problem: need to view your changes to a file on Perforce or SVN or GIT
 Solution:  'dif file' will show the differences between the head revision and the local file
+
+#### Problem: need to recursively compare directories
+Solution 1:  'dif <dir1> <dir2>' will iteratively compare pairs of files
+Solution 2:  'dif <dir1> <dir2> -report' will open a GUI to compare the directories
+Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when comparing directories
 
 
 ## Usage examples
@@ -56,6 +60,7 @@ Solution:  'dif file' will show the differences between the head revision and th
 * dif file1 file2 -white -case
 * dif file1 file2 file3 -comments
 * dif file1 file2 -search 'foo' -replace 'bar'
+* dif dir1 dir2 -report
 
 
 ## Options
@@ -280,12 +285,13 @@ Solution:  'dif file' will show the differences between the head revision and th
                                  against the file in the specified directory
                              For example:
                                  cd to the directory containing the files
-                                 dif file1 file2 file3 -dir2 ../old
+                                 dif file1 file2 file3 -dir ../old
                              will run:
                                  dif file1 ../old/file1
                                  dif file2 ../old/file2
                                  dif file3 ../old/file3
-                                 
+                             Any of the preprocessing options may be used
+
        -gold                 When used with one filename (file or file.extension),
                              assumes that 1st file will be (file.golden or file.golden.extension)
                              
@@ -308,14 +314,25 @@ Solution:  'dif file' will show the differences between the head revision and th
                              will run:
                                  dif file1.golden file1
                                  dif file2.csv.golden file2.csv
+                             
+                             Any of the preprocessing options may be used
 
-      -recursive <regex>    For use with -dir2 <dir> or -gold
-                            Recursively find files in the present directory matching the Perl regex
-                            For example:  -recursive '*log' -dir2 ../old 
+      -findFiles <regex>     For use with -dir2 <dir> or -gold  or  two directories
+                             For example:  dif -findFiles '*log' dirA dirB
+                             Will open GUI for each pair of mismatching files
 
-      -listFiles            Print report showing which files match, when using -gold or -dir2
-      
-      
+                             When used with -dir2 or -gold, finds files in the current directory matching the Perl regex
+                             For example:  dif -findFiles '*log' -dir2 ../old
+
+                             Any of the preprocessing options may be used
+
+      -report                For use with -dir2 <dir> or -gold  or two directories
+                             Instead of opening GUIs for each file, compare report of mismatching or missing files
+                             For example:  dif dirA dirB -report
+                             Any of the preprocessing options may be used
+       
+      -tree <dir1> <dir2>    Run unix 'tree' on each of the directories.  Does not preprocess files
+    
     Other options:
        -stdin             Parse input from stdin and send output to stdout
                           For example:
@@ -328,16 +345,9 @@ Solution:  'dif file' will show the differences between the head revision and th
                               dif file -stdout <options> | another_script
                           If -stdin is given, then -stdout is assumed
 
-    File formats:
-        dif will automatically uncompress files from these formats into intermediate files:
-            .gz
-            .bz2
-            .xz
-            .zip  (single files only)
-           
 
     Default compare tool:
-        The default compare GUI is meld
+        The default compare GUI is kompare
         To change this, create the text file ~/.dif.defaults with one of these content lines:
             gui: gvimdiff
             gui: tkdiff
@@ -349,24 +359,34 @@ Solution:  'dif file' will show the differences between the head revision and th
             meldSizeLimit: 1000000
 
 
+    File formats:
+        dif will automatically uncompress files from these formats into intermediate files:
+            .gz
+            .bz2
+            .xz
+            .zip  (single files only)
+           
+
     For convenience, link to this code from ~/bin
         ln -s /path/dif ~/bin/dif
 
+    
 
     Perforce or SVN version control support:
             Perforce uses '#' to signify version numbers.  dif borrows the same notation for SVN
     Perforce or SVN examples:
             dif file              compares head version with local version (shortcut)
-            dif file#head         compares head version with local version (shortcut)
+            dif file#h            compares head version with local version (shortcut)
             dif file file#head    compares head version with local version
             dif file#head #-      compares head version with previous version (shortcut)
             dif file#7            compares version 7 with local version (shortcut)
-            dif file#6 file#7     compares version 6 with p4 version 7
-            dif file#6 file#+     compares version 6 with p4 version 7
-            dif file#6 file#-     compares version 6 with p4 version 5
-            dif file#6..#8        compares version 6 with p4 version 7, and then compares 7 with 8
+            dif file#6 file#7     compares version 6 with version 7
+            dif file#6 file#+     compares version 6 with version 7
+            dif file#6 file#-     compares version 6 with version 5
+            dif file#6..#9        compares version 6 with version 7, and then compares 7 with 8, then 8 with 9
     Git example:
             dif file              compares committed version to local version
+
 
 
 ## Installation
