@@ -282,6 +282,31 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
 
 
     Options to compare a large set of files:
+       <dirA> <dirB>         If dif is run against two directories,
+                             will open GUI for each pair of mismatching files
+                             For example:
+                                 dif dirA dirB
+                             
+                             Any of the preprocessing options may be used
+      
+      -report                For use with two directories  or  -dir2 <dir>  or  -gold
+                             Instead of opening GUIs for each file pair, generate report of mismatching or missing files
+                             For example:
+                                 dif dirA dirB -report
+                             Any of the preprocessing options may be used
+
+      -includeFiles <regex>  
+      -excludeFiles <regex>  Both options are for use with two directories  or  -dir2 <dir>  or  -gold
+                             For example:
+                                 dif -includeFiles '*log' dirA dirB
+                             Will open GUI for each pair of mismatching files
+
+                             When used with -dir2 or -gold, finds files in the current directory matching the Perl regex
+                             For example:
+                                 dif -includeFiles '*log' -dir2 ../old
+
+                             Any of the preprocessing options may be used
+
        -dir2 <dir>           For each input file specified, run 'dif'
                                  on the file in the current directory
                                  against the file in the specified directory
@@ -318,22 +343,9 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                                  dif file2.csv.golden file2.csv
                              
                              Any of the preprocessing options may be used
-
-      -findFiles <regex>     For use with -dir2 <dir> or -gold  or  two directories
-                             For example:  dif -findFiles '*log' dirA dirB
-                             Will open GUI for each pair of mismatching files
-
-                             When used with -dir2 or -gold, finds files in the current directory matching the Perl regex
-                             For example:  dif -findFiles '*log' -dir2 ../old
-
-                             Any of the preprocessing options may be used
-
-      -report                For use with -dir2 <dir> or -gold  or two directories
-                             Instead of opening GUIs for each file, compare report of mismatching or missing files
-                             For example:  dif dirA dirB -report
-                             Any of the preprocessing options may be used
        
-      -tree <dir1> <dir2>    Run unix 'tree' on each of the directories.  Does not preprocess files
+      -tree <dir1> <dir2>    Special case.  Run unix 'tree' on each of the directories.  Does not preprocess files
+
     
     Other options:
        -stdin             Parse input from stdin and send output to stdout
