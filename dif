@@ -36,32 +36,36 @@ sub usage {
         This allows you to concentrate on the important differences, and ignore the rest
 
     Sample Problems and Solutions:
-        Problem:    Differences in whitespace or comments or case cause mismatches
-        Solution:   Use options -white or -noWhite or -comments or -case
+        Problem:     Differences in whitespace or comments or case cause mismatches
+        Solution:    Use options -white or -noWhite or -comments or -case
 
-        Problem:    Input files are too large for a quick comparison
-        Solution1:  Use -head or -tail to only compare the first or last N lines
-                    or
-        Solution2:  Use -start and -stop to specify a section of the file using regexes
+        Problem:     Input files are too large for a quick comparison
+        Solution 1:  Use -head or -tail to only compare the first or last N lines
+                     or
+        Solution 2:  Use -start and -stop to specify a section of the file using regexes
 
-        Problem:    Files are sorted differently
-        Solution:   Use -sort
+        Problem:     Files are sorted differently
+        Solution:    Use -sort
         
-        Problem:    Lines are too long to visually compare easily
-        Solution:   Use -fold to wrap
+        Problem:     Lines are too long to visually compare easily
+        Solution:    Use -fold to wrap
 
-        Problem:    Log files contain dates and times
-        Solution:   Use -replaceDates
+        Problem:     Log files contain dates and times
+        Solution:    Use -replaceDates
 
-        Problem:    Files both need to be filtered using regexes, to strip out certain characters or sequences
-        Solution1:  Use -grep <regex> or -ignore <regex> to filter in or out
-                    or
-        Solution2:  Use -search <regex> -replace <regex> to supply one instance of substitution and replacement
-                    or
-        Solution3:  Use -replaceTable <file> to supply a file with many substitution/replacement
+        Problem:     Files both need to be filtered using regexes, to strip out certain characters or sequences
+        Solution 1:  Use -grep <regex> or -ignore <regex> to filter in or out
+        Solution 2:  Use -search <regex> -replace <regex> to supply one instance of substitution and replacement
+        Solution 3:  Use -replaceTable <file> to supply a file with many substitution/replacement
+        Solution 4:  Use -replaceDates to remove dates and timestamps
 
-        Problem:    Need to view your changes to a file on Perforce or SVN or GIT
-        Solution:   'dif file#head' will show the differences between the head revision and the local file
+        Problem:     Need to view your changes to a file on Perforce or SVN or GIT
+        Solution:    'dif file#head' will show the differences between the head revision and the local file
+
+        Problem: need to recursively compare directories
+        Solution 1:  'dif <dir1> <dir2>' will iteratively compare pairs of files
+        Solution 2:  'dif <dir1> <dir2> -report' will open a GUI to compare the directories
+        Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when comparing directories
 
     Usage Examples:
         $scriptName file1 file2
@@ -69,6 +73,7 @@ sub usage {
         $scriptName file1 file2 -white -case
         $scriptName file1 file2 file3 -comments
         $scriptName file1 file2 -search 'foo' -replace 'bar'
+        $scriptName dir1 dir2 -report
 
     Filtering options:    
        -head              Compare only the first $defaults{head} lines
@@ -331,12 +336,13 @@ sub usage {
                              
                              Any of the preprocessing options may be used
 
-      -findFiles <regex>     For use with -dir2 <dir> or -gold  or  two directories
-                             For example:  $scriptName -findFiles '*log' dirA dirB
+      -includeFiles <regex>  
+      -excludeFiles <regex>  Both options are for use with two directories or -dir2 <dir> or -gold
+                             For example:  $scriptName -includeFiles '*log' dirA dirB
                              Will open GUI for each pair of mismatching files
 
                              When used with -dir2 or -gold, finds files in the current directory matching the Perl regex
-                             For example:  $scriptName -findFiles '*log' -dir2 ../old
+                             For example:  $scriptName -includeFiles '*log' -dir2 ../old
 
                              Any of the preprocessing options may be used
 
@@ -453,6 +459,29 @@ To run $scriptName
     say "\n";
     exit 0;
 }
+
+# Program flow:
+# 	Handle ~/.dif.options and ~/.dif.defaults
+# 	Parse input arguments, create @files
+# 	handle special case of -includeFiles <regex> with -dir2 or -gold, search one dir to populate @files
+# 	determine which GUI to use for comparison, and determine any decompression
+# 	handle options -search -replace -replaceDates -replaceTable
+# 	if (-gold or -dir2 or -includeFiles <regex>) and not -report:
+# 		if single file:
+# 			determine pair of files and continue
+# 		else (multiple files):
+# 			spawn multiple additional dif processes
+# 	handle p4/svn/git
+# 	test for existence of files
+# 	handle options -tree & -tartv
+# 	if -report and (-gold or -dir2 or -includeFiles <regex> dirA dirB):
+# 		determine @filePairs
+# 		preprocess each pair of files (if verbose then print results immediately)
+# 		print the results and exit
+# 	for my $f (@files):
+# 		preprocessFile
+# 	switch to gvimdiff if processed file size is too large
+# 	meld/gvimdiff/tkdiff/kompare
 
 # Debugger from CPAN
 sub D { say "Debug::Statements has been disabled to improve performance" }
@@ -579,11 +608,11 @@ if ( $defaults{history} ) {
 }
 
 # Options can be overridden with user config file ~/.dif.options  (key/value format)
-Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort|s', 'paragraphSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'ppOnly', 'white|w', 'noWhite', 'case', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'stopIgnoreLine', 'function=s', 'functionSort', 'replaceTable=s', 'replaceDates', 'round=s', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'silent', 'quiet', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kompare|k', 'meld|m', 'stdin', 'stdout', 'rp', 'ps', 'cleanup', 'gold|g', 'dir2=s', 'listFiles', 'report', 'findFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
+Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort|s', 'paragraphSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'ppOnly', 'white|w', 'noWhite', 'case', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'stopIgnoreLine', 'function=s', 'functionSort', 'replaceTable=s', 'replaceDates', 'round=s', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'silent', 'quiet', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kompare|k', 'meld|m', 'stdin', 'stdout', 'rp', 'ps', 'cleanup', 'gold|g', 'dir2=s', 'listFiles', 'report', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
 # noDirs is not in usage.  It excludes directories
 $opt{quiet} = 1 if $opt{silent};      # for backwards compatibility of -silent
 $opt{report} = 1 if $opt{listFiles};  # for backwards compatibility of -listFiles
-die "\nERROR:  -recursive <regex> is now called -findFiles <regex>\n" if $opt{recursive};  # cannot handle this easily, because it needs to spawn more 'dif' processes
+die "\nERROR:  -recursive <regex> is now called -includeFiles <regex>\n" if $opt{recursive};  # cannot handle this easily, because it needs to spawn more 'dif' processes
 
 my $globaltmpdir;
 my $windows = ( $^O =~ /Win/ ) ? 1 : 0;    # Are we running on Windows?
@@ -604,19 +633,22 @@ if ( $opt{stdin} ) {
     close $TMP;
     $files[0] = $tmpfile;
 }
-if ( $opt{findFiles} ) {
+if ( defined $opt{excludeFiles} and ! defined $opt{includeFiles} ) {
+    $opt{includeFiles} = '.';
+}
+if ( defined $opt{includeFiles} ) {
     if ( $opt{dir2} or $opt{gold} ) {
-        # -findFiles with -dir2 or -gold
+        # -includeFiles with -dir2 or -gold
         # To test this:
         #     cd test/dirA
-        #     dif.pl -findFiles 'case01[ac]' -dir2 ../dirA    (passes)
-        #     dif.pl -findFiles 'case01[ac]' -dir2 ../dirB    (fails)
-        push @files, runFileFind('.', $opt{findFiles});
+        #     dif.pl -includeFiles 'case01[ac]' -dir2 ../dirA    (passes)
+        #     dif.pl -includeFiles 'case01[ac]' -dir2 ../dirB    (fails)
+        push @files, runFileFind('.', $opt{includeFiles}, $opt{excludeFiles});
     } elsif ( -d $files[0] and -d $files[1] ) {
-        # -findFiles <regex> with dirA dirB
+        # -includeFiles <regex> with dirA dirB
         # do nothing
     } else {
-        say "ERROR:  option -findFiles <regex> must be used with either -dir2 or -gold or a pair of directories";
+        say "ERROR:  option -includeFiles <regex> or -excludeFiles <regex> must be used with either -dir2 or -gold or a pair of directories";
         exit 1;
     }
 }
@@ -902,13 +934,13 @@ if ( $opt{noDirs} ) {
 if ( $opt{gold} and $opt{dir2} ) {
     die "ERROR:  Cannot use -gold with -dir2";
 } 
-if ( -d $files[0]  and  ! $opt{tree}  and  ! defined $opt{findFiles} ) {
-    $opt{findFiles} = '.';
+if ( -d $files[0]  and  ! $opt{tree}  and  ! defined $opt{includeFiles} ) {
+    $opt{includeFiles} = '.';
     unless ( $opt{report} or $opt{quiet} ) {
         say "To generate a report of differing files, use the -report option";
     }
 }
-if ( ( $opt{gold} or $opt{dir2}  or  defined $opt{findFiles} ) and ! $opt{report} ) {
+if ( ( $opt{gold} or $opt{dir2}  or  defined $opt{includeFiles} ) and ! $opt{report} ) {
     if ( scalar @files == 1 ) {
         # If -gold is used, get the golden/non-golden version
         # If -dir2 is used, get the file from the other directory
@@ -944,9 +976,9 @@ if ( ( $opt{gold} or $opt{dir2}  or  defined $opt{findFiles} ) and ! $opt{report
         $originalCmdLine =~ s/@files_orig//;
         d '$originalCmdLine';
         d '@files';
-        if ( $opt{findFiles} and -d $files[0] and -d $files[1] ) {
+        if ( $opt{includeFiles} and -d $files[0] and -d $files[1] ) {
             # Populate @files with pairs
-            @files = getFilePairs($files[0], $files[1], $opt{findFiles});
+            @files = getFilePairs($files[0], $files[1], $opt{includeFiles}, $opt{excludeFiles});
             d '@files';
             # Convert to pairs TODO
             @files = pairwise(@files);
@@ -963,7 +995,7 @@ if ( ( $opt{gold} or $opt{dir2}  or  defined $opt{findFiles} ) and ! $opt{report
             #     pkill /home/ate/scripts/dif
             my $cmd = "$originalCmdLine $file";
             # Could check if dir2 or gold file exists, before running another instance of dif
-            $cmd =~ s/ -find(Files)?\s+(\S+)//;    # -findFiles <regex> or -find <regex>
+            $cmd =~ s/ -find(Files)?\s+(\S+)//;    # -includeFiles <regex> or -find <regex>
             d '$cmd';
             # dif normally runs the gui tool in the backgrounds 'dif file1 file2 &', so that the command line remains available
             # However, in this use case, we want dif to pause while the GUI is open.  When the user closes the GUI, move on to the next file
@@ -1193,8 +1225,8 @@ if ( $opt{fieldJustify} ) {
 if ( $opt{report} ) {
     # For regression testing
     #     ~/r/k/dif -gold file1 file3 file4 file5
-    if ( ! $opt{gold} and ! $opt{dir2} and ! defined $opt{findFiles} ) {
-        die "ERROR:  option -report must be used with either -dir2 or -gold or -findFiles <regex>\n";
+    if ( ! $opt{gold} and ! $opt{dir2} and ! defined $opt{includeFiles} ) {
+        die "ERROR:  option -report must be used with either -dir2 or -gold or -includeFiles <regex>\n";
     }
     # Construct @filePairs
     d '@files';
@@ -1222,9 +1254,9 @@ if ( $opt{report} ) {
             push @filePairs, $dir2file;
             $maxLength = length($file) if length($file) > $maxLength;
         }
-    } elsif ( $opt{findFiles} ) {
+    } elsif ( defined $opt{includeFiles} ) {
         # Create @filePairs
-        @filePairs = getFilePairs($files[0], $files[1], $opt{findFiles});
+        @filePairs = getFilePairs($files[0], $files[1], $opt{includeFiles}, $opt{excludeFiles});
         d '@filePairs';
     } else {
         die "Program bug";
@@ -1989,10 +2021,11 @@ sub pairwise {
     return @pairs;
 }
 
+# Run for case of two directories
 sub getFilePairs {
-    my ($dir1, $dir2, $regex) = @_;
-    my @files1 = runFileFind($dir1, $regex);
-    my @files2 = runFileFind($dir2, $regex);
+    my ($dir1, $dir2, $findRegex, $excludeRegex) = @_;
+    my @files1 = runFileFind($dir1, $findRegex, $excludeRegex);
+    my @files2 = runFileFind($dir2, $findRegex, $excludeRegex);
     d '@files1 @files2';
     my (%filePairHash, @filePairs);
     for my $file1 ( @files1 ) {
@@ -2013,19 +2046,32 @@ sub getFilePairs {
     return @filePairs;
 }
 
+# Run for case of two directories, or -dir2 or -gold
 sub runFileFind {
-    my ($dir, $regex) = @_;
+    my ($dir, $findRegex, $excludeRegex) = @_;
     die "\nERROR:  directory $dir does not exist\n" if ! -d $dir;
-    #$regex =~ s/[^.]\*/.*/g;  # Don't want to use this, because it may corrupt valid Perl regexes
-    $regex =~ s/^\*/.*/;    # *.pm to .*.pm
+    #$findRegex =~ s/[^.]\*/.*/g;  # Don't want to use this, because it may corrupt valid Perl regexes
+    $findRegex =~ s/^\*/.*/ if defined $findRegex;    # *.py to .*.py
+    $excludeRegex =~ s/^\*/.*/ if defined $excludeRegex;    # *.pyc to .*.pyc
     my @foundFiles;
-    say "Searching recursively in '$dir' for files matching /$regex/" unless $opt{quiet};
+    if ( defined $excludeRegex ) {
+        say "Searching recursively in '$dir' for files matching /$findRegex/ and not matching /$excludeRegex/" unless $opt{quiet};
+    } else {
+        say "Searching recursively in '$dir' for files matching /$findRegex/" unless $opt{quiet};
+    }
     find(
         sub {
             #d '$File::Find::name';
-            #if ( $File::Find::name ne $dir  and  ! -d  and  $File::Find::name =~ /$regex/ ) {}
-            if ( ! -d  and  $File::Find::name =~ /$regex/ ) {
-                push @foundFiles, $File::Find::name;
+            if ( ! -d  and  $File::Find::name =~ /$findRegex/ ) {
+                if ( defined $excludeRegex ) {
+                    if ( $File::Find::name !~ /$excludeRegex/ ) {
+                        push @foundFiles, $File::Find::name;
+                    } else {
+                        # do nothing
+                    }
+                } else {
+                    push @foundFiles, $File::Find::name;
+                }
             }
         },
         $dir
@@ -2034,7 +2080,7 @@ sub runFileFind {
     if ($numFiles) {
         say "Found $numFiles files" unless $opt{quiet};
     } else {
-        say "Ensure that the files exist and the -findFiles <regex> expression is a valid Perl regex (for example use .* instead of *)" unless $opt{quiet};
+        say "Ensure that the files exist and the -includeFiles <regex> expression '$opt{includeFiles}' is a valid Perl regex (for example use .* instead of *)" unless $opt{quiet};
         exit 0;
     }
     d '@foundFiles';
@@ -2164,7 +2210,7 @@ sub extension2zipcat {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v3 Wed Oct  7 15:15:21 PDT 2020
+v4 Thu Oct  8 09:35:55 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify

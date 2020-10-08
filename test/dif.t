@@ -230,18 +230,27 @@ if ( runtests('compressed') ) {
     testcmd( $dif, "case01e_hosts_scrambled.txt.bz2 case01e_hosts_scrambled.txt.zip", "-sort", $pass );
 }
 
-if ( runtests('gold') ) {
-    testcmd( $dif, "case01a_hosts.txt",                    "-gold",         $pass );
-    testcmd( $dif, "case01a_hosts.golden.txt",             "-gold",         $pass );
-    testcmd( $dif, "case01b_hosts_spaces.txt",             "-gold",         $fail );
-    testcmd( $dif, "case01b_hosts_spaces.golden.txt",      "-gold",         $fail );
-}
-
-if ( runtests('dir2') ) {
+if ( runtests('dirs') ) {
+    # Compare two directories.  -report is used for facilitating testing
     # MAIN    dirA         dirB
     # 01a     normal       -comments
     # 01b     (missing)    -white
     # 01c     normal       (missing)
+    testcmd( $dif, "dirA dirAcopy", "-report", $pass );
+    testcmd( $dif, "dirA dirB",     "-report", $fail );
+    testcmd( $dif, "dirA dirB",     "-report -excludeFiles '01[bc]' -comments", $pass );
+    testcmd( $dif, "dirA dirB",     "-report -includeFiles '01a' -comments", $pass );
+    testcmd( $dif, "", "-includeFiles 'case01a' dirA dirB -report",   $fail );
+    testcmd( $dif, "", "-includeFiles 'case01a' dirA dirB -report -comments -white",   $pass );
+    chdir("$testDir/dirA");
+    testcmd( $dif, "", "-includeFiles 'case01[ac]' -dir2 ../dirA -report",   $pass );
+    testcmd( $dif, "", "-includeFiles 'case01[ac]' -dir2 ../dirB -report",   $fail );  # case01c does not exist in dirB
+    testcmd( $dif, "", "-includeFiles 'case01a' -dir2 ../dirB -report",   $fail );
+    testcmd( $dif, "", "-includeFiles 'case01a' -dir2 ../dirB -report -comments -white",   $pass );
+    chdir("$pwd");
+}
+
+if ( runtests('dir2') ) {
     testcmd( $dif, "case01a_hosts.txt dirA/case01a_hosts.txt",                                 "",                                 $pass );
     testcmd( $dif, "case01a_hosts.txt dirB/case01a_hosts.txt",                                 "",                                 $fail );
     testcmd( $dif, "case01a_hosts.txt",                                                        "-dir2 $testDir/dirA",              $pass );
@@ -253,15 +262,11 @@ if ( runtests('dir2') ) {
     testcmd( $dif, "case01a_hosts.txt case01b_hosts_spaces.txt case01c_hosts_blank_lines.txt", "-dir2 $testDir/dirB -report",   $fail );  # case01c does not exist in dirB
 }
 
-if ( runtests('findFiles') ) {
-    testcmd( $dif, "", "-findFiles 'case01a' dirA dirB -report",   $fail );
-    testcmd( $dif, "", "-findFiles 'case01a' dirA dirB -report -comments -white",   $pass );
-    chdir("$testDir/dirA");
-    testcmd( $dif, "", "-findFiles 'case01[ac]' -dir2 ../dirA -report",   $pass );
-    testcmd( $dif, "", "-findFiles 'case01[ac]' -dir2 ../dirB -report",   $fail );  # case01c does not exist in dirB
-    testcmd( $dif, "", "-findFiles 'case01a' -dir2 ../dirB -report",   $fail );
-    testcmd( $dif, "", "-findFiles 'case01a' -dir2 ../dirB -report -comments -white",   $pass );
-    chdir("$pwd");
+if ( runtests('gold') ) {
+    testcmd( $dif, "case01a_hosts.txt",                    "-gold",         $pass );
+    testcmd( $dif, "case01a_hosts.golden.txt",             "-gold",         $pass );
+    testcmd( $dif, "case01b_hosts_spaces.txt",             "-gold",         $fail );
+    testcmd( $dif, "case01b_hosts_spaces.golden.txt",      "-gold",         $fail );
 }
 
 if ( runtests('lsl') ) {
@@ -350,11 +355,6 @@ if ( $opt{extraTests}  or  -d "/home/ckoknat" ) {
         testcmd( $dif, "case05a_pl.txt case05a_pl.txt.tdy", "-perltidy", $pass );
     }
 
-    if ( runtests('dirs') ) {
-        # Compare two directories.  -report is used for facilitating testing
-        testcmd( $dif, "dirA dirAcopy", "-report", $pass );
-        testcmd( $dif, "dirA dirB",     "-report", $fail );
-    }
     if ( runtests('tree') ) {
         # Compare two directories, these use 'tree'
         testcmd( $dif, "dirA dirAcopy", "-tree -ignore dir", $pass );  # -ignore dir is needed for the comparison because the directory name is listed in the header
@@ -470,7 +470,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v3 Wed Oct  7 15:15:21 PDT 2020
+v4 Thu Oct  8 09:35:55 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify
