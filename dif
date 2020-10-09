@@ -299,6 +299,31 @@ sub usage {
 
 
     Options to compare a large set of files:
+       <dirA> <dirB>         If $scriptName is run against two directories,
+                             will open GUI for each pair of mismatching files
+                             For example:
+                                 $scriptName dirA dirB
+                             
+                             Any of the preprocessing options may be used
+      
+      -report                For use with two directories  or  -dir2 <dir>  or  -gold
+                             Instead of opening GUIs for each file pair, generate report of mismatching or missing files
+                             For example:
+                                 $scriptName dirA dirB -report
+                             Any of the preprocessing options may be used
+
+      -includeFiles <regex>  
+      -excludeFiles <regex>  Both options are for use with two directories  or  -dir2 <dir>  or  -gold
+                             For example:
+                                 $scriptName -includeFiles '*log' dirA dirB
+                             Will open GUI for each pair of mismatching files
+
+                             When used with -dir2 or -gold, finds files in the current directory matching the Perl regex
+                             For example:
+                                 $scriptName -includeFiles '*log' -dir2 ../old
+
+                             Any of the preprocessing options may be used
+
        -dir2 <dir>           For each input file specified, run '$scriptName'
                                  on the file in the current directory
                                  against the file in the specified directory
@@ -335,23 +360,8 @@ sub usage {
                                  $scriptName file2.csv.golden file2.csv
                              
                              Any of the preprocessing options may be used
-
-      -includeFiles <regex>  
-      -excludeFiles <regex>  Both options are for use with two directories or -dir2 <dir> or -gold
-                             For example:  $scriptName -includeFiles '*log' dirA dirB
-                             Will open GUI for each pair of mismatching files
-
-                             When used with -dir2 or -gold, finds files in the current directory matching the Perl regex
-                             For example:  $scriptName -includeFiles '*log' -dir2 ../old
-
-                             Any of the preprocessing options may be used
-
-      -report                For use with -dir2 <dir> or -gold  or two directories
-                             Instead of opening GUIs for each file, compare report of mismatching or missing files
-                             For example:  $scriptName dirA dirB -report
-                             Any of the preprocessing options may be used
        
-      -tree <dir1> <dir2>    Run unix 'tree' on each of the directories.  Does not preprocess files
+      -tree <dir1> <dir2>    Special case.  Run unix 'tree' on each of the directories.  Does not preprocess files
     
     Other options:
        -stdin             Parse input from stdin and send output to stdout
@@ -490,7 +500,11 @@ sub d { }
 #use Debug::Statements ":all";  # d ''
 #$SIG{__WARN__} = sub { die @_ };  # die instead of produce warnings
 
-my $originalCmdLine = "$0 " . join( ' ', @ARGV );
+# Surround all arguments with '', except for options such as -grep
+my $originalCmdLine = "$0 " . "'" . join( "' '", @ARGV ) . "'";
+$originalCmdLine =~ s/'(-\S+)'/$1/g;
+d '$originalCmdLine';
+
 # Parse options
 %opt = (
     # Preprocess
@@ -522,20 +536,20 @@ my $originalCmdLine = "$0 " . join( ' ', @ARGV );
     json     => 0,
     rp       => 0,
     # Other
-    dir2      => '',
-    cleanup   => 0,
-    gold      => 0,
-    report    => 0,
-    help      => 0,
-    quiet     => 0,
-    gui       => undef,
-    difftool  => undef,
-    diff      => 0,
-    gvimdiff  => 0,
-    tkdiff    => 0,
-    kompare   => 0,
-    meld      => 0,
-    stdout    => 0,
+    dir2     => '',
+    cleanup  => 0,
+    gold     => 0,
+    report   => 0,
+    help     => 0,
+    quiet    => 0,
+    gui      => undef,
+    difftool => undef,
+    diff     => 0,
+    gvimdiff => 0,
+    tkdiff   => 0,
+    kompare  => 0,
+    meld     => 0,
+    stdout   => 0,
 );
 my $d = 0;
 
@@ -584,6 +598,7 @@ for my $type ('fileMappings') {
         my $config;
         eval "\$config = $data";
         d '$config';
+
         while ( my ( $key, $value ) = each %$config ) {
             d '$key $value';
             if ( $type eq 'fileMappings' ) {
@@ -610,12 +625,12 @@ if ( $defaults{history} ) {
 # Options can be overridden with user config file ~/.dif.options  (key/value format)
 Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort|s', 'paragraphSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'ppOnly', 'white|w', 'noWhite', 'case', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'stopIgnoreLine', 'function=s', 'functionSort', 'replaceTable=s', 'replaceDates', 'round=s', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'silent', 'quiet', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kompare|k', 'meld|m', 'stdin', 'stdout', 'rp', 'ps', 'cleanup', 'gold|g', 'dir2=s', 'listFiles', 'report', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
 # noDirs is not in usage.  It excludes directories
-$opt{quiet} = 1 if $opt{silent};      # for backwards compatibility of -silent
-$opt{report} = 1 if $opt{listFiles};  # for backwards compatibility of -listFiles
-die "\nERROR:  -recursive <regex> is now called -includeFiles <regex>\n" if $opt{recursive};  # cannot handle this easily, because it needs to spawn more 'dif' processes
+$opt{quiet}  = 1 if $opt{silent};       # for backwards compatibility of -silent
+$opt{report} = 1 if $opt{listFiles};    # for backwards compatibility of -listFiles
+die "\nERROR:  -recursive <regex> is now called -includeFiles <regex>\n" if $opt{recursive};    # cannot handle this easily, because it needs to spawn more 'dif' processes
 
 my $globaltmpdir;
-my $windows = ( $^O =~ /Win/ ) ? 1 : 0;    # Are we running on Windows?
+my $windows = ( $^O =~ /Win/ ) ? 1 : 0;                                                         # Are we running on Windows?
 if ($windows) {
     $globaltmpdir = tempdir( 'C:\Windows\Temp\d_XXXX', CLEANUP => $opt{cleanup} );
 } else {
@@ -627,13 +642,13 @@ my @files = @ARGV;
 if ( $opt{stdin} ) {
     $opt{stdout} = 1;
     my $content = do { local $/; <STDIN> };
-    my $tmpfile = determineTmpFilename('stdin', 1);
+    my $tmpfile = determineTmpFilename( 'stdin', 1 );
     open( my $TMP, '>', $tmpfile ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";
     print $TMP $content;
     close $TMP;
     $files[0] = $tmpfile;
 }
-if ( defined $opt{excludeFiles} and ! defined $opt{includeFiles} ) {
+if ( defined $opt{excludeFiles} and !defined $opt{includeFiles} ) {
     $opt{includeFiles} = '.';
 }
 if ( defined $opt{includeFiles} ) {
@@ -643,7 +658,7 @@ if ( defined $opt{includeFiles} ) {
         #     cd test/dirA
         #     dif.pl -includeFiles 'case01[ac]' -dir2 ../dirA    (passes)
         #     dif.pl -includeFiles 'case01[ac]' -dir2 ../dirB    (fails)
-        push @files, runFileFind('.', $opt{includeFiles}, $opt{excludeFiles});
+        push @files, runFileFind( '.', $opt{includeFiles}, $opt{excludeFiles} );
     } elsif ( -d $files[0] and -d $files[1] ) {
         # -includeFiles <regex> with dirA dirB
         # do nothing
@@ -654,7 +669,7 @@ if ( defined $opt{includeFiles} ) {
 }
 #die "\@files = @files";
 usage() if ( $opt{help} or $opt{installationInstructions} );
-if ( ! @files ) {
+if ( !@files ) {
     say "\nPrinting usage because no files were specified:    $originalCmdLine\n\n";
     usage();
 }
@@ -933,18 +948,18 @@ if ( $opt{noDirs} ) {
 
 if ( $opt{gold} and $opt{dir2} ) {
     die "ERROR:  Cannot use -gold with -dir2";
-} 
-if ( -d $files[0]  and  ! $opt{tree}  and  ! defined $opt{includeFiles} ) {
+}
+if ( -d $files[0] and !$opt{tree} and !defined $opt{includeFiles} ) {
     $opt{includeFiles} = '.';
     unless ( $opt{report} or $opt{quiet} ) {
         say "To generate a report of differing files, use the -report option";
     }
 }
-if ( ( $opt{gold} or $opt{dir2}  or  defined $opt{includeFiles} ) and ! $opt{report} ) {
+if ( ( $opt{gold} or $opt{dir2} or defined $opt{includeFiles} ) and !$opt{report} ) {
     if ( scalar @files == 1 ) {
         # If -gold is used, get the golden/non-golden version
         # If -dir2 is used, get the file from the other directory
-        if ( scalar @files == 1  and  ! $opt{report} ) { 
+        if ( scalar @files == 1 and !$opt{report} ) {
             if ( $opt{gold} ) {
                 my ( $goldfile, $position ) = toFromGolden( $files[0] );
                 if ( $position == 1 ) {
@@ -972,28 +987,31 @@ if ( ( $opt{gold} or $opt{dir2}  or  defined $opt{includeFiles} ) and ! $opt{rep
                 say "Opening only one GUI at a time.  To change this behavior, add this inside your ~/.$scriptName.defaults file:    openMultipleGUIs: 1\n" unless $opt{quiet};
             }
         }
-        d '$originalCmdLine';
-        $originalCmdLine =~ s/@files_orig//;
-        d '$originalCmdLine';
         d '@files';
+        my @filePairs;
         if ( $opt{includeFiles} and -d $files[0] and -d $files[1] ) {
-            # Populate @files with pairs
-            @files = getFilePairs($files[0], $files[1], $opt{includeFiles}, $opt{excludeFiles});
+            # Populate @filePairs with pairs of files
+            my @allFilePairs = getFilePairs( $files[0], $files[1], $opt{includeFiles}, $opt{excludeFiles} );
             d '@files';
-            # Convert to pairs TODO
-            @files = pairwise(@files);
+            @filePairs = pairwise(@allFilePairs);
             d '@files';
         } else {
             die "ERROR:  Directory $opt{dir2} not found!\n" if $opt{dir2} and !-d $opt{dir2};
         }
-        d '$directoryCompare';
-        for my $file (@files) {
+        # Remove files from original command line
+        d '$originalCmdLine';
+        my $originalFiles = "'" . join( "' '", @files_orig ) . "'";
+        d '$originalFiles';
+        ( my $commandLineWithoutFiles = $originalCmdLine ) =~ s/$originalFiles//;
+        d '$originalCmdLine';
+        d '@files';
+        for my $file (@filePairs) {
             # This can lead to many windows being opened successively, with Ctrl-C not working well
             # Try one of these:
             #     minimize the GUI window and hold down Ctrl-C until you see the command prompt appear
             #     pgrep -l /home/ate/scripts/dif    and then kill the processes
             #     pkill /home/ate/scripts/dif
-            my $cmd = "$originalCmdLine $file";
+            my $cmd = "$commandLineWithoutFiles $file";
             # Could check if dir2 or gold file exists, before running another instance of dif
             $cmd =~ s/ -find(Files)?\s+(\S+)//;    # -includeFiles <regex> or -find <regex>
             d '$cmd';
@@ -1003,15 +1021,12 @@ if ( ( $opt{gold} or $opt{dir2}  or  defined $opt{includeFiles} ) and ! $opt{rep
             if ( $defaults{openMultipleGUIs} ) {
                 system "$cmd &";
             } else {
-                if ( scalar @files > 1 ) {
-                    $cmd .= ' -noBackgroundProcess' if scalar @files > 1;
+                if ( scalar @filePairs > 1 ) {
+                    $cmd .= ' -noBackgroundProcess';
                 }
                 system "$cmd";
             }
-            # Delay for a few ms, to allow Ctrl-C to work better
-            for my $n ( 1 .. 250000 ) {
-                my $foo = 'bar';
-            }
+            select( undef, undef, undef, 0.1 );    # Sleep for 100 ms to allow Ctrl-C to work better.  Works with any version of Perl
         }
         exit 0;
     }
@@ -1041,9 +1056,8 @@ if ( $scms{Perforce} or $scms{SVN} or $scms{GIT} ) {
         # dif //path/file#1..#3
         # opens window for #1 vs #2, then #2 vs #3
         my ( $file, $begin, $end ) = ( $1, $2, $3 );
-        d '$file $begin $end';
-        d '$originalCmdLine';
-        $originalCmdLine =~ s/$files[0]//;
+        d '$file $begin $end $files[0] $originalCmdLine';
+        $originalCmdLine =~ s/'$files[0]'//;
         d '$originalCmdLine';
         if ( $end =~ /(h|head)/ ) {
             $end = lastScmRev($file);
@@ -1052,7 +1066,7 @@ if ( $scms{Perforce} or $scms{SVN} or $scms{GIT} ) {
         #     file #1 #n
         #     file #2 #n
         for my $rev ( $begin .. $end - 1 ) {
-            my $cmd = "$originalCmdLine $file#$rev #n -noBackgroundProcess";
+            my $cmd = "$originalCmdLine '$file#$rev' '#n' '-noBackgroundProcess'";
             d '$cmd';
             system "$cmd";
         }
@@ -1225,7 +1239,7 @@ if ( $opt{fieldJustify} ) {
 if ( $opt{report} ) {
     # For regression testing
     #     ~/r/k/dif -gold file1 file3 file4 file5
-    if ( ! $opt{gold} and ! $opt{dir2} and ! defined $opt{includeFiles} ) {
+    if ( !$opt{gold} and !$opt{dir2} and !defined $opt{includeFiles} ) {
         die "ERROR:  option -report must be used with either -dir2 or -gold or -includeFiles <regex>\n";
     }
     # Construct @filePairs
@@ -1256,21 +1270,21 @@ if ( $opt{report} ) {
         }
     } elsif ( defined $opt{includeFiles} ) {
         # Create @filePairs
-        @filePairs = getFilePairs($files[0], $files[1], $opt{includeFiles}, $opt{excludeFiles});
+        @filePairs = getFilePairs( $files[0], $files[1], $opt{includeFiles}, $opt{excludeFiles} );
         d '@filePairs';
     } else {
         die "Program bug";
     }
     d '@filePairs';
     my $count = 0;
-    my ($dir1, $dir2);
+    my ( $dir1, $dir2 );
     if ( -d $files[0] and -d $files[1] ) {
         # dif dir1 dir2 -report
         $dir1 = $files[0];
         $dir2 = $files[1];
     } elsif ( $opt{dir2} ) {
         # dif files* -dir2 path -report
-        $dir1 = basename($files[0]);
+        $dir1 = basename( $files[0] );
         $dir2 = $opt{dir2};
     } elsif ( $opt{gold} ) {
         # dif files* -gold -report
@@ -1282,7 +1296,7 @@ if ( $opt{report} ) {
         $dir2 = defined $files[1] ? $files[1] : "$files[0]_";
     }
     #my $tmpfileReport1 = sprintf( "%s__%s", basename($0), $dir1);
-    my $tmpfileReport1 = "_$dir1";  # _ is needed in case the dir is '.'
+    my $tmpfileReport1 = "_$dir1";    # _ is needed in case the dir is '.'
     $tmpfileReport1 =~ s{/}{_}g;
     $tmpfileReport1 = "/tmp/" . $tmpfileReport1;
     open( my $REPORT1, ">", $tmpfileReport1 ) or die "ERROR: Cannot open file for writing:  $tmpfileReport1\n\n";
@@ -1296,48 +1310,49 @@ if ( $opt{report} ) {
     my @mismatches;
     printf $REPORT1 "%10s  %32s  %s\n", 'SIZE', 'MD5SUM', 'FILENAME';
     printf $REPORT2 "%10s  %32s  %s\n", 'SIZE', 'MD5SUM', 'FILENAME';
+
     while (@filePairs) {
-        my ($file1, $file2, $tmpfile1, $tmpfile2, $size1, $size2, $md5sum1, $md5sum2);
+        my ( $file1, $file2, $tmpfile1, $tmpfile2, $size1, $size2, $md5sum1, $md5sum2 );
         $file1 = shift(@filePairs);
         $file2 = shift(@filePairs);
         d '$file1 $file2';
         $count++;
         if ( -f $file1 ) {
-            $tmpfile1 = determineTmpFilename($file1, $count);
-            preprocessFile( $file1, $tmpfile1, $count%2 );  # %2 for -start2 -stop2
-            $size1 = sprintf("%10s", -s $tmpfile1);
-            chomp( $md5sum1 = `md5sum $tmpfile1 2> /dev/null`);
+            $tmpfile1 = determineTmpFilename( $file1, $count );
+            preprocessFile( $file1, $tmpfile1, $count % 2 );    # %2 for -start2 -stop2
+            $size1 = sprintf( "%10s", -s $tmpfile1 );
+            chomp( $md5sum1 = `md5sum $tmpfile1 2> /dev/null` );
             $md5sum1 =~ s/^(\S+).*/$1/;
         } else {
-            $size1 = sprintf("%10s", "");
+            $size1 = sprintf( "%10s", "" );
             $md5sum1 = '_________DOES_NOT_EXIST_________';
         }
         $count++;
         if ( -f $file2 ) {
-            $tmpfile2 = determineTmpFilename($file2, $count);
-            preprocessFile( $file2, $tmpfile2, $count%2 );  # %2 for -start2 -stop2
-            $size2 = sprintf("%10s", -s $tmpfile2);
-            chomp( $md5sum2 = `md5sum $tmpfile2 2> /dev/null`);
+            $tmpfile2 = determineTmpFilename( $file2, $count );
+            preprocessFile( $file2, $tmpfile2, $count % 2 );    # %2 for -start2 -stop2
+            $size2 = sprintf( "%10s", -s $tmpfile2 );
+            chomp( $md5sum2 = `md5sum $tmpfile2 2> /dev/null` );
             $md5sum2 =~ s/^(\S+).*/$1/;
         } else {
-            $size2 = sprintf("%10s", "");
+            $size2 = sprintf( "%10s", "" );
             $md5sum2 = '_________DOES_NOT_EXIST_________';
         }
         d '$size1 $size2 $md5sum1 $md5sum2';
-        my ($file1mod, $file2mod);
+        my ( $file1mod, $file2mod );
         if ( -d $files[0] and -d $files[1] ) {
-            ($file1mod = $file1) =~ s{^$dir1/}{};
-            ($file2mod = $file2) =~ s{^$dir2/}{};
+            ( $file1mod = $file1 ) =~ s{^$dir1/}{};
+            ( $file2mod = $file2 ) =~ s{^$dir2/}{};
         } elsif ( $opt{dir2} ) {
-            ($file1mod = $file1) =~ s{^$dir1/}{};
-            ($file2mod = $file2) =~ s{^$dir2/}{};
+            ( $file1mod = $file1 ) =~ s{^$dir1/}{};
+            ( $file2mod = $file2 ) =~ s{^$dir2/}{};
         } elsif ( $opt{gold} ) {
-            ($file1mod, my $position) = toFromGolden( $file1 );
-            ($file2mod = $file2);
+            ( $file1mod, my $position ) = toFromGolden($file1);
+            ( $file2mod = $file2 );
         } else {
             # not sure if there is a use case for this, but putting it here just in case
-            ($file1mod = $file1);
-            ($file2mod = $file2);
+            ( $file1mod = $file1 );
+            ( $file2mod = $file2 );
         }
         print $REPORT1 "$size1  $md5sum1  $file1mod\n";
         print $REPORT2 "$size2  $md5sum2  $file2mod\n";
@@ -1345,7 +1360,7 @@ if ( $opt{report} ) {
     }
     close $REPORT1;
     close $REPORT2;
-    @files = ($tmpfileReport1, $tmpfileReport2);
+    @files = ( $tmpfileReport1, $tmpfileReport2 );
     # The exit statuses below are used in regressions
     d '@mismatches';
     if (@mismatches) {
@@ -1363,7 +1378,7 @@ my @processedFiles = ();    # files after all processing, gunzipping, etc
 for my $f (@files) {
     #LS($f);
     $count++;
-    my $tmpfile = determineTmpFilename($f, $count);
+    my $tmpfile = determineTmpFilename( $f, $count );
     if ($preprocessRequired) {
         push @processedFiles, preprocessFile( $f, $tmpfile, $count );
     } else {
@@ -1462,7 +1477,7 @@ if ( $gui =~ /meld|kompare/ ) {
         if ( $sizeProcessedFile0 > $defaults{meldSizeLimit} ) {
             # Using -e because do not want to run these checks if run with p4 revs:  dif releasePatternsRev.pl#136 #140
             say "Switching to gvimdiff to speed up comparison because size of 1st file ($sizeProcessedFile0) is > $defaults{meldSizeLimit} bytes" unless $opt{quiet};
-            say "If you really want to stay with $gui, change the meldSizeLimit in ~/.$scriptName.defaults" unless $opt{quiet};
+            say "If you really want to stay with $gui, change the meldSizeLimit in ~/.$scriptName.defaults"                                       unless $opt{quiet};
             $gui = 'gvimdiff';
         }
     }
@@ -1501,15 +1516,12 @@ exit 0;
 
 ### END MAIN ###
 
-
-
-
 # my $tmpfile = preprocessFile( $file, $tmpfile, $filenum )
 sub preprocessFile {
     my ( $file, $tmpfile, $filenum ) = @_;
     d '.';
     d '$file $tmpfile $filenum';
-    $filenum = 2 if $filenum > 2;  # Normally there are 2 files, but with 3-file comparison, the 3rd file will use the -start2 -stop2 parameters
+    $filenum = 2 if $filenum > 2;    # Normally there are 2 files, but with 3-file comparison, the 3rd file will use the -start2 -stop2 parameters
     if ( $scms{Perforce} or $scms{SVN} or $scms{GIT} ) {
         # p4 print file  or  svn cat file  or  git show file
         $file = handleSCM($file);
@@ -1611,20 +1623,20 @@ sub preprocessFile {
         #d '.';
         #d '$line';
         $linenum++;
-        
+
         # -case and -comments and -white are at top of loop, so that the change will affect -start -stop -grep etc
         if ( $opt{case} ) {
             $line = lc($line);
         }
 
         if ( $opt{comments} ) {
-            $line =~ s{/\*.*}{};                                                 # C
-            $line =~ s{//.*}{};                                                  # C++
-            $line =~ s{#.*}{};                                                   # Perl
-            $line =~ s/\s+$//;                                                   # After stripping comments, there are sometimes trailing spaces
+            $line =~ s{/\*.*}{};    # C
+            $line =~ s{//.*}{};     # C++
+            $line =~ s{#.*}{};      # Perl
+            $line =~ s/\s+$//;      # After stripping comments, there are sometimes trailing spaces
             $line .= "\n" if $line =~ /\S/;
         }
-        
+
         if ( $opt{white} ) {
             $line =~ s/^\s+//;
             $line =~ s/[ |\t]+/ /g;
@@ -1785,7 +1797,7 @@ sub readTableFile {
     my ( $table_file, $reverse, $regex ) = @_;
     d '$table_file $reverse $regex';
     my %map;
-    say "Reading from table file $table_file" if $opt{replaceTable} and ! $opt{quiet};
+    say "Reading from table file $table_file" if $opt{replaceTable} and !$opt{quiet};
     my $lineNumber = 0;
     open( my $F, '<', $table_file ) or die "ERROR: Cannot open file for reading:  $table_file\n\n";
     while ( my $line = <$F> ) {
@@ -2016,31 +2028,31 @@ sub pairwise {
     while (@items) {
         my $item1 = shift @items;
         my $item2 = shift @items || '';
-        push @pairs, "$item1 $item2";
+        push @pairs, "'$item1' '$item2'";    # 'file1' 'file2'
     }
     return @pairs;
 }
 
 # Run for case of two directories
 sub getFilePairs {
-    my ($dir1, $dir2, $findRegex, $excludeRegex) = @_;
-    my @files1 = runFileFind($dir1, $findRegex, $excludeRegex);
-    my @files2 = runFileFind($dir2, $findRegex, $excludeRegex);
+    my ( $dir1, $dir2, $findRegex, $excludeRegex ) = @_;
+    my @files1 = runFileFind( $dir1, $findRegex, $excludeRegex );
+    my @files2 = runFileFind( $dir2, $findRegex, $excludeRegex );
     d '@files1 @files2';
-    my (%filePairHash, @filePairs);
-    for my $file1 ( @files1 ) {
-        (my $file = $file1) =~ s{^$dir1/}{};
+    my ( %filePairHash, @filePairs );
+    for my $file1 (@files1) {
+        ( my $file = $file1 ) =~ s{^$dir1/}{};
         $filePairHash{$file}[0] = "$dir1/$file";
-        $filePairHash{$file}[1] = "$dir2/$file";  # May or may not exist
+        $filePairHash{$file}[1] = "$dir2/$file";    # May or may not exist
     }
-    for my $file2 ( @files2 ) {
-        (my $file = $file2) =~ s{^$dir2/}{};
-        $filePairHash{$file}[0] = "$dir1/$file" if ! defined $filePairHash{$file}[0];
+    for my $file2 (@files2) {
+        ( my $file = $file2 ) =~ s{^$dir2/}{};
+        $filePairHash{$file}[0] = "$dir1/$file" if !defined $filePairHash{$file}[0];
         $filePairHash{$file}[1] = "$dir2/$file";
     }
     d '%filePairHash';
     for my $file ( sort keys %filePairHash ) {
-        push @filePairs, @{$filePairHash{$file}};
+        push @filePairs, @{ $filePairHash{$file} };
     }
     d '@filePairs';
     return @filePairs;
@@ -2048,10 +2060,10 @@ sub getFilePairs {
 
 # Run for case of two directories, or -dir2 or -gold
 sub runFileFind {
-    my ($dir, $findRegex, $excludeRegex) = @_;
-    die "\nERROR:  directory $dir does not exist\n" if ! -d $dir;
+    my ( $dir, $findRegex, $excludeRegex ) = @_;
+    die "\nERROR:  directory $dir does not exist\n" if !-d $dir;
     #$findRegex =~ s/[^.]\*/.*/g;  # Don't want to use this, because it may corrupt valid Perl regexes
-    $findRegex =~ s/^\*/.*/ if defined $findRegex;    # *.py to .*.py
+    $findRegex    =~ s/^\*/.*/ if defined $findRegex;       # *.py to .*.py
     $excludeRegex =~ s/^\*/.*/ if defined $excludeRegex;    # *.pyc to .*.pyc
     my @foundFiles;
     if ( defined $excludeRegex ) {
@@ -2062,7 +2074,7 @@ sub runFileFind {
     find(
         sub {
             #d '$File::Find::name';
-            if ( ! -d  and  $File::Find::name =~ /$findRegex/ ) {
+            if ( !-d and $File::Find::name =~ /$findRegex/ ) {
                 if ( defined $excludeRegex ) {
                     if ( $File::Find::name !~ /$excludeRegex/ ) {
                         push @foundFiles, $File::Find::name;
@@ -2173,8 +2185,8 @@ sub getFieldColumnWidths {
 }
 
 sub determineTmpFilename {
-    my ($file, $count) = @_;
-    $count = 0 if ! defined $count;
+    my ( $file, $count ) = @_;
+    $count = 0 if !defined $count;
     my $tmpfile = sprintf( "%s/%d__%s", $globaltmpdir, $count, basename($file) );
     $tmpfile =~ s/#/_/g;
     $tmpfile =~ s{/}{\\}g if $windows;
@@ -2210,7 +2222,7 @@ sub extension2zipcat {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v4 Thu Oct  8 09:35:55 PDT 2020
+v5 Fri Oct  9 07:09:56 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify

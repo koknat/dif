@@ -236,6 +236,7 @@ if ( runtests('dirs') ) {
     # 01a     normal       -comments
     # 01b     (missing)    -white
     # 01c     normal       (missing)
+    chdir("$testDir");
     testcmd( $dif, "dirA dirAcopy", "-report", $pass );
     testcmd( $dif, "dirA dirB",     "-report", $fail );
     testcmd( $dif, "dirA dirB",     "-report -excludeFiles '01[bc]' -comments", $pass );
@@ -470,7 +471,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v4 Thu Oct  8 09:35:55 PDT 2020
+v5 Fri Oct  9 07:09:56 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify
