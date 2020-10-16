@@ -217,17 +217,27 @@ if ( runtests('tartv') ) {
     # tar -cvf case10a_tar.tar case10a_tar ; tar -cvf case10b_tar.tar case10b_tar ; tar -cvf case10c_tar.tar case10c_tar ; gzip case10*_tar.tar
 }
 
-if ( runtests('compressed') ) {
+if ( runtests('gz') ) {
     testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt.gz",             "",      $fail );
     testcmd( $dif, "case01e_hosts_scrambled.txt.gz case01e_hosts_scrambled.txt.gz",   "-sort", $pass );
-    testcmd( $dif, "case01a_hosts.txt.xz case01e_hosts_scrambled.txt.xz",             "",      $fail );
-    testcmd( $dif, "case01e_hosts_scrambled.txt.xz case01e_hosts_scrambled.txt.xz",   "-sort", $pass );
-    testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt.xz",             "",      $fail );
-    testcmd( $dif, "case01e_hosts_scrambled.txt.gz case01e_hosts_scrambled.txt.xz",   "-sort", $pass );
-    testcmd( $dif, "case01a_hosts.txt.bz2 case01e_hosts_scrambled.txt.xz",            "",      $fail );
-    testcmd( $dif, "case01e_hosts_scrambled.txt.bz2 case01e_hosts_scrambled.txt.xz",  "-sort", $pass );
-    testcmd( $dif, "case01a_hosts.txt.zip case01e_hosts_scrambled.txt.zip",           "",      $fail );
-    testcmd( $dif, "case01e_hosts_scrambled.txt.bz2 case01e_hosts_scrambled.txt.zip", "-sort", $pass );
+}
+
+if ( runtests('zip')  and  whichCommand('unzip') ) {
+    testcmd( $dif, "case01a_hosts.txt.gz case01a_hosts.txt.zip",            "",      $pass );
+    testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt.zip",  "",      $fail );
+    testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt.zip",  "-sort", $pass );
+}
+
+if ( runtests('bz')  and  whichCommand('bzcat') ) {
+    testcmd( $dif, "case01a_hosts.txt.gz case01a_hosts.txt.bz2",            "",      $pass );
+    testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt.bz2",  "",      $fail );
+    testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt.bz2",  "-sort", $pass );
+}
+
+if ( runtests('xz')  and  whichCommand('xzcat') ) {
+    testcmd( $dif, "case01a_hosts.txt.gz case01a_hosts.txt.xz",            "",      $pass );
+    testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt.xz",  "",      $fail );
+    testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt.xz",  "-sort", $pass );
 }
 
 if ( runtests('dirs') ) {
@@ -309,10 +319,26 @@ if ( runtests('ext') ) {
     testcmd( $dif, "case01a_hosts.txt case01e_hosts_scrambled.txt",    "-externalPreprocessScript /usr/bin/nonexisting",          $fail );
     testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt", "-externalPreprocessScript sort",          $pass );  # handle .gz
 }
-#if ( runtests('bin') ) {
-#    testcmd( $dif, "case01a_hosts.txt case01a_hosts.txt",              "-bin",          $pass );  # trivial
-#    testcmd( $dif, "case01a_hosts.txt case01e_hosts_scrambled.txt",    "-bin",          $fail );
-#}
+
+if ( runtests('bin')  and  ( -f '/usr/bin/xxd' or -f '/usr/bin/hexdump' ) ) {
+    testcmd( $dif, "case01a_hosts.txt case01a_hosts.txt",              "-bin",          $pass );  # trivial
+    testcmd( $dif, "case01a_hosts.txt case01e_hosts_scrambled.txt",    "-bin",          $fail );
+}
+
+if ( runtests('bcpp')  and  whichCommand('bcpp') ) {
+    testcmd( $dif, "case09a.c case09b.c", "", $fail );
+    testcmd( $dif, "case09a.c case09b.c", "-bcpp", $pass );
+}
+
+if ( runtests('tree')  and  whichCommand('tree') ) {
+    testcmd( $dif, "dirA dirAcopy", "-tree -ignore dir", $pass );  # -ignore dir is needed for the comparison because the directory name is listed in the header
+    testcmd( $dif, "dirA dirB",     "-tree -ignore dir", $fail );
+}
+
+if ( runtests('dos2unix')  and  whichCommand('dos2unix') ) {
+    testcmd( $dif, "case01a_hosts.txt case01l_hosts_dos.txt",      "",            $fail );
+    testcmd( $dif, "case01a_hosts.txt case01l_hosts_dos.txt",      "-dos2unix",   $pass );
+}
 
 eval 'use YAML::XS ()';
 if (! $@) {
@@ -342,28 +368,14 @@ if (! $@) {
 
 if ( $opt{extraTests}  or  -d "/home/ckoknat" ) {
     unless ( $opt{test} ) {
-        say "\n\n***************************************************************************************************************************";
-        say "* Running additional tests, which may fail if there are missing executables or Perl libraries (tree, bcpp, perltidy, bz2) *";
-        say "***************************************************************************************************************************";
+        say "\n\n***********************************************************************************************";
+        say "* Running additional tests, which may fail if there are missing executables or Perl libraries *";
+        say "***********************************************************************************************";
     }
-    
-    if ( runtests('bcpp') ) {
-        testcmd( $dif, "case09a.c case09b.c", "", $fail );
-        testcmd( $dif, "case09a.c case09b.c", "-bcpp", $pass );
-    }
+
     if ( runtests('perltidy') ) {
         testcmd( $dif, "case05a_pl.txt case05a_pl.txt.tdy", "",          $fail );
         testcmd( $dif, "case05a_pl.txt case05a_pl.txt.tdy", "-perltidy", $pass );
-    }
-
-    if ( runtests('tree') ) {
-        # Compare two directories, these use 'tree'
-        testcmd( $dif, "dirA dirAcopy", "-tree -ignore dir", $pass );  # -ignore dir is needed for the comparison because the directory name is listed in the header
-        testcmd( $dif, "dirA dirB",     "-tree -ignore dir", $fail );
-    }
-    if ( runtests('bz') ) {
-        testcmd( $dif, "case01a_hosts.txt.bz2 case01e_hosts_scrambled.txt.bz2",           "",      $fail );
-        testcmd( $dif, "case01e_hosts_scrambled.txt.bz2 case01e_hosts_scrambled.txt.bz2", "-sort", $pass );
     }
 
 }
@@ -464,6 +476,16 @@ sub summary {
     return $failed;
 }
 
+sub whichCommand {
+    my $executableAndOptions = shift;
+    ( my $executable = $executableAndOptions ) =~ s/^(\S+).*/$1/;    # Strip any options before using 'which'
+    my $which = `which $executable 2> /dev/null`;
+    #my $which = `which $executable`;
+    #return 0 if $which eq '' or $which =~ /Command not found/;
+    return 0 if $which eq '';
+    return 1;
+}
+
 # Not tested yet:  'perldump', 'nodirs'
 
 __END__
@@ -471,7 +493,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v5 Fri Oct  9 07:09:56 PDT 2020
+v10 Fri Oct 16 12:47:06 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify

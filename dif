@@ -119,6 +119,8 @@ sub usage {
        -trimChars N       Trims with specified number of characters, instead of $defaults{fold}
        
        -comments          Remove any comments like // or # or single-line */ /*.  Also removes trailing whitespace
+
+       -dos2unix          Run all files through dos2unix
        
        -round 'string'    Round all numbers according to the sprintf string
                           For example -round '%0.2f'
@@ -256,7 +258,7 @@ sub usage {
     Viewing options:
        -quiet             Do not print to screen
 
-       -verbose           Print names and file sizes of preprocessed temp files, before comparing
+       -verbose           Print names and file sizes of preprocessed temporary files, before comparing
 
        -gui cmd           Instead of using $defaults{gui} to graphically compare the files, use a different tool
                           This supports any tool which has command line usage similar to gvimdiff
@@ -514,6 +516,7 @@ d '$originalCmdLine';
     # Postprocess
     sort      => "",
     uniq      => "",
+    dos2unix  => "",
     strings   => "",
     fold      => "",
     foldChars => 0,
@@ -623,7 +626,7 @@ if ( $defaults{history} ) {
 }
 
 # Options can be overridden with user config file ~/.dif.options  (key/value format)
-Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort|s', 'paragraphSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'ppOnly', 'white|w', 'noWhite', 'case', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'stopIgnoreLine', 'function=s', 'functionSort', 'replaceTable=s', 'replaceDates', 'round=s', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'silent', 'quiet', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kompare|k', 'meld|m', 'stdin', 'stdout', 'rp', 'ps', 'cleanup', 'gold|g', 'dir2=s', 'listFiles', 'report', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
+Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort|s', 'paragraphSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'ppOnly', 'white|w', 'noWhite', 'case', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'stopIgnoreLine', 'function=s', 'functionSort', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'silent', 'quiet', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kompare|k', 'meld|m', 'stdin', 'stdout', 'rp', 'ps', 'cleanup', 'gold|g', 'dir2=s', 'listFiles', 'report', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
 # noDirs is not in usage.  It excludes directories
 $opt{quiet}  = 1 if $opt{silent};       # for backwards compatibility of -silent
 $opt{report} = 1 if $opt{listFiles};    # for backwards compatibility of -listFiles
@@ -639,6 +642,7 @@ if ($windows) {
 }
 # Check if files exist
 my @files = @ARGV;
+die "ERROR:  Directory $opt{dir2} not found!\n" if $opt{dir2} and ! -d $opt{dir2};  # TODO move this earlier
 if ( $opt{stdin} ) {
     $opt{stdout} = 1;
     my $content = do { local $/; <STDIN> };
@@ -786,7 +790,7 @@ if ( $opt{function} ) {
 # Decide if file needs to go through the preprocessing code
 # If not, then we can later do a quick md5sum check to determine equality
 my $preprocessRequired = 0;
-$preprocessRequired = 1 if $opt{sort} or $opt{paragraphSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or defined $opt{grep} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{perlEval} or $opt{yaml} or $opt{json} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
+$preprocessRequired = 1 if $opt{sort} or $opt{paragraphSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or $opt{round} or $opt{dos2unix} or defined $opt{grep} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{perlEval} or $opt{yaml} or $opt{json} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
 for my $file (@files) {
     if ( $file =~ /\.tar(\.gz|bz2|xz|zip)?(#(\d+|head|\-|\+))?$/ ) {
         if ( $opt{tartv} ) {
@@ -802,6 +806,9 @@ for my $file (@files) {
         } elsif ( $gui eq 'none' ) {
             $preprocessRequired = 1;
         }    # Avoids "binary files differ"
+    } elsif ( $file =~ /\.(bz2|xz|zip)$/ ) {
+        $preprocessRequired = 1;
+        # TODO check if uncompress is really required with the various GUIs
     }
 }
 if ( $gui =~ "gvimdiff" and $preprocessRequired ) {
@@ -854,11 +861,11 @@ $opt{head}  = $defaults{head}                                          if $opt{h
 $opt{head}  = $opt{headLines}                                          if $opt{headLines};
 $opt{tail}  = $defaults{head}                                          if $opt{tail} == 1;
 $opt{tail}  = $opt{tailLines}                                          if $opt{tailLines};
+$opt{dos2unix}  = "| dos2unix"                                         if $opt{dos2unix} ne "" and whichCommand('dos2unix');
 $opt{sort}  = "| sort"                                                 if $opt{sort} ne "";
 $opt{sort}  = "| perl -n00 -e 'push \@a, \$_; END { print sort \@a }'" if $opt{paragraphSort};
-$opt{uniq}  = "| uniq"                                                 if $opt{uniq} ne "";
+$opt{uniq}  = "| uniq"                                                 if $opt{uniq} ne "" and whichCommand('uniq');
 if ( $opt{strings} ne "" ) {
-
     if ( whichCommand('strings') ) {
         $opt{strings} = "| strings";
     } else {
@@ -989,22 +996,38 @@ if ( ( $opt{gold} or $opt{dir2} or defined $opt{includeFiles} ) and !$opt{report
         }
         d '@files';
         my @filePairs;
-        if ( $opt{includeFiles} and -d $files[0] and -d $files[1] ) {
-            # Populate @filePairs with pairs of files
-            my @allFilePairs = getFilePairs( $files[0], $files[1], $opt{includeFiles}, $opt{excludeFiles} );
-            d '@files';
+        if ( $opt{gold} ) {
+            # dif file1 file2 file3 -gold  =>
+            # dif file1 -gold
+            # dif file2 -gold
+            # dif file3 -gold
+            @filePairs = @files;
+        } elsif ( $opt{dir2} ) {
+            # dif file1 file2 file3 -dir dirB  =>
+            # dif file1 -dir dirB
+            # dif file2 -dir dirB
+            # dif file2 -dir dirB
+            @filePairs = @files;
+        } elsif ( $opt{includeFiles} and -d $files[0] and -d $files[1] ) {
+            # dif dirA dirB  =>
+            # create pairs:
+            #     dirA/file1, dirB/file1, dirA/file2, dirB/file2, dirA/file3, dirB/file3
+            #     "dirA/file1 dirB/file1", "dirA/file2 dirB/file2", "dirA/file3 dirB/file3"
+            #     dif dirA/file1 dirB/file1
+            #     dif dirA/file2 dirB/file2
+            #     dif dirA/file3 dirB/file3
+            my @allFilePairs = findFilePairs( $files[0], $files[1], $opt{includeFiles}, $opt{excludeFiles} );
+            d '@allFilePairs';
             @filePairs = pairwise(@allFilePairs);
-            d '@files';
-        } else {
-            die "ERROR:  Directory $opt{dir2} not found!\n" if $opt{dir2} and !-d $opt{dir2};
         }
+        d '@filePairs';
         # Remove files from original command line
         d '$originalCmdLine';
         my $originalFiles = "'" . join( "' '", @files_orig ) . "'";
         d '$originalFiles';
         ( my $commandLineWithoutFiles = $originalCmdLine ) =~ s/$originalFiles//;
         d '$originalCmdLine';
-        d '@files';
+        d '@filePairs';
         for my $file (@filePairs) {
             # This can lead to many windows being opened successively, with Ctrl-C not working well
             # Try one of these:
@@ -1270,7 +1293,9 @@ if ( $opt{report} ) {
         }
     } elsif ( defined $opt{includeFiles} ) {
         # Create @filePairs
-        @filePairs = getFilePairs( $files[0], $files[1], $opt{includeFiles}, $opt{excludeFiles} );
+        $files[0] = readlink($files[0]) if -l $files[0];
+        $files[1] = readlink($files[1]) if -l $files[1];
+        @filePairs = findFilePairs( $files[0], $files[1], $opt{includeFiles}, $opt{excludeFiles} );
         d '@filePairs';
     } else {
         die "Program bug";
@@ -1508,6 +1533,12 @@ system($command);
 if ( $files[0] =~ /\.p[lm]$/ and not $opt{perltidy} ) {
     say "You seem to be comparing Perl source files.  You may want to use the -perltidy option next time." unless $opt{quiet};
 }
+if ( $files[0] =~ /\.ya?ml$/ and not $opt{yaml} ) {
+    say "You seem to be comparing YAML files.  You may want to use the -yaml option next time to improve the formatting." unless $opt{quiet};
+}
+if ( $files[0] =~ /\.json$/ and not $opt{json} ) {
+    say "You seem to be comparing JSON files.  You may want to use the -json option next time to improve the formatting." unless $opt{quiet};
+}
 if ( $files[0] =~ /\.binl$/ and not $opt{strings} ) {
     say "You seem to be comparing binl files.  You may want to use the -strings option next time to remove the binary characters." unless $opt{quiet};
 }
@@ -1606,7 +1637,7 @@ sub preprocessFile {
     my $wc = "?";
     $wc = `$zipCat $file | wc -l | cut -d " " -f 1` if $opt{tail};
     d('$wc') if $opt{tail};
-    open( my $TMP, "$opt{strings} $opt{sort} $opt{uniq} $opt{fold} > $tmpfile" ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";
+    open( my $TMP, "$opt{strings} $opt{sort} $opt{uniq} $opt{fold} $opt{dos2unix} > $tmpfile" ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";
     my $firstLine = $opt{tail} ? ( $wc - $opt{tail} + 1 ) : -1;
     d '$firstLine';
     my $linenum       = 0;
@@ -1940,9 +1971,20 @@ sub sortYamlPerlJson {
             $ref = YAML::XS::LoadFile($file);
             #$ref = YAML::Syck::LoadFile($file);
             d '$ref';
+            if (1) {
+                $Data::Dumper::Indent = 1 ;  # default = 2, which uses a lot of horizontal space
+                $Data::Dumper::Sortkeys = 1;  # produces warning on 5.6.1
+                return Dumper($ref);
+            } else {
+                my $text = YAML::XS::Dump($ref);
+                return $text;
+            }
         }
     } elsif ( $type eq 'perlEval' ) {
         $ref = eval($data);
+        d '$ref';
+        $Data::Dumper::Sortkeys = 1;  # produces warning on 5.6.1
+        return Dumper($ref);
     } elsif ( $type eq 'json' ) {
         # eval because JSON::XS might not be installed
         eval 'use JSON::XS ()';
@@ -1958,13 +2000,19 @@ sub sortYamlPerlJson {
             $json = <$fh>;
             close $fh;
             $ref = JSON::XS::decode_json($json);
+            d '$ref';
+            if (1) {
+                $Data::Dumper::Indent = 1 ;  # default = 2, which uses a lot of horizontal space
+                $Data::Dumper::Sortkeys = 1;  # produces warning on 5.6.1
+                return Dumper($ref);
+            } else {
+                my $text = JSON::XS::Dump($ref);
+                return $text;
+            }
         }
     } else {
         die;
     }
-    d '$ref';
-    $Data::Dumper::Sortkeys = 1;    # produces warning on 5.6.1
-    return Dumper($ref);
 }
 
 # Written for Python/Perl/TCL, but could be extended to other languages
@@ -2034,10 +2082,10 @@ sub pairwise {
 }
 
 # Run for case of two directories
-sub getFilePairs {
-    my ( $dir1, $dir2, $findRegex, $excludeRegex ) = @_;
-    my @files1 = runFileFind( $dir1, $findRegex, $excludeRegex );
-    my @files2 = runFileFind( $dir2, $findRegex, $excludeRegex );
+sub findFilePairs {
+    my ( $dir1, $dir2, $includeRegex, $excludeRegex ) = @_;
+    my @files1 = runFileFind( $dir1, $includeRegex, $excludeRegex );
+    my @files2 = runFileFind( $dir2, $includeRegex, $excludeRegex );
     d '@files1 @files2';
     my ( %filePairHash, @filePairs );
     for my $file1 (@files1) {
@@ -2060,21 +2108,22 @@ sub getFilePairs {
 
 # Run for case of two directories, or -dir2 or -gold
 sub runFileFind {
-    my ( $dir, $findRegex, $excludeRegex ) = @_;
+    my ( $dir, $includeRegex, $excludeRegex ) = @_;
+    d '$dir $includeRegex $excludeRegex';
     die "\nERROR:  directory $dir does not exist\n" if !-d $dir;
-    #$findRegex =~ s/[^.]\*/.*/g;  # Don't want to use this, because it may corrupt valid Perl regexes
-    $findRegex    =~ s/^\*/.*/ if defined $findRegex;       # *.py to .*.py
+    #$includeRegex =~ s/[^.]\*/.*/g;  # Don't want to use this, because it may corrupt valid Perl regexes
+    $includeRegex    =~ s/^\*/.*/ if defined $includeRegex;       # *.py to .*.py
     $excludeRegex =~ s/^\*/.*/ if defined $excludeRegex;    # *.pyc to .*.pyc
     my @foundFiles;
     if ( defined $excludeRegex ) {
-        say "Searching recursively in '$dir' for files matching /$findRegex/ and not matching /$excludeRegex/" unless $opt{quiet};
+        say "Searching recursively in '$dir' for files matching /$includeRegex/ and not matching /$excludeRegex/" unless $opt{quiet};
     } else {
-        say "Searching recursively in '$dir' for files matching /$findRegex/" unless $opt{quiet};
+        say "Searching recursively in '$dir' for files matching /$includeRegex/" unless $opt{quiet};
     }
     find(
         sub {
             #d '$File::Find::name';
-            if ( !-d and $File::Find::name =~ /$findRegex/ ) {
+            if ( !-d and $File::Find::name =~ /$includeRegex/ ) {
                 if ( defined $excludeRegex ) {
                     if ( $File::Find::name !~ /$excludeRegex/ ) {
                         push @foundFiles, $File::Find::name;
@@ -2222,7 +2271,7 @@ sub extension2zipcat {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v5 Fri Oct  9 07:09:56 PDT 2020
+v10 Fri Oct 16 12:47:05 PDT 2020
 
 
 This program is free software; you can redistribute it and/or modify
