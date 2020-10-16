@@ -113,6 +113,8 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        
        -comments          Remove any comments like // or # or single-line */ /*.  Also removes trailing whitespace
        
+       -dos2unix          Run all files through dos2unix
+       
        -round 'string'    Round all numbers according to the sprintf string
                           For example -round '%0.2f'
 
