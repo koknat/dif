@@ -718,15 +718,17 @@ if ( $opt{diff} ) {
 d '$gui';
 
 if ( $gui eq 'meld' ) {
-    my $meld;
     my $meld_161 = "/home/utils/meld-1.6.1/bin/meld";
     my $meld_186 = "/home/utils/meld-1.8.6/bin/meld";
+    my $meld=`which meld`;
+    chomp($meld);
     if ( -f $meld_186 ) {
         $meld = $meld_186;
     } elsif ( -f $meld_161 ) {
         $meld = $meld_161;
     } elsif ( -f '/usr/bin/meld' ) {
         $meld = '/usr/bin/meld';
+    } elsif ( -f $meld ) {  
     } else {
         say "WARNING:  meld not found.  Using gvimdiff instead" unless $opt{quiet};
         $meld = 'gvimdiff';
