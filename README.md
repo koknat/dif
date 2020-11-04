@@ -186,9 +186,9 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        -lsl               Useful when comparing previously captured output of 'ls -l'
                           Filters out everything except names and file sizes
           
-       -yaml              Used for comparing two yaml files via YAML::XS and Data::Dumper
+       -yaml              Compare two yaml files, sorting the keys
        
-       -json              Used for comparing two json files via JSON::XS and Data::Dumper
+       -json              Compare two json files, sorting the keys
 
        -perlDump          Useful when comparing previously captured output of Data::Dumper
                           filter out all SCALAR/HASH/ARRAY/REF/GLOB/CODE addresses from output of Dumpvalue,
