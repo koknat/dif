@@ -342,11 +342,12 @@ if ( runtests('dos2unix')  and  whichCommand('dos2unix') ) {
 
 eval 'use YAML::XS ()';
 if (! $@) {
-    if ( runtests('json') ) {
-        testcmd( $dif, "case14a.json case14b.json", "",            $fail );
-        testcmd( $dif, "case14a.json case14b.json", "-json",       $pass );
-        testcmd( $dif, "case14a.json case14a.json.gz", "",         $pass );
-        testcmd( $dif, "case14a.json case14c.json", "-json -case", $pass );
+    if ( runtests('yaml') ) {
+        testcmd( $dif, "case14a.yml case14b.yml", "",            $fail );
+        testcmd( $dif, "case14a.yml case14b.yml", "-yaml",       $pass );
+        testcmd( $dif, "case14a.yml case14a.yml.gz", "",         $pass );
+        testcmd( $dif, "case14a.yml case14c.yml", "-yaml -case", $pass );
+        testcmd( $dif, "case14a.yml.gz case14c.yml.gz", "-yaml -case", $pass );
     }
     if ( runtests('externalPreprocessScript') ) {
         # May fail because of YAML library dependency
@@ -358,11 +359,12 @@ if (! $@) {
 
 eval 'use JSON::XS ()';
 if (! $@) {
-    if ( runtests('yaml') ) {
-        testcmd( $dif, "case14a.yml case14b.yml", "",            $fail );
-        testcmd( $dif, "case14a.yml case14b.yml", "-yaml",       $pass );
-        testcmd( $dif, "case14a.yml case14a.yml.gz", "",         $pass );
-        testcmd( $dif, "case14a.yml case14c.yml", "-yaml -case", $pass );
+    if ( runtests('json') ) {
+        testcmd( $dif, "case14a.json case14b.json", "",            $fail );
+        testcmd( $dif, "case14a.json case14b.json", "-json",       $pass );
+        testcmd( $dif, "case14a.json case14a.json.gz", "",         $pass );
+        testcmd( $dif, "case14a.json case14c.json", "-json -case", $pass );
+        testcmd( $dif, "case14a.json.gz case14c.json.gz", "-json -case", $pass );
     }
 }
 
@@ -493,7 +495,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v10 Fri Oct 16 12:47:06 PDT 2020
+v15 Wed Nov  4 09:18:45 PST 2020
 
 
 This program is free software; you can redistribute it and/or modify

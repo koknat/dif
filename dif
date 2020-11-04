@@ -193,9 +193,9 @@ sub usage {
        -lsl               Useful when comparing previously captured output of 'ls -l'
                           Filters out everything except names and file sizes
           
-       -yaml              Used for comparing two yaml files via YAML::XS and Data::Dumper
+       -yaml              Compare two yaml files, sorting the keys
        
-       -json              Used for comparing two json files via JSON::XS and Data::Dumper
+       -json              Compare two json files, sorting the keys
 
        -perlDump          Useful when comparing previously captured output of Data::Dumper
                           filter out all SCALAR/HASH/ARRAY/REF/GLOB/CODE addresses from output of Dumpvalue,
@@ -642,7 +642,7 @@ if ($windows) {
 }
 # Check if files exist
 my @files = @ARGV;
-die "ERROR:  Directory $opt{dir2} not found!\n" if $opt{dir2} and ! -d $opt{dir2};  # TODO move this earlier
+die "ERROR:  Directory $opt{dir2} not found!\n" if $opt{dir2} and !-d $opt{dir2};               # TODO move this earlier
 if ( $opt{stdin} ) {
     $opt{stdout} = 1;
     my $content = do { local $/; <STDIN> };
@@ -653,6 +653,9 @@ if ( $opt{stdin} ) {
     $files[0] = $tmpfile;
 }
 if ( defined $opt{excludeFiles} and !defined $opt{includeFiles} ) {
+    $opt{includeFiles} = '.';
+}
+if ( $opt{dir2} and !defined $files[0] and !defined $opt{includeFiles} ) {
     $opt{includeFiles} = '.';
 }
 if ( defined $opt{includeFiles} ) {
@@ -674,8 +677,8 @@ if ( defined $opt{includeFiles} ) {
 #die "\@files = @files";
 usage() if ( $opt{help} or $opt{installationInstructions} );
 if ( !@files ) {
-    say "\nPrinting usage because no files were specified:    $originalCmdLine\n\n";
     usage();
+    say "\nNo files were specified:    $originalCmdLine\n\n";
 }
 $files[0] .= 'ead' if $files[0] =~ /#h$/;    # enable #h instead of #head
 $files[1] .= 'ead' if $files[0] =~ /#h$/;    # enable #h instead of #head
@@ -683,11 +686,19 @@ d '%opt @files';
 # To use with Windows, download http://strawberryperl.com and WinMerge.  Windows support is very limited, expect many features to not work, and prepare to do your own development
 
 # Handle custom file mappings from ~/.dif.fileMappings
-( my $filePrefix = $files[0] ) =~ s/(#.*)//;
-my $p4rev = $1 || '#head';
-if ( defined $customFilenameMappings{$filePrefix} ) {
+my ( $p4rev, $filePrefix );
+if ( $files[0] =~ /(#.*)/ ) {
+    ( $filePrefix = $files[0] ) =~ s/(#.*)//;
+    $p4rev = $1;
+} else {
+    $filePrefix = $files[0];
+    $p4rev      = '#head';
+}
+d '$p4rev $filePrefix %customFilenameMappings $customFilenameMappings{$filePrefix}';
+if ( defined $filePrefix and defined $customFilenameMappings{$filePrefix} ) {
     $files[0] = "$customFilenameMappings{$filePrefix}$p4rev";
 }
+d '@files';
 
 # Determine which diff tool to use
 # Start with $defaults{gui}, which is hard-coded or in ~/.dif.defaults
@@ -721,12 +732,14 @@ if ( $gui eq 'meld' ) {
     my $meld;
     my $meld_161 = "/home/utils/meld-1.6.1/bin/meld";
     my $meld_186 = "/home/utils/meld-1.8.6/bin/meld";
-    if ( -f $meld_186 ) {
+    if ( -f whichCommand('meld') ) {
+        $meld = whichCommand('meld');
+    } elsif ( -f '/usr/bin/meld' ) {
+        $meld = '/usr/bin/meld';
+    } elsif ( -f $meld_186 ) {
         $meld = $meld_186;
     } elsif ( -f $meld_161 ) {
         $meld = $meld_161;
-    } elsif ( -f '/usr/bin/meld' ) {
-        $meld = '/usr/bin/meld';
     } else {
         say "WARNING:  meld not found.  Using gvimdiff instead" unless $opt{quiet};
         $meld = 'gvimdiff';
@@ -770,6 +783,7 @@ $opt{stop}  = $opt{stop1}  if defined $opt{stop1};
 if ( not $files[1] and $opt{start2} ) {
     $files[1] = $files[0];
 }
+d '@files';
 
 if ( $opt{function} ) {
     if ( $opt{start} or $opt{stop} ) {
@@ -855,17 +869,18 @@ if ( grep { /\.xz/ } @zipExtension ) {
 }
 d '$zipDiff $preprocessRequired';
 
-$opt{quiet} = 1                                                        if $opt{stdout};
-$opt{head}  = 99999999999                                              if $opt{head} == 0;
-$opt{head}  = $defaults{head}                                          if $opt{head} == 1;
-$opt{head}  = $opt{headLines}                                          if $opt{headLines};
-$opt{tail}  = $defaults{head}                                          if $opt{tail} == 1;
-$opt{tail}  = $opt{tailLines}                                          if $opt{tailLines};
-$opt{dos2unix}  = "| dos2unix"                                         if $opt{dos2unix} ne "" and whichCommand('dos2unix');
-$opt{sort}  = "| sort"                                                 if $opt{sort} ne "";
-$opt{sort}  = "| perl -n00 -e 'push \@a, \$_; END { print sort \@a }'" if $opt{paragraphSort};
-$opt{uniq}  = "| uniq"                                                 if $opt{uniq} ne "" and whichCommand('uniq');
+$opt{quiet}    = 1                                                        if $opt{stdout};
+$opt{head}     = 99999999999                                              if $opt{head} == 0;
+$opt{head}     = $defaults{head}                                          if $opt{head} == 1;
+$opt{head}     = $opt{headLines}                                          if $opt{headLines};
+$opt{tail}     = $defaults{head}                                          if $opt{tail} == 1;
+$opt{tail}     = $opt{tailLines}                                          if $opt{tailLines};
+$opt{dos2unix} = "| dos2unix"                                             if $opt{dos2unix} ne "" and whichCommand('dos2unix');
+$opt{sort}     = "| sort"                                                 if $opt{sort} ne "";
+$opt{sort}     = "| perl -n00 -e 'push \@a, \$_; END { print sort \@a }'" if $opt{paragraphSort};
+$opt{uniq}     = "| uniq"                                                 if $opt{uniq} ne "" and whichCommand('uniq');
 if ( $opt{strings} ne "" ) {
+
     if ( whichCommand('strings') ) {
         $opt{strings} = "| strings";
     } else {
@@ -1170,7 +1185,7 @@ if ( $opt{report} ) {
             exit 1;
         }
         if ( -f $file or -l $file ) {
-            print `ls -l $file` if $opt{verbose};
+            print `ls -l '$file'` if $opt{verbose};
         }
     }
 }
@@ -1191,9 +1206,9 @@ if ( $opt{tree} ) {
         my @lslr;
         my $text;
         if ( whichCommand('tree') ) {
-            $text = `tree -s $dir`;
+            $text = `tree -s '$dir'`;
         } else {
-            @lslr = `ls -lR $dir`;
+            @lslr = `ls -lR '$dir'`;
             d '@lslr';
             for my $line (@lslr) {
                 d '$line';
@@ -1232,7 +1247,7 @@ if ( $opt{tree} ) {
         my $zipCat = extension2zipcat($f);
         d '$zipCat';
         die "ERROR:  File $f is tar a tar file" if basename($f) !~ /\.tar/;
-        my @tar = `$zipCat $f | tar -tv`;
+        my @tar = `$zipCat '$f' | tar -tv`;
         d '@tar';
         my $text;
 
@@ -1293,8 +1308,8 @@ if ( $opt{report} ) {
         }
     } elsif ( defined $opt{includeFiles} ) {
         # Create @filePairs
-        $files[0] = readlink($files[0]) if -l $files[0];
-        $files[1] = readlink($files[1]) if -l $files[1];
+        $files[0] = readlink( $files[0] ) if -l $files[0];
+        $files[1] = readlink( $files[1] ) if -l $files[1];
         @filePairs = findFilePairs( $files[0], $files[1], $opt{includeFiles}, $opt{excludeFiles} );
         d '@filePairs';
     } else {
@@ -1309,7 +1324,7 @@ if ( $opt{report} ) {
         $dir2 = $files[1];
     } elsif ( $opt{dir2} ) {
         # dif files* -dir2 path -report
-        $dir1 = basename( $files[0] );
+        $dir1 = dirname( $files[0] );    # This is the correct solution for  dif.pl /home/ate/scripts/release/gp100trial/a01/CAD/* -dir2 /home/ate/scripts/CAD -report
         $dir2 = $opt{dir2};
     } elsif ( $opt{gold} ) {
         # dif files* -gold -report
@@ -1321,7 +1336,7 @@ if ( $opt{report} ) {
         $dir2 = defined $files[1] ? $files[1] : "$files[0]_";
     }
     #my $tmpfileReport1 = sprintf( "%s__%s", basename($0), $dir1);
-    my $tmpfileReport1 = "_$dir1";    # _ is needed in case the dir is '.'
+    my $tmpfileReport1 = "_$dir1";       # _ is needed in case the dir is '.'
     $tmpfileReport1 =~ s{/}{_}g;
     $tmpfileReport1 = "/tmp/" . $tmpfileReport1;
     open( my $REPORT1, ">", $tmpfileReport1 ) or die "ERROR: Cannot open file for writing:  $tmpfileReport1\n\n";
@@ -1366,6 +1381,7 @@ if ( $opt{report} ) {
         d '$size1 $size2 $md5sum1 $md5sum2';
         my ( $file1mod, $file2mod );
         if ( -d $files[0] and -d $files[1] ) {
+            # dif dirA dirB
             ( $file1mod = $file1 ) =~ s{^$dir1/}{};
             ( $file2mod = $file2 ) =~ s{^$dir2/}{};
         } elsif ( $opt{dir2} ) {
@@ -1379,6 +1395,8 @@ if ( $opt{report} ) {
             ( $file1mod = $file1 );
             ( $file2mod = $file2 );
         }
+        $file1mod =~ s{^\./}{};
+        $file2mod =~ s{^\./}{};
         print $REPORT1 "$size1  $md5sum1  $file1mod\n";
         print $REPORT2 "$size2  $md5sum2  $file2mod\n";
         push @mismatches, $file1mod if $md5sum1 ne $md5sum2;
@@ -1419,7 +1437,7 @@ d '@processedFiles $preprocessRequired';
 if ( $preprocessRequired and $opt{verbose} ) {
     my $allProcessedFilesZeroSize = 1;
     for my $file (@processedFiles) {
-        print `ls -l $file`;
+        print `ls -l '$file'`;
         if ( -s $file ) {
             #d("File $file has zero size");
             $allProcessedFilesZeroSize = 0;
@@ -1455,8 +1473,8 @@ if ( scalar(@files) == 2 and not -d $files[0] and not $opt{stdout} ) {
     # Check exit status
     if ( $? == 0 ) {
         d '@files @localFiles @processedFiles';
-        chomp( my $status1 = `md5sum $localFiles[0] | cut -d ' ' -f 1` );
-        chomp( my $status2 = `md5sum $localFiles[1] | cut -d ' ' -f 1` );
+        chomp( my $status1 = `md5sum '$localFiles[0]' | cut -d ' ' -f 1` );
+        chomp( my $status2 = `md5sum '$localFiles[1]' | cut -d ' ' -f 1` );
         d '$status1 $status2';
         if ( $status1 ne $status2 ) {
             say "These files are identical after preprocessing.  Exiting.\n";
@@ -1582,11 +1600,11 @@ sub preprocessFile {
     if ( $opt{perlEval} or $opt{yaml} or $opt{json} or $opt{functionSort} ) {
         my $result;
         if ( $opt{perlEval} ) {
-            $result = sortYamlPerlJson( $file, 'perlEval' );
+            $result = sortYamlPerlJson( $file, $zipCat, 'perlEval' );
         } elsif ( $opt{yaml} ) {
-            $result = sortYamlPerlJson( $file, 'yaml' );
+            $result = sortYamlPerlJson( $file, $zipCat, 'yaml' );
         } elsif ( $opt{json} ) {
-            $result = sortYamlPerlJson( $file, 'json' );
+            $result = sortYamlPerlJson( $file, $zipCat, 'json' );
         } elsif ( $opt{functionSort} ) {
             $result = functionSort($file);
         } else {
@@ -1596,7 +1614,7 @@ sub preprocessFile {
         open( my $TMP2, ">", $tmpfilePerlEvalEtc ) or die "ERROR: Cannot open file for writing:  $tmpfilePerlEvalEtc\n\n";
         print $TMP2 $result;
         close $TMP2;
-        open( $F, "cat $tmpfilePerlEvalEtc |" ) or die "ERROR: Cannot open file for reading:  $tmpfilePerlEvalEtc\n\n";
+        open( $F, "cat '$tmpfilePerlEvalEtc' |" ) or die "ERROR: Cannot open file for reading:  $tmpfilePerlEvalEtc\n\n";
     } else {
         my $preprocess_pipe = "";
         if ( $opt{bin} ) {
@@ -1628,14 +1646,14 @@ sub preprocessFile {
             # perltidy -st sends output to stdout
             $preprocess_pipe = "| $defaults{perltidy} -st";
         }
-        open( $F, "$zipCat $file $preprocess_pipe |" ) or die "ERROR: Cannot open file for reading:  $file\n\n";
+        open( $F, "$zipCat '$file' $preprocess_pipe |" ) or die "ERROR: Cannot open file for reading:  $file\n\n";
     }
     if ( $opt{verbose} ) {
         say "\n\n\n" if $opt{gold};    # To visually separate the diffs
         say "Preprocessing $file";
     }
     my $wc = "?";
-    $wc = `$zipCat $file | wc -l | cut -d " " -f 1` if $opt{tail};
+    $wc = `$zipCat '$file' | wc -l | cut -d " " -f 1` if $opt{tail};
     d('$wc') if $opt{tail};
     open( my $TMP, "$opt{strings} $opt{sort} $opt{uniq} $opt{fold} $opt{dos2unix} > $tmpfile" ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";
     my $firstLine = $opt{tail} ? ( $wc - $opt{tail} + 1 ) : -1;
@@ -1920,7 +1938,7 @@ sub handleSCM {
         d '$pwd';
         $command2 = "cd $pwd; $command2";
     } elsif ( $scm eq 'git' ) {
-        chomp( my $gitPath = `git ls-files --full-name $file` );
+        chomp( my $gitPath = `git ls-files --full-name '$file'` );
         d '$gitPath';
         if ( $gitPath eq '' ) {
             die "ERROR:  Could not get git path of $file\n";
@@ -1949,9 +1967,9 @@ sub indent {
 }
 
 sub sortYamlPerlJson {
-    my ( $file, $type ) = @_;
-    d '$file $type';
-    open my $fh, '<', $file or die;
+    my ( $file, $zipCat, $type ) = @_;
+    d '$file $zipCat $type';
+    open( my $fh, "$zipCat $file |" ) or die "ERROR: Cannot open file for reading:  $file\n\n";
     local $/ = undef;
     my $data = <$fh>;
     close $fh;
@@ -1968,12 +1986,12 @@ sub sortYamlPerlJson {
             say "            install YAML::XS";
             exit 1;
         } else {
-            $ref = YAML::XS::LoadFile($file);
-            #$ref = YAML::Syck::LoadFile($file);
+            $ref = YAML::XS::Load($data);
+            #$ref = YAML::Syck::Load($data);
             d '$ref';
             if (1) {
-                $Data::Dumper::Indent = 1 ;  # default = 2, which uses a lot of horizontal space
-                $Data::Dumper::Sortkeys = 1;  # produces warning on 5.6.1
+                $Data::Dumper::Indent   = 1;    # default = 2, which uses a lot of horizontal space
+                $Data::Dumper::Sortkeys = 1;    # produces warning on 5.6.1
                 return Dumper($ref);
             } else {
                 my $text = YAML::XS::Dump($ref);
@@ -1983,7 +2001,7 @@ sub sortYamlPerlJson {
     } elsif ( $type eq 'perlEval' ) {
         $ref = eval($data);
         d '$ref';
-        $Data::Dumper::Sortkeys = 1;  # produces warning on 5.6.1
+        $Data::Dumper::Sortkeys = 1;            # produces warning on 5.6.1
         return Dumper($ref);
     } elsif ( $type eq 'json' ) {
         # eval because JSON::XS might not be installed
@@ -1994,16 +2012,11 @@ sub sortYamlPerlJson {
             say "            install YAML::XS";
             exit 1;
         } else {
-            my $json;
-            local $/;
-            open my $fh, "<", $file;
-            $json = <$fh>;
-            close $fh;
-            $ref = JSON::XS::decode_json($json);
+            $ref = JSON::XS::decode_json($data);
             d '$ref';
             if (1) {
-                $Data::Dumper::Indent = 1 ;  # default = 2, which uses a lot of horizontal space
-                $Data::Dumper::Sortkeys = 1;  # produces warning on 5.6.1
+                $Data::Dumper::Indent   = 1;    # default = 2, which uses a lot of horizontal space
+                $Data::Dumper::Sortkeys = 1;    # produces warning on 5.6.1
                 return Dumper($ref);
             } else {
                 my $text = JSON::XS::Dump($ref);
@@ -2062,10 +2075,11 @@ sub whichCommand {
     my $executableAndOptions = shift;
     ( my $executable = $executableAndOptions ) =~ s/^(\S+).*/$1/;    # Strip any options before using 'which'
     my $which = `which $executable 2> /dev/null`;
+    #say "$which";die;
     #my $which = `which $executable`;
-    #return 0 if $which eq '' or $which =~ /Command not found/;
-    return 0 if $which eq '';
-    return 1;
+    #return undef if $which eq '' or $which =~ /Command not found/;
+    return undef if $which eq '';
+    return $which;
 }
 
 # Convert list to pairs
@@ -2112,7 +2126,7 @@ sub runFileFind {
     d '$dir $includeRegex $excludeRegex';
     die "\nERROR:  directory $dir does not exist\n" if !-d $dir;
     #$includeRegex =~ s/[^.]\*/.*/g;  # Don't want to use this, because it may corrupt valid Perl regexes
-    $includeRegex    =~ s/^\*/.*/ if defined $includeRegex;       # *.py to .*.py
+    $includeRegex =~ s/^\*/.*/ if defined $includeRegex;    # *.py to .*.py
     $excludeRegex =~ s/^\*/.*/ if defined $excludeRegex;    # *.pyc to .*.pyc
     my @foundFiles;
     if ( defined $excludeRegex ) {
@@ -2237,6 +2251,7 @@ sub determineTmpFilename {
     my ( $file, $count ) = @_;
     $count = 0 if !defined $count;
     my $tmpfile = sprintf( "%s/%d__%s", $globaltmpdir, $count, basename($file) );
+    $tmpfile =~ s/\s+/_/g;
     $tmpfile =~ s/#/_/g;
     $tmpfile =~ s{/}{\\}g if $windows;
     $tmpfile =~ s/(\.(gz|bz2|xz|zip))//;
@@ -2271,7 +2286,7 @@ sub extension2zipcat {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v10 Fri Oct 16 12:47:05 PDT 2020
+v15 Wed Nov  4 09:18:45 PST 2020
 
 
 This program is free software; you can redistribute it and/or modify
