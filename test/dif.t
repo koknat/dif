@@ -3,6 +3,7 @@
 use warnings;
 use strict;
 use File::Basename qw(basename dirname);
+use File::Temp qw(tempdir);
 use Getopt::Long;
 use Test::More qw( no_plan );  # 5.8.1 or newer
 $SIG{__WARN__} = sub { die @_ };  # die instead of produce warnings
@@ -411,7 +412,8 @@ sub testcmd {
 # test_cmdquiet($cmd, $filelist, $options, $expected_exitstatus)
 sub test_cmdquiet {
     my ( $cmd, $filelist, $options, $expected_exitstatus ) = @_;
-    my $tmpfile = "/tmp/dif_${$}_quiet.txt";
+    my $globaltmpdir = tempdir( '/tmp/d_XXXX', CLEANUP => 1 );
+    my $tmpfile = "$globaltmpdir/dif_${$}_quiet.txt";
     my @filelist = split /\s+/, $filelist;
     if ( @filelist ) {
         @filelist = map { "$testDir/$_" } @filelist unless $filelist[0] =~ m{^//};
@@ -495,7 +497,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v15 Wed Nov  4 09:18:45 PST 2020
+v17 Tue Dec 15 10:23:29 PST 2020
 
 
 This program is free software; you can redistribute it and/or modify
