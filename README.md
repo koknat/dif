@@ -364,6 +364,9 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                           For example:
                               dif file -stdout <options> | another_script
                           If -stdin is given, then -stdout is assumed
+                          
+       -keeptmp           Default behavior is to remove the tmp directory containing preprocessed files
+                          This option keeps it
 
 
     Default compare tool:
