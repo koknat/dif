@@ -308,11 +308,17 @@ sub usage {
                              
                              Any of the preprocessing options may be used
       
-      -report                For use with two directories  or  -dir2 <dir>  or  -gold
+      -report                When used with two directories  or  -dir2 <dir>  or  -gold
                              Instead of opening GUIs for each file pair, generate report of mismatching or missing files
                              For example:
                                  $scriptName dirA dirB -report
                              Any of the preprocessing options may be used
+
+                             It can also be used to print a simple report of file sizes and md5sums (not a comparison)
+                             For example:
+                                 $scriptName * -report
+                                     or
+                                 $scriptName */file -report
 
       -includeFiles <regex>  
       -excludeFiles <regex>  Both options are for use with two directories  or  -dir2 <dir>  or  -gold
@@ -498,12 +504,14 @@ To run $scriptName
 # 	switch to gvimdiff if processed file size is too large
 # 	meld/gvimdiff/tkdiff/kompare
 
+#$SIG{__WARN__} = sub { die @_ };  # die instead of produce warnings
+
 # Debugger from CPAN
-sub D { say "Debug::Statements has been disabled to improve performance" }
-sub d { }
+sub D  { say "Debug::Statements has been disabled to improve performance" }
+sub d  { }
+sub ls { }
 #use lib "/home/ate/scripts/regression";
 #use Debug::Statements ":all";  # d ''
-#$SIG{__WARN__} = sub { die @_ };  # die instead of produce warnings
 
 # Surround all arguments with '', except for options such as -grep
 my $originalCmdLine = "$0 " . "'" . join( "' '", @ARGV ) . "'";
@@ -1279,16 +1287,18 @@ if ( $opt{fieldJustify} ) {
 
 # Handle -report with preprocessing
 if ( $opt{report} ) {
-    # For regression testing
-    #     ~/r/k/dif -gold file1 file3 file4 file5
+    my @filePairs;
+    my $maxLength = 0;
     if ( !$opt{gold} and !$opt{dir2} and !defined $opt{includeFiles} ) {
-        die "ERROR:  option -report must be used with either -dir2 or -gold or -includeFiles <regex>\n";
+        d "Option -report must be used with either -dir2 or -gold or -includeFiles <regex>\n";
+        #die "ERROR:  option -report must be used with either -dir2 or -gold or -includeFiles <regex>\n";
     }
     # Construct @filePairs
     d '@files';
-    my @filePairs;
-    my $maxLength = 0;
+    my $printToScreen;
     if ( $opt{gold} ) {
+        # For regression testing
+        #     ~/r/k/dif -gold file1 file3 file4 file5
         for my $file (@files) {
             next if -d $file;
             my ( $goldfile, $position ) = toFromGolden($file);
@@ -1301,6 +1311,7 @@ if ( $opt{report} ) {
             }
             $maxLength = length($file) if length($file) > $maxLength;
         }
+        $printToScreen = 0;
     } elsif ( $opt{dir2} ) {
         die "ERROR:  Directory $opt{dir2} not found!\n" if !-d $opt{dir2};
         for my $file (@files) {
@@ -1310,14 +1321,24 @@ if ( $opt{report} ) {
             push @filePairs, $dir2file;
             $maxLength = length($file) if length($file) > $maxLength;
         }
+        $printToScreen = 0;
     } elsif ( defined $opt{includeFiles} ) {
         # Create @filePairs
         $files[0] = readlink( $files[0] ) if -l $files[0];
         $files[1] = readlink( $files[1] ) if -l $files[1];
         @filePairs = findFilePairs( $files[0], $files[1], $opt{includeFiles}, $opt{excludeFiles} );
         d '@filePairs';
+        $printToScreen = 0;
     } else {
-        die "Program bug";
+        # Print file sizes and md5sums to screen
+        # dif */file -report
+        # Future improvment:  this does twice the necessary work, since we're not comparing two different sets of files
+        for my $file (@files) {
+            push @filePairs, $file;
+            push @filePairs, $file;
+            $maxLength = length($file) if length($file) > $maxLength;
+        }
+        $printToScreen = 1;
     }
     d '@filePairs';
     my $count = 0;
@@ -1367,6 +1388,9 @@ if ( $opt{report} ) {
             $size1 = sprintf( "%10s", -s $tmpfile1 );
             chomp( $md5sum1 = `md5sum $tmpfile1 2> /dev/null` );
             $md5sum1 =~ s/^(\S+).*/$1/;
+        } elsif ( -d $file1 ) {
+            $size1 = sprintf( "%10s", "" );
+            $md5sum1 = '___________DIRECTORY____________';
         } else {
             $size1 = sprintf( "%10s", "" );
             $md5sum1 = '_________DOES_NOT_EXIST_________';
@@ -1378,6 +1402,9 @@ if ( $opt{report} ) {
             $size2 = sprintf( "%10s", -s $tmpfile2 );
             chomp( $md5sum2 = `md5sum $tmpfile2 2> /dev/null` );
             $md5sum2 =~ s/^(\S+).*/$1/;
+        } elsif ( -d $file2 ) {
+            $size2 = sprintf( "%10s", "" );
+            $md5sum2 = '___________DIRECTORY____________';
         } else {
             $size2 = sprintf( "%10s", "" );
             $md5sum2 = '_________DOES_NOT_EXIST_________';
@@ -1395,7 +1422,7 @@ if ( $opt{report} ) {
             ( $file1mod, my $position ) = toFromGolden($file1);
             ( $file2mod = $file2 );
         } else {
-            # not sure if there is a use case for this, but putting it here just in case
+            # */file -report
             ( $file1mod = $file1 );
             ( $file2mod = $file2 );
         }
@@ -1407,6 +1434,11 @@ if ( $opt{report} ) {
     }
     close $REPORT1;
     close $REPORT2;
+    if ($printToScreen) {
+        ls "$tmpfileReport1";
+        say "\n" . `cat $tmpfileReport1`;
+        exit 0;
+    }
     @files = ( $tmpfileReport1, $tmpfileReport2 );
     # The exit statuses below are used in regressions
     d '@mismatches';
@@ -1490,7 +1522,7 @@ if ( scalar(@files) == 2 and not -d $files[0] and not $opt{stdout} ) {
         exit 0;
     }
 }
-say "Opening $gui GUI..." if scalar(@files) == 2 and not $opt{quiet};
+ls $processedFiles;
 
 # Use gvimdiff instead of meld or kompare once the file size reaches a limit
 if ( $gui =~ /meld|kompare/ ) {
@@ -1530,6 +1562,13 @@ if ( $gui =~ /meld|kompare/ ) {
     }
     d '$gui';
 }
+( my $guiAbbrev = $gui ) =~ s/^(\S+).*/$1/;
+if ( $guiAbbrev =~ /(gvimdiff)/ and !$opt{keeptmp} ) {
+    # In contrast to meld, gvimdiff by default forks a subprocess
+    # Wait for gvimdiff to finish before cleaning up files
+    $gui .= ' --nofork';
+}
+say "Opening $guiAbbrev GUI..." if scalar(@files) == 2 and not $opt{quiet};
 
 # Run meld/gvimdiff/tkdiff/kompare
 my $command;
@@ -1568,6 +1607,7 @@ if ( $files[0] =~ /\.binl$/ and not $opt{strings} ) {
 }
 say "";
 system($command);    # system() runs an command and waits for it to return
+#say "Exiting";
 exit 0;
 
 ### END MAIN ###
@@ -2298,7 +2338,7 @@ sub extension2zipcat {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v17 Tue Dec 15 10:23:29 PST 2020
+v18 Wed Jan 13 08:40:03 PST 2021
 
 
 This program is free software; you can redistribute it and/or modify

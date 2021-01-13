@@ -241,6 +241,18 @@ if ( runtests('xz')  and  whichCommand('xzcat') ) {
     testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt.xz",  "-sort", $pass );
 }
 
+if ( runtests('report') ) {
+    # Simply list files with sizes and md5sums
+    chdir("$testDir");
+    
+    my $cmd = "$dif dirA/* -report";
+    chomp(my $result = `$cmd`);
+    d '$cmd $result';
+    like($result, qr{187  3f6bc5fdac37347e2c6913259470ae9c}, 'report');
+    
+    chdir("$pwd");
+}
+
 if ( runtests('dirs') ) {
     # Compare two directories.  -report is used for facilitating testing
     # MAIN    dirA         dirB
@@ -497,7 +509,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v17 Tue Dec 15 10:23:29 PST 2020
+v18 Wed Jan 13 08:40:04 PST 2021
 
 
 This program is free software; you can redistribute it and/or modify
