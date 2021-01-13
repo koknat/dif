@@ -300,6 +300,12 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                              For example:
                                  dif dirA dirB -report
                              Any of the preprocessing options may be used
+                             
+                             It can also be used to print a report of file sizes and md5sums
+                             For example:
+                                 dif * -report
+                                     or
+                                 dif */file -report
 
       -includeFiles <regex>  
       -excludeFiles <regex>  Both options are for use with two directories  or  -dir2 <dir>  or  -gold
