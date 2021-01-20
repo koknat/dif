@@ -248,7 +248,7 @@ if ( runtests('report') ) {
     my $cmd = "$dif dirA/* -report";
     chomp(my $result = `$cmd`);
     d '$cmd $result';
-    like($result, qr{187  3f6bc5fdac37347e2c6913259470ae9c}, 'report');
+    like($result, qr{187\s+4\s+3f6bc5fdac37347e2c6913259470ae9c}, 'report');
     
     chdir("$pwd");
 }
@@ -509,7 +509,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v18 Wed Jan 13 08:40:04 PST 2021
+v19 Tue Jan 19 19:11:00 PST 2021
 
 
 This program is free software; you can redistribute it and/or modify

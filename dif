@@ -314,7 +314,8 @@ sub usage {
                                  $scriptName dirA dirB -report
                              Any of the preprocessing options may be used
 
-                             It can also be used to print a simple report of file sizes and md5sums (not a comparison)
+                             It can also be used to print a simple report of
+                             file sizes, number of lines, and md5sums (not a comparison)
                              For example:
                                  $scriptName * -report
                                      or
@@ -1371,13 +1372,14 @@ if ( $opt{report} ) {
     $tmpfileReport2 = "$globaltmpdir/" . $tmpfileReport2;
     open( my $REPORT2, ">", $tmpfileReport2 ) or die "ERROR: Cannot open file for writing:  $tmpfileReport2\n\n";
     d '$dir1 dir2 $tmpfileReport1 $tmpfileReport2';
-    say "Generating reports with file sizes and md5sums at $tmpfileReport1 and $tmpfileReport2" unless $opt{quiet};
-    my @mismatches;
-    printf $REPORT1 "%10s  %32s  %s\n", 'SIZE', 'MD5SUM', 'FILENAME';
-    printf $REPORT2 "%10s  %32s  %s\n", 'SIZE', 'MD5SUM', 'FILENAME';
+    say "Generating reports with file sizes, number of lines, and md5sums at $tmpfileReport1 and $tmpfileReport2" unless $opt{quiet};
+    my $format = "%10s  %8s  %32s  %s\n";
+    printf $REPORT1 $format, 'SIZE', 'LINES', 'MD5SUM', 'FILENAME';
+    printf $REPORT2 $format, 'SIZE', 'LINES', 'MD5SUM', 'FILENAME';
 
+    my @mismatches;
     while (@filePairs) {
-        my ( $file1, $file2, $tmpfile1, $tmpfile2, $size1, $size2, $md5sum1, $md5sum2 );
+        my ( $file1, $file2, $tmpfile1, $tmpfile2, $size1, $size2, $numlines1, $numlines2, $md5sum1, $md5sum2 );
         $file1 = shift(@filePairs);
         $file2 = shift(@filePairs);
         d '$file1 $file2';
@@ -1385,31 +1387,37 @@ if ( $opt{report} ) {
         if ( -f $file1 ) {
             $tmpfile1 = determineTmpFilename( $file1, $count );
             preprocessFile( $file1, $tmpfile1, $count % 2 );    # %2 for -start2 -stop2
-            $size1 = sprintf( "%10s", -s $tmpfile1 );
-            chomp( $md5sum1 = `md5sum $tmpfile1 2> /dev/null` );
+            $size1 = -s $tmpfile1;
+            chomp( $numlines1 = `wc -l $tmpfile1 | cut -f 1 -d ' '` );
+            chomp( $md5sum1   = `md5sum $tmpfile1 2> /dev/null` );
             $md5sum1 =~ s/^(\S+).*/$1/;
         } elsif ( -d $file1 ) {
-            $size1 = sprintf( "%10s", "" );
-            $md5sum1 = '___________DIRECTORY____________';
+            chomp( $size1 = `find $file1 -type f | wc -l` );
+            $numlines1 = "";
+            $md5sum1   = '___________DIRECTORY____________';
         } else {
-            $size1 = sprintf( "%10s", "" );
-            $md5sum1 = '_________DOES_NOT_EXIST_________';
+            $size1     = "";
+            $numlines1 = "";
+            $md5sum1   = '_________DOES_NOT_EXIST_________';
         }
         $count++;
         if ( -f $file2 ) {
             $tmpfile2 = determineTmpFilename( $file2, $count );
             preprocessFile( $file2, $tmpfile2, $count % 2 );    # %2 for -start2 -stop2
             $size2 = sprintf( "%10s", -s $tmpfile2 );
-            chomp( $md5sum2 = `md5sum $tmpfile2 2> /dev/null` );
+            chomp( $numlines2 = `wc -l $tmpfile2 | cut -f 1 -d ' '` );
+            chomp( $md5sum2   = `md5sum $tmpfile2 2> /dev/null` );
             $md5sum2 =~ s/^(\S+).*/$1/;
         } elsif ( -d $file2 ) {
-            $size2 = sprintf( "%10s", "" );
-            $md5sum2 = '___________DIRECTORY____________';
+            chomp( $size2 = `find $file2 -type f | wc -l` );
+            $numlines2 = "";
+            $md5sum2   = '___________DIRECTORY____________';
         } else {
-            $size2 = sprintf( "%10s", "" );
-            $md5sum2 = '_________DOES_NOT_EXIST_________';
+            $size2     = "";
+            $numlines2 = "";
+            $md5sum2   = '_________DOES_NOT_EXIST_________';
         }
-        d '$size1 $size2 $md5sum1 $md5sum2';
+        d '$size1 $size2 $numlines1 $numlines2 $md5sum1 $md5sum2';
         my ( $file1mod, $file2mod );
         if ( -d $files[0] and -d $files[1] ) {
             # dif dirA dirB
@@ -1428,8 +1436,10 @@ if ( $opt{report} ) {
         }
         $file1mod =~ s{^\./}{};
         $file2mod =~ s{^\./}{};
-        print $REPORT1 "$size1  $md5sum1  $file1mod\n";
-        print $REPORT2 "$size2  $md5sum2  $file2mod\n";
+        #printf $REPORT2 $format, 'SIZE', 'LINES', 'MD5SUM', 'FILENAME';
+        #print $REPORT1 "$size1  $md5sum1  $file1mod\n";
+        printf $REPORT1 $format, $size1, $numlines1, $md5sum1, $file1mod;
+        printf $REPORT2 $format, $size2, $numlines2, $md5sum2, $file2mod;
         push @mismatches, $file1mod if $md5sum1 ne $md5sum2;
     }
     close $REPORT1;
@@ -2338,7 +2348,7 @@ sub extension2zipcat {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v18 Wed Jan 13 08:40:03 PST 2021
+v19 Tue Jan 19 19:11:00 PST 2021
 
 
 This program is free software; you can redistribute it and/or modify
