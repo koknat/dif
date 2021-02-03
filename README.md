@@ -2,6 +2,9 @@
 ![Alt text](dif_before_after.png?raw=true "Comparison of  meld  vs  dif with option -comments")
 
 
+
+
+
 ![Alt text](dif_before_after_directory_meld.png?raw=true "Comparison of two directories")
 
 
