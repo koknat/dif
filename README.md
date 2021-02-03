@@ -8,7 +8,8 @@ Preprocessing options include:
 * search/replace
 * keep/ignore certain lines
 * json/yaml reformatting
-* *many others*
+* many others
+
 <br/>
 <br/>
 ![Alt text](dif_before_after.png?raw=true "Comparison of  meld  vs  dif with option -comments")
