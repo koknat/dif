@@ -2,7 +2,7 @@
 
 **Use case #1**  
 <br/>
-Compare files using preprocessing options, such as remove comments/whitespace/timestamps, search/replace, keep/ignore only certain lines, json/yaml reformatting, etc
+Compare files using preprocessing options, such as remove comments/whitespace/timestamps, search/replace, keep/ignore certain lines, json/yaml reformatting, etc
 <br/>
 <br/>
 ![Alt text](dif_before_after.png?raw=true "Comparison of  meld  vs  dif with option -comments")
