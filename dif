@@ -1,5 +1,5 @@
 #!/usr/bin/perl
-# #!/home/utils/perl5/perlbrew/perls/5.26.2-058/bin/perl
+# #!/home/utils/perl-5.26/5.26.2-058/bin/perl
 # This code has been tested on perl 5.6.1 through 5.30
 use warnings;
 use strict;
@@ -1708,7 +1708,7 @@ sub preprocessFile {
         print $TMP2 $result;
         close $TMP2;
         open( $F, "cat '$tmpfilePerlEvalEtc' |" ) or die "ERROR: Cannot open file for reading:  $tmpfilePerlEvalEtc\n\n";
-    } elsif ( $file =~ /\.pdf$/ ) {
+    } elsif ( $file =~ /\.pdf$/ and !$opt{report} ) {
         my $tmpfile;
         eval 'use CAM::PDF ()';
         if ($@) {
@@ -1734,8 +1734,75 @@ sub preprocessFile {
             ls $tmpfile;
         }
         open( $F, "cat '$tmpfile' |" ) or die "ERROR: Cannot open file for reading:  $tmpfile\n\n";
-    } elsif ( $file =~ /\.xls[mx]?$/ ) {
-        my $tmpfile;
+        #} elsif ( $file =~ /\.(xls[mx]?|ods)$/ and ! $opt{report} ) {
+    } elsif ( $file =~ /\.(ods)$/ and !$opt{report} ) {
+        eval 'use Spreadsheet::Read (); use Spreadsheet::ReadSXC ()';
+        if ($@) {
+            #say "ERROR:  Install Spreadsheet::Read and Spreadsheet::ReadSXC from CPAN to parse xls|xlsm|xlsx|ods spreadsheets";
+            say "ERROR:  Install Spreadsheet::Read and Spreadsheet::ReadSXC from CPAN to parse .ods spreadsheets";
+            say "        sudo cpan";
+            say "            install Spreadsheet::Read";
+            say "            install Spreadsheet::ReadSXC";
+            #say "            install Spreadsheet::ReadSXC  (only if .ods OpenOffice support is needed)";
+            exit 1;
+        } else {
+            my $tmpfile = sprintf( "$globaltmpdir/%s_%s_%s.dumpODS", basename($0), $$, basename($file) );
+            open( my $TMP, ">", $tmpfile ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";
+            # DEBUG sub preprocessFile:  $book = [
+            #     {
+            #       'error' => undef,
+            #       'parser' => 'Spreadsheet::ParseXLSX',
+            #       'parsers' => [
+            #                      {
+            #                        'parser' => 'Spreadsheet::ParseXLSX',
+            #                        'type' => 'xlsx',
+            #                        'version' => '0.27'
+            #                      }
+            #                    ],
+            #       'sheet' => {
+            #                    'my_second_sheet' => 2,
+            #                    'my_first_sheet' => 1,
+            #                  },
+            #       'sheets' => 2,
+            #       'type' => 'xlsx',
+            #       'version' => '0.27'
+            #     },
+            #     {
+            #       'A1' => 'Name',  # sheet 1
+            #       'A2' => 'foo',
+            #       'A3' => 'bar',
+            #     },
+            #     {
+            #       'A1' => 'Name',  # sheet 2
+            #       'A2' => 'baz',
+            #       'A3' => 'qux',
+            #     }
+            #   }
+            # ]
+            #d '$book';
+            my $book = Spreadsheet::Read::ReadData($file) || die "Could not open '$file': $!";
+            my @sheetMapping;
+            for my $sheetName ( keys %{ $book->[0]{sheet} } ) {
+                $sheetMapping[ $book->[0]{sheet}{$sheetName} ] = $sheetName;
+            }
+            #d '@sheetMapping';
+            for my $sheetNum ( 1 .. @sheetMapping - 1 ) {
+                #d '$sheetNum';
+                print $TMP '*** ', $sheetMapping[$sheetNum], " ***\n";
+                #print '*** ', $sheetMapping[$sheetNum], " ***\n";
+                my @rows = Spreadsheet::Read::rows( $book->[$sheetNum] );
+                #d '@rows';
+                for my $row (@rows) {
+                    no warnings qw(uninitialized);
+                    print $TMP join( '|', @$row ), "\n";
+                    #print join( '|', @$row ), "\n";
+                }
+            }
+            close $TMP;
+            ls $tmpfile;
+            open( $F, "cat '$tmpfile' |" ) or die "ERROR: Cannot open file for reading:  $tmpfile\n\n";
+        }
+    } elsif ( $file =~ /\.(xls[mx]?)$/ and !$opt{report} ) {
         eval 'use Spreadsheet::BasicRead ()';
         if ($@) {
             say "ERROR:  Install Spreadsheet::BasicRead from CPAN to parse xls|xlsm|xlsx spreadsheets";
@@ -1743,7 +1810,7 @@ sub preprocessFile {
             say "            install Spreadsheet::BasicRead";
             exit 1;
         } else {
-            $tmpfile = sprintf( "$globaltmpdir/%s_%s_%s.dumpXLS", basename($0), $$, basename($file) );
+            my $tmpfile = sprintf( "$globaltmpdir/%s_%s_%s.dumpXLS", basename($0), $$, basename($file) );
             open( my $TMP, ">", $tmpfile ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";
             my $ss = new Spreadsheet::BasicRead($file) || die "Could not open '$file': $!";
             do {
@@ -1759,8 +1826,8 @@ sub preprocessFile {
             } while ( $ss->getNextSheet() );
             close $TMP;
             ls $tmpfile;
+            open( $F, "cat '$tmpfile' |" ) or die "ERROR: Cannot open file for reading:  $tmpfile\n\n";
         }
-        open( $F, "cat '$tmpfile' |" ) or die "ERROR: Cannot open file for reading:  $tmpfile\n\n";
     } else {
         my $preprocess_pipe = "";
         if ( $opt{bin} ) {
@@ -2514,7 +2581,7 @@ sub extension2zipcat {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v31 Tue Feb  2 17:25:43 PST 2021
+v32 Wed Feb  3 14:44:43 PST 2021
 
 
 This program is free software; you can redistribute it and/or modify

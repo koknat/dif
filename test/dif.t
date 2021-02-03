@@ -388,9 +388,18 @@ eval 'use Spreadsheet::BasicRead ()';
 if (! $@) {
     if ( runtests('xls') ) {
         testcmd( $dif, "case08a.xls case08b.xls", "", $pass );  # 08b has bold text, but same values
-        testcmd( $dif, "case08a.xls case08c.xls", "", $fail );
+        testcmd( $dif, "case08a.xls case08c.xls", "", $fail );  # 08c has different values
     }
 }
+
+eval 'use CAM::PDF ()';
+if (! $@) {
+    if ( runtests('pdf') ) {
+        testcmd( $dif, "case01a_hosts.pdf case01e_hosts_scrambled.pdf", "", $fail );
+        testcmd( $dif, "case01a_hosts.pdf case01e_hosts_scrambled.pdf", "-sort", $pass );
+    }
+}
+
 
 if ( $opt{extraTests}  or  -d "/home/ckoknat" ) {
     unless ( $opt{test} ) {
@@ -519,7 +528,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v31 Tue Feb  2 17:25:43 PST 2021
+v32 Wed Feb  3 14:44:44 PST 2021
 
 
 This program is free software; you can redistribute it and/or modify
