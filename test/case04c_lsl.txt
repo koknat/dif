@@ -1,0 +1,10 @@
+-r--r--r-- 1 ckoknat hardware  19255 Jan 29 16:10 5.26.2/Spreadsheet/BasicRead.pm
+-r--r--r-- 1 ckoknat hardware  10930 Jan 29 16:10 5.26.2/Spreadsheet/BasicReadNamedCol.pm
+-r--r--r-- 1 ckoknat hardware  15355 Jan 29 16:10 5.26.2/Spreadsheet/ExcelHashTable.pm
+-r-xr-xr-x 1 ckoknat hardware 115063 Jan 29 16:10 5.26.2/Spreadsheet/ParseExcel.pm
+-r--r--r-- 1 ckoknat hardware  40468 Jan 29 16:10 5.26.2/Spreadsheet/ParseXLSX.pm
+-r-xr-xr-x 1 ckoknat hardware  80462 Jan 29 16:10 5.26.2/Spreadsheet/Read.pm
+-r--r--r-- 1 ckoknat hardware 224816 Jan 29 16:10 5.26.2/Spreadsheet/WriteExcel.pm
+-r-xr-xr-x 1 ckoknat hardware  10835 Jan 29 16:10 5.26.2/Spreadsheet/XLSX.pm
+-r-xr-xr-x 1 ckoknat hardware   1624 Jan 29 16:10 5.26.2/Spreadsheet/dumpSS.pl
+-r-xr-xr-x 1 ckoknat hardware   3855 Jan 29 16:10 5.26.2/Spreadsheet/xlsgrep.pl

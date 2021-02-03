@@ -1,5 +1,5 @@
 
-The graphical compare tools meld, gvimdiff, tkdiff, and kompare are used to compare text files on Linux
+The graphical compare tools meld, gvimdiff, kdiff3, tkdiff, and kompare are used to compare text files on Linux
 
 In many cases, it is difficult and time-consuming to visually compare large files because of formatting differences
 
@@ -13,7 +13,7 @@ For example:
 
 'dif' preprocesses input text files with a wide variety of options
 
-Afterwards, it runs the Linux tools meld, gvimdiff, tkdiff, or kompare on these intermediate files
+Afterwards, it runs the Linux tools meld, gvimdiff, kdiff3, tkdiff, or kompare on these intermediate files
 
 'dif' can also be used as part of an automated testing framework, returning 0 for identical, and 1 for mismatch
 

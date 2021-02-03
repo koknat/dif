@@ -38,6 +38,10 @@ if ( $pwd =~ m{/dif/test$} ) {
 #say "\$dif = $dif";
 #say "\$testDir = $testDir";
 die "ERROR:  executable not found:  $dif" unless -e $dif;
+chomp( my $whoami = `whoami` );
+if ( $whoami eq 'ckoknat' ) {
+    $dif = "/home/utils/perl-5.8.8/bin/perl $dif";
+}
 
 my $pass = 0;
 my $fail = 256;
@@ -72,6 +76,7 @@ if ( runtests('case') ) {
 if ( runtests('comments') ) {
     testcmd( $dif, "case01a_hosts.txt case01f_hosts_comments.txt", "",          $fail );
     testcmd( $dif, "case01a_hosts.txt case01f_hosts_comments.txt", "-comments", $pass );
+    testcmd( $dif, "case01a_hosts.txt case01k_hosts_multiline_comments.txt", "-comments", $pass );
     # Compare 3 files at once:
     # dif case01a_hosts.txt case01f_hosts_comments.txt case01e_hosts_scrambled.txt
     # dif case01a_hosts.txt case01f_hosts_comments.txt case01e_hosts_scrambled.txt -comment
@@ -137,16 +142,15 @@ if ( runtests('trim') ) {
 }
 
 if ( runtests('fields') ) {
-    testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-fields 0,8", $fail );
-    testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-fields 3,8", $pass );
-    testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-fields 0,8 -fieldSeparator '\\s+'", $fail );
-    testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-fields 3,8 -fieldSeparator '\\s+'", $pass );
+    testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-fields 5,6,7", $fail );
+    testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-fields 4,8", $pass );
+    testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-fields 5,6,7 -fieldSeparator '\\s+'", $fail );
+    testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-fields 4,8 -fieldSeparator '\\s+'", $pass );
     testcmd( $dif, "case08a.csv case08b.csv", "", $fail );
     testcmd( $dif, "case08a.csv case08b.csv.gz", "-fields 1", $fail );
     testcmd( $dif, "case08a.csv case08b.csv.gz", "-fields 2", $pass );
     testcmd( $dif, "case08a.csv case08b.csv.gz", "-fields 1 -fieldSeparator ','", $fail );
     testcmd( $dif, "case08a.csv case08b.csv.gz", "-fields 2 -fieldSeparator ','", $pass );
-    testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-fields -1", $pass );
     testcmd( $dif, "case08a.csv case08c.csv", "", $fail );
     testcmd( $dif, "case08a.csv case08c.csv", "-fields -1", $pass );
     testcmd( $dif, "case08a.csv case08b.csv.gz", "-fields not0,1,3+", $pass );
@@ -248,8 +252,7 @@ if ( runtests('report') ) {
     my $cmd = "$dif dirA/* -report";
     chomp(my $result = `$cmd`);
     d '$cmd $result';
-    like($result, qr{187\s+4\s+3f6bc5fdac37347e2c6913259470ae9c}, 'report');
-    
+    like($result, qr{190\s+7\s+}, 'report');  # Did not include hash value since this can change based on the hashing algorithm
     chdir("$pwd");
 }
 
@@ -275,14 +278,14 @@ if ( runtests('dirs') ) {
 }
 
 if ( runtests('dir2') ) {
-    testcmd( $dif, "case01a_hosts.txt dirA/case01a_hosts.txt",                                 "",                                 $pass );
-    testcmd( $dif, "case01a_hosts.txt dirB/case01a_hosts.txt",                                 "",                                 $fail );
-    testcmd( $dif, "case01a_hosts.txt",                                                        "-dir2 $testDir/dirA",              $pass );
-    testcmd( $dif, "case01a_hosts.txt",                                                        "-dir2 $testDir/dirB",              $fail );
-    testcmd( $dif, "case01a_hosts.txt",                                                        "-dir2 $testDir/dirB -comments",    $pass );
+    testcmd( $dif, "case01a_hosts.txt.gz dirA/case01a_hosts.txt.gz",                                 "",                                 $pass );
+    testcmd( $dif, "case01a_hosts.txt.gz dirB/case01a_hosts.txt.gz",                                 "",                                 $fail );
+    testcmd( $dif, "case01a_hosts.txt.gz",                                                        "-dir2 $testDir/dirA",              $pass );
+    testcmd( $dif, "case01a_hosts.txt.gz",                                                        "-dir2 $testDir/dirB",              $fail );
+    testcmd( $dif, "case01a_hosts.txt.gz",                                                        "-dir2 $testDir/dirB -comments",    $pass );
     testcmd( $dif, "case01b_hosts_spaces.txt",                                                 "-dir2 $testDir/dirB -report -white",   $pass );
-    testcmd( $dif, "case01a_hosts.txt case01b_hosts_spaces.txt",                               "-dir2 $testDir/dirB -report",   $fail );
-    testcmd( $dif, "case01a_hosts.txt case01b_hosts_spaces.txt",                               "-dir2 $testDir/dirB -report -comments -white",   $pass );
+    testcmd( $dif, "case01a_hosts.txt.gz case01b_hosts_spaces.txt",                               "-dir2 $testDir/dirB -report",   $fail );
+    testcmd( $dif, "case01a_hosts.txt.gz case01b_hosts_spaces.txt",                               "-dir2 $testDir/dirB -report -comments -white",   $pass );
     testcmd( $dif, "case01a_hosts.txt case01b_hosts_spaces.txt case01c_hosts_blank_lines.txt", "-dir2 $testDir/dirB -report",   $fail );  # case01c does not exist in dirB
 }
 
@@ -294,12 +297,12 @@ if ( runtests('gold') ) {
 }
 
 if ( runtests('lsl') ) {
-    testcmd( $dif, "case04b_lsl.txt case04c_lsl_tail.txt", "", $fail );
-    testcmd( $dif, "case04b_lsl.txt case04c_lsl_tail.txt", "-taillines 50", $pass );
     testcmd( $dif, "case04a_lsl.txt case04a_lsl.txt", "",     $pass );
     testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "",     $fail );
     testcmd( $dif, "case04a_lsl.txt case04a_lsl.txt", "-lsl", $pass );
     testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-lsl", $pass );
+    testcmd( $dif, "case04b_lsl.txt case04c_lsl.txt", "", $fail );
+    testcmd( $dif, "case04b_lsl.txt case04c_lsl.txt", "-basenames", $pass );
 }
 
 
@@ -381,6 +384,14 @@ if (! $@) {
     }
 }
 
+eval 'use Spreadsheet::BasicRead ()';
+if (! $@) {
+    if ( runtests('xls') ) {
+        testcmd( $dif, "case08a.xls case08b.xls", "", $pass );  # 08b has bold text, but same values
+        testcmd( $dif, "case08a.xls case08c.xls", "", $fail );
+    }
+}
+
 if ( $opt{extraTests}  or  -d "/home/ckoknat" ) {
     unless ( $opt{test} ) {
         say "\n\n***********************************************************************************************";
@@ -398,7 +409,6 @@ if ( $opt{extraTests}  or  -d "/home/ckoknat" ) {
 # Print pass/fail summary
 my $num_failed = summary();
 d '$num_failed';
-chomp( my $whoami = `whoami` );
 if ( $whoami eq 'ckoknat' ) {
     if ( ! defined $opt{test}  and  ! $num_failed ) {
         say "If everything passes do this:";
@@ -509,7 +519,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v19 Tue Jan 19 19:11:00 PST 2021
+v31 Tue Feb  2 17:25:43 PST 2021
 
 
 This program is free software; you can redistribute it and/or modify
