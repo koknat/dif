@@ -1,13 +1,25 @@
 ## dif - a preprocessing front end to meld/gvimdiff/kdiff3/tkdiff/kompare
+
+**Use case #1**  
+<br/>
+Compare files using preprocessing options, such as remove comments/whitespace/timestamps, search/replace, keep/ignore only certain lines, json/yaml reformatting, etc
+<br/>
+<br/>
 ![Alt text](dif_before_after.png?raw=true "Comparison of  meld  vs  dif with option -comments")
-
-
-
-
-
+<br/>
+<br/>
+<br/>
+<br/>
+**Use case #2**  
+<br/>
+Compare directories, optionally preprocessing each file beforehand
+<br/>
+<br/>
 ![Alt text](dif_before_after_directory_meld.png?raw=true "Comparison of two directories")
-
-
+<br/>
+<br/>
+<br/>
+<br/>
 The graphical compare tools **meld**, **gvimdiff**, **kdiff3**, **tkdiff**, or **kompare** are used to compare text files on Linux
 
 In many cases, it is difficult and time-consuming to visually compare large files because of formatting differences
@@ -16,6 +28,7 @@ For example:
 * different versions of code may differ only in comments or whitespace
 * log files are often many MB of text, with some "don't care" information such as timestamps or temporary filenames
 * json or yaml files may have ordering differences due to the library used to write the file
+* xls spreadsheets cannot be compared easily because of the file format
 
 
 ## Purpose
