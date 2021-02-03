@@ -12,7 +12,7 @@ Compare files using preprocessing options, such as remove comments/whitespace/ti
 <br/>
 **Use case #2**  
 <br/>
-Compare directories, optionally preprocessing each file beforehand
+Compare directories recursively, optionally preprocessing each file beforehand
 <br/>
 <br/>
 ![Alt text](dif_before_after_directory_meld.png?raw=true "Comparison of two directories")
