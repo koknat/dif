@@ -8,7 +8,7 @@ Preprocessing options include:
 * search/replace
 * keep/ignore certain lines
 * json/yaml reformatting
-* many others
+* *many others*
 
 <br/>
 <br/>
