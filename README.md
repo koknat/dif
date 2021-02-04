@@ -12,21 +12,23 @@ Preprocessing options include:
 
 <br/>
 <br/>
-![Screenshot of  meld  vs  dif with option -comments](dif_before_after.png)
+!["Screenshot of  meld  vs  dif with option -comments"](dif_before_after.png)
 <br/>
 <br/>
 <br/>
 <br/>
+
 **Use case #2**  
 <br/>
 Compare directories recursively, optionally preprocessing each file beforehand
 <br/>
 <br/>
-![Screenshot of  dif comparing two directories](dif_before_after_directory_meld.png)
+!["Screenshot of  dif comparing two directories"](dif_before_after_directory_meld.png)
 <br/>
 <br/>
 <br/>
 <br/>
+
 ## Overview
 The graphical compare tools **meld**, **gvimdiff**, **kdiff3**, **tkdiff**, or **kompare** are used to compare text files on Linux
 
