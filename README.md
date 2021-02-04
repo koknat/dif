@@ -1,8 +1,6 @@
 ## dif - a preprocessing front end to meld/gvimdiff/kdiff3/tkdiff/kompare
 
-**Use case #1**
-  
-Compares files after it preprocesses them.
+'dif' compares files after it preprocesses them.
 Preprocessing options include:
 * remove comments/whitespace/timestamps
 * search/replace
@@ -15,9 +13,9 @@ Preprocessing options include:
 !["Screenshot of  meld  vs  dif with option -comments"](dif_before_after.png)
   
   
-**Use case #2**
   
-Compare directories recursively, after optionally preprocessing each file
+  
+'dif' can also be used to compare directories recursively, after optionally preprocessing each file
   
   
 !["Screenshot of  dif comparing two directories"](dif_before_after_directory_meld.png)
