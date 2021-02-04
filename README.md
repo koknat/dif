@@ -2,13 +2,14 @@
 
 **Use case #1**
   
-Compares files after it preprocesses them  
+Compares files after it preprocesses them.
 Preprocessing options include:
-* removing comments/whitespace/timestamps
+* remove comments/whitespace/timestamps
 * search/replace
 * keep/ignore certain lines
 * json/yaml reformatting
-* *many others*  
+* parse xls spreadsheet
+* *many other options (see far below)*  
   
   
 !["Screenshot of  meld  vs  dif with option -comments"](dif_before_after.png)
@@ -16,7 +17,7 @@ Preprocessing options include:
   
 **Use case #2**
   
-Compare directories recursively, optionally preprocessing each file beforehand
+Compare directories recursively, after optionally preprocessing each file
   
   
 !["Screenshot of  dif comparing two directories"](dif_before_after_directory_meld.png)
