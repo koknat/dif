@@ -12,7 +12,7 @@ Preprocessing options include:
 
 <br/>
 <br/>
-![Comparison of  meld  vs  dif with option -comments](dif_before_after.png)
+![Screenshot of  meld  vs  dif with option -comments](dif_before_after.png)
 <br/>
 <br/>
 <br/>
@@ -22,7 +22,7 @@ Preprocessing options include:
 Compare directories recursively, optionally preprocessing each file beforehand
 <br/>
 <br/>
-![Comparison of two directories](dif_before_after_directory_meld.png)
+![Screenshot of  dif comparing two directories](dif_before_after_directory_meld.png)
 <br/>
 <br/>
 <br/>
