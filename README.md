@@ -1,6 +1,6 @@
 ## dif - a preprocessing front end to meld/gvimdiff/kdiff3/tkdiff/kompare
 
-Use case 1
+**Use case 1**
 
 Compares files after it preprocesses them  
 Preprocessing options include:
@@ -14,7 +14,7 @@ Preprocessing options include:
 !["Screenshot of  meld  vs  dif with option -comments"](dif_before_after.png)
 
 
-Use case 2
+**Use case 2**
 <br/>
 Compare directories recursively, optionally preprocessing each file beforehand
 <br/>
