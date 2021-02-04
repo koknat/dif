@@ -88,6 +88,7 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
 * dif file1 file2 -white -case
 * dif file1 file2 file3 -comments
 * dif file1 file2 -search 'foo' -replace 'bar'
+* dif file1.xls file2.xls
 * dif dir1 dir2 -report
 
 
