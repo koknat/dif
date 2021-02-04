@@ -1,7 +1,7 @@
 ## dif - a preprocessing front end to meld/gvimdiff/kdiff3/tkdiff/kompare
 
-**Use case 1**
-
+**Use case #1**
+  
 Compares files after it preprocesses them  
 Preprocessing options include:
 * removing comments/whitespace/timestamps
@@ -9,22 +9,21 @@ Preprocessing options include:
 * keep/ignore certain lines
 * json/yaml reformatting
 * *many others*  
-
-
+  
+  
 !["Screenshot of  meld  vs  dif with option -comments"](dif_before_after.png)
-
-
-**Use case 2**
-<br/>
+  
+  
+**Use case #2**
+  
 Compare directories recursively, optionally preprocessing each file beforehand
-<br/>
-<br/>
+  
+  
 !["Screenshot of  dif comparing two directories"](dif_before_after_directory_meld.png)
-<br/>
-<br/>
-<br/>
-<br/>
-
+  
+  
+  
+  
 ## Overview
 The graphical compare tools **meld**, **gvimdiff**, **kdiff3**, **tkdiff**, or **kompare** are used to compare text files on Linux
 
