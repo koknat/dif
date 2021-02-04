@@ -6,7 +6,7 @@ Preprocessing options include:
 * search/replace
 * keep/ignore certain lines
 * json/yaml reformatting
-* parse xls spreadsheet
+* parse values from xls spreadsheets
 * *many other options (see far below)*  
   
   
