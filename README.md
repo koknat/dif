@@ -1,6 +1,6 @@
-## dif - a preprocessing front end to meld/gvimdiff/kdiff3/tkdiff/kompare
+## dif - a preprocessing front end to meld / gvimdiff / kdiff3 / tkdiff / kompare
 
-'dif' compares files after it preprocesses them.
+'dif' compares files after it preprocesses them.  
 Preprocessing options include:
 * remove comments/whitespace/timestamps
 * search/replace
