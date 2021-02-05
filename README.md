@@ -2,7 +2,7 @@
 
 'dif' compares files after it preprocesses them.  
 Preprocessing options include:
-* remove comments/whitespace/timestamps
+* remove comments, whitespace, timestamps
 * search/replace
 * keep/ignore certain lines
 * json/yaml reformatting
@@ -24,7 +24,7 @@ Preprocessing options include:
   
   
 ## Overview
-The graphical compare tools **meld**, **gvimdiff**, **kdiff3**, **tkdiff**, or **kompare** are used to compare text files on Linux
+The graphical compare tools **meld**, **gvimdiff**, **kdiff3**, **tkdiff**, and **kompare** are used to compare text files on Linux
 
 In many cases, it is difficult and time-consuming to visually compare large files because of formatting differences
 
