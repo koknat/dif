@@ -649,7 +649,7 @@ if ( $defaults{history} ) {
 }
 
 # Options can be overridden with user config file ~/.dif.options  (key/value format)
-Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort|s', 'paragraphSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'ppOnly', 'white|w', 'noWhite', 'case', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'stopIgnoreLine', 'function=s', 'functionSort', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'silent', 'quiet', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'listFiles', 'report|r', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
+Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort|s', 'paragraphSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'ppOnly', 'white|w', 'noWhite', 'case', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'stopIgnoreLine', 'function=s', 'functionSort', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'listFiles', 'report|r', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
 # noDirs is not in usage.  It excludes directories
 $opt{quiet}  = 1 if $opt{silent};       # for backwards compatibility of -silent
 $opt{report} = 1 if $opt{listFiles};    # for backwards compatibility of -listFiles
@@ -1394,29 +1394,47 @@ if ( $opt{report} ) {
         say "Generating reports with file sizes, number of lines, and hashes at $tmpfileReport1 and $tmpfileReport2";
         say "    These files will be automatically removed afterwards, unless -keeptmp is used" unless $opt{keeptmp};
     }
-    my $format = "%10s  %8s  %32s  %s\n";
-    printf $REPORT1 $format, 'BYTES', 'LINES', 'HASH', 'FILENAME';
-    printf $REPORT2 $format, 'BYTES', 'LINES', 'HASH', 'FILENAME';
+    my $format;
+    if ( $opt{fast} ) {
+        $format = "%10s  %s\n";
+        printf $REPORT1 $format, 'BYTES', 'FILENAME';
+        printf $REPORT2 $format, 'BYTES', 'FILENAME';
+    } else {
+        $format = "%10s  %8s  %32s  %s\n";
+        printf $REPORT1 $format, 'BYTES', 'LINES', 'HASH', 'FILENAME';
+        printf $REPORT2 $format, 'BYTES', 'LINES', 'HASH', 'FILENAME';
+    }
 
     my @mismatches;
     while (@filePairs) {
-        my ( $file1, $file2, $tmpfile1, $tmpfile2, $size1, $size2, $numlines1, $numlines2, $hash1, $hash2 );
+        my ( $file1, $file2, $tmpfile1, $tmpfile2, $size1, $size2, $numlines1, $numlines2, $hash1, $hash2, $fastOK );
         $file1 = shift(@filePairs);
         $file2 = shift(@filePairs);
         d '$file1 $file2';
         $count++;
         $pairCount++;
         if ( -f $file1 ) {
-            $tmpfile1 = determineTmpFilename( $file1, $count );
-            if ($preprocessOptions) {
-                preprocessFile( $file1, $tmpfile1, "$pairCount/$numFilePairs", $count % 2 );    # %2 for -start2 -stop2
-            } else {
-                $tmpfile1 = $file1;
+            if ( $opt{fast} ) {
+                if ($preprocessOptions) {
+                    die "ERROR:  -report -fast may not be used in conjunction with any other preprocessing options\n";
+                }
+                $size1     = sprintf( "%10s", -s $file1 );
+                $numlines1 = "";
+                $hash1     = '_' x 32;
+                $fastOK    = 1;
             }
-            $size1 = -s $tmpfile1;
-            chomp( $numlines1 = `wc -l $tmpfile1 | cut -f 1 -d ' '` );
-            $hash1 = getHash( file => $tmpfile1 );
-            $hash1 = '_' x ( ( 32 - length($hash1) ) / 2 ) . $hash1 . '_' x ( ( 32 - length($hash1) ) / 2 );    # pad with _ for 32 total characters
+            if ( !defined $fastOK ) {
+                $tmpfile1 = determineTmpFilename( $file1, $count );
+                if ($preprocessOptions) {
+                    preprocessFile( $file1, $tmpfile1, "$pairCount/$numFilePairs", $count % 2 );    # %2 for -start2 -stop2
+                } else {
+                    $tmpfile1 = $file1;
+                }
+                $size1 = sprintf( "%10s", -s $tmpfile1 );
+                chomp( $numlines1 = `wc -l $tmpfile1 | cut -f 1 -d ' '` );
+                $hash1 = getHash( file => $tmpfile1 );
+                $hash1 = '_' x ( ( 32 - length($hash1) ) / 2 ) . $hash1 . '_' x ( ( 32 - length($hash1) ) / 2 );    # pad with _ for 32 total characters
+            }
         } elsif ( -d $file1 ) {
             chomp( $size1 = `find $file1 -type f | wc -l` );
             $numlines1 = "";
@@ -1428,16 +1446,22 @@ if ( $opt{report} ) {
         }
         $count++;
         if ( -f $file2 ) {
-            $tmpfile2 = determineTmpFilename( $file2, $count );
-            if ($preprocessOptions) {
-                preprocessFile( $file2, $tmpfile2, "$pairCount/$numFilePairs", $count % 2 );    # %2 for -start2 -stop2
+            if ( defined $fastOK ) {
+                $size2     = sprintf( "%10s", -s $file2 );
+                $numlines2 = "";
+                $hash2     = '_' x 32;
             } else {
-                $tmpfile2 = $file2;
+                $tmpfile2 = determineTmpFilename( $file2, $count );
+                if ($preprocessOptions) {
+                    preprocessFile( $file2, $tmpfile2, "$pairCount/$numFilePairs", $count % 2 );    # %2 for -start2 -stop2
+                } else {
+                    $tmpfile2 = $file2;
+                }
+                $size2 = sprintf( "%10s", -s $tmpfile2 );
+                chomp( $numlines2 = `wc -l $tmpfile2 | cut -f 1 -d ' '` );
+                $hash2 = getHash( file => $tmpfile2 );
+                $hash2 = '_' x ( ( 32 - length($hash2) ) / 2 ) . $hash2 . '_' x ( ( 32 - length($hash2) ) / 2 );    # pad with _ for 32 total characters
             }
-            $size2 = sprintf( "%10s", -s $tmpfile2 );
-            chomp( $numlines2 = `wc -l $tmpfile2 | cut -f 1 -d ' '` );
-            $hash2 = getHash( file => $tmpfile2 );
-            $hash2 = '_' x ( ( 32 - length($hash2) ) / 2 ) . $hash2 . '_' x ( ( 32 - length($hash2) ) / 2 );    # pad with _ for 32 total characters
         } elsif ( -d $file2 ) {
             chomp( $size2 = `find $file2 -type f | wc -l` );
             $numlines2 = "";
@@ -1466,11 +1490,15 @@ if ( $opt{report} ) {
         }
         $file1mod =~ s{^\./}{};
         $file2mod =~ s{^\./}{};
-        #printf $REPORT2 $format, 'BYTES', 'LINES', 'MD5SUM', 'FILENAME';
-        #print $REPORT1 "$size1  $hash1  $file1mod\n";
-        printf $REPORT1 $format, $size1, $numlines1, $hash1, $file1mod;
-        printf $REPORT2 $format, $size2, $numlines2, $hash2, $file2mod;
-        push @mismatches, $file1mod if $hash1 ne $hash2;
+        if ( $opt{fast} ) {
+            printf $REPORT1 $format, $size1, $file1mod;
+            printf $REPORT2 $format, $size2, $file2mod;
+            push @mismatches, $file1mod if $size1 ne $size2;
+        } else {
+            printf $REPORT1 $format, $size1, $numlines1, $hash1, $file1mod;
+            printf $REPORT2 $format, $size2, $numlines2, $hash2, $file2mod;
+            push @mismatches, $file1mod if $hash1 ne $hash2;
+        }
     }
     close $REPORT1;
     close $REPORT2;
@@ -1485,7 +1513,11 @@ if ( $opt{report} ) {
     if (@mismatches) {
         say "Found " . scalar(@mismatches) . " mismatching pairs of files" unless $opt{quiet};
     } else {
-        say "All file pairs match" unless $opt{quiet};
+        if ( $opt{fast} ) {
+            say "All file pairs match file sizes (contents not checked because of -fast mode)" unless $opt{quiet};
+        } else {
+            say "All file pairs match" unless $opt{quiet};
+        }
         exit 0;
     }
 }
@@ -2581,7 +2613,7 @@ sub extension2zipcat {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v32 Wed Feb  3 14:44:43 PST 2021
+v33 Fri Feb  5 08:29:51 PST 2021
 
 
 This program is free software; you can redistribute it and/or modify

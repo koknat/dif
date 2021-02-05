@@ -52,6 +52,7 @@ if ( runtests('white') ) {
     testcmd( $dif, "case01a_hosts.txt case01a_hosts.txt",             "",         $pass );
     testcmd( $dif, "case01a_hosts.txt case01b_hosts_spaces.txt",      "",         $fail );
     testcmd( $dif, "case01a_hosts.txt case01b_hosts_spaces.txt",      "-white",   $pass );
+    testcmd( $dif, "case01a_hosts.txt.link case01b_hosts_spaces.txt", "-white",   $pass );
     testcmd( $dif, "case01a_hosts.txt case01c_hosts_blank_lines.txt", "",         $fail );
     testcmd( $dif, "case01a_hosts.txt case01c_hosts_blank_lines.txt", "-white",   $pass );
     testcmd( $dif, "case01a_hosts.txt case01c_hosts_blank_lines.txt", "-w",       $pass );
@@ -248,11 +249,18 @@ if ( runtests('xz')  and  whichCommand('xzcat') ) {
 if ( runtests('report') ) {
     # Simply list files with sizes and md5sums
     chdir("$testDir");
-    
-    my $cmd = "$dif dirA/* -report";
-    chomp(my $result = `$cmd`);
+    my ($cmd, $result);
+
+    $cmd = "$dif dirA/* -report";
+    chomp($result = `$cmd`);
     d '$cmd $result';
     like($result, qr{190\s+7\s+}, 'report');  # Did not include hash value since this can change based on the hashing algorithm
+
+    $cmd = "$dif dirA/* -report -fast";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    like($result, qr{190}, 'report');
+
     chdir("$pwd");
 }
 
@@ -264,6 +272,7 @@ if ( runtests('dirs') ) {
     # 01c     normal       (missing)
     chdir("$testDir");
     testcmd( $dif, "dirA dirAcopy", "-report", $pass );
+    testcmd( $dif, "dirAlink dirAcopy", "-report", $pass );
     testcmd( $dif, "dirA dirB",     "-report", $fail );
     testcmd( $dif, "dirA dirB",     "-report -excludeFiles '01[bc]' -comments", $pass );
     testcmd( $dif, "dirA dirB",     "-report -includeFiles '01a' -comments", $pass );
@@ -528,7 +537,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v32 Wed Feb  3 14:44:44 PST 2021
+v33 Fri Feb  5 08:29:51 PST 2021
 
 
 This program is free software; you can redistribute it and/or modify
