@@ -1,5 +1,7 @@
 #!/usr/bin/perl
 # #!/home/utils/perl-5.8.8/bin/perl
+##!/home/utils/perl-5.26/5.26.2-058/bin/perl
+##!/home/utils/perl5/perlbrew/perls/5.26.2-060/bin/perl
 use warnings;
 use strict;
 use File::Basename qw(basename dirname);
@@ -18,17 +20,17 @@ sub D{say "Debug::Statements has been disabled to improve performance"}; sub d{}
 # Parse options
 my %opt;
 my $d = 0;
-GetOptions( \%opt, 'test|t=s', 'extraTests', 'd' => sub { $d = 1 }, 'die' ) or die $!;
+GetOptions( \%opt, 'test|t=s', 'extraTests', 'modernPerl', 'd' => sub { $d = 1 }, 'die' ) or die $!;
 my $t = defined $opt{test} ? $opt{test} : 'ALL';
 die "ERROR:  Did not expect '@ARGV'.  Did you forget '-t' ? " if @ARGV;
 
 my $dif;  # dif executable
 my $testDir;  # dif/test directory
 chomp( my $pwd = `pwd` );
-if ( $pwd =~ m{/dif/test$} ) {
+if ( $pwd =~ m{/dif(-master)?/test$} ) {
     $dif = dirname($pwd) . '/dif';
     $testDir = "$pwd";
-} elsif ( $pwd =~ m{/dif$} ) {
+} elsif ( $pwd =~ m{/dif(-master)?$} ) {
     $dif = "$pwd/dif";
     $testDir = "$pwd/test";
 } else {
@@ -39,7 +41,7 @@ if ( $pwd =~ m{/dif/test$} ) {
 #say "\$testDir = $testDir";
 die "ERROR:  executable not found:  $dif" unless -e $dif;
 chomp( my $whoami = `whoami` );
-if ( $whoami eq 'ckoknat' ) {
+if ( $whoami eq 'ckoknat' and ! $opt{modernPerl} ) {
     $dif = "/home/utils/perl-5.8.8/bin/perl $dif";
 }
 
@@ -191,13 +193,13 @@ if ( runtests('stdin_stdout') ) {
     $cmd = "cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates | grep 'date' | wc -l";
     chomp($result = `$cmd`);
     d '$cmd $result';
-    is($result, 13, "stdin__stdout");
+    is($result, 16, "stdin__stdout");
 
     # Test that -replaceDates works in conjunction with -search -replace
     $cmd = "cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -search 'A' -replace 'AA' | grep 'date' | wc -l";
     chomp($result = `$cmd`);
     d '$cmd $result';
-    is($result, 13, "stdin__stdout -replaceDates in conjunction with -search -replace");
+    is($result, 16, "stdin__stdout -replaceDates in conjunction with -search -replace");
     $cmd = "cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -search 'foo' -replace 'bar' | grep 'bar' | wc -l";
     chomp($result = `$cmd`);
     d '$cmd $result';
@@ -373,6 +375,7 @@ if (! $@) {
         testcmd( $dif, "case14a.yml case14a.yml.gz", "",         $pass );
         testcmd( $dif, "case14a.yml case14c.yml", "-yaml -case", $pass );
         testcmd( $dif, "case14a.yml.gz case14c.yml.gz", "-yaml -case", $pass );
+        testcmd( $dif, "case14a.yml.gz case14c.yml.gz", "-yaml -removeDictKeys '(eggs|spam)'", $pass );
     }
     if ( runtests('externalPreprocessScript') ) {
         # May fail because of YAML library dependency
@@ -390,14 +393,23 @@ if (! $@) {
         testcmd( $dif, "case14a.json case14a.json.gz", "",         $pass );
         testcmd( $dif, "case14a.json case14c.json", "-json -case", $pass );
         testcmd( $dif, "case14a.json.gz case14c.json.gz", "-json -case", $pass );
+        testcmd( $dif, "case14a.json.gz case14c.json.gz", "-json -removeDictKeys '(eggs|spam)'", $pass );
     }
 }
 
-eval 'use Spreadsheet::BasicRead ()';
+eval 'use Spreadsheet::BasicRead ()  ;  use Spreadsheet::ParseExcel ()';
 if (! $@) {
     if ( runtests('xls') ) {
         testcmd( $dif, "case08a.xls case08b.xls", "", $pass );  # 08b has bold text, but same values
         testcmd( $dif, "case08a.xls case08c.xls", "", $fail );  # 08c has different values
+    }
+}
+
+eval 'use Spreadsheet::Read ();  use Spreadsheet::ParseODS ()';
+if (! $@) {
+    if ( runtests('ods') ) {
+        testcmd( $dif, "case08a.ods case08b.ods", "", $pass );  # 08b has bold text, but same values
+        testcmd( $dif, "case08a.ods case08c.ods", "", $fail );  # 08c has different values
     }
 }
 
@@ -537,7 +549,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v33 Fri Feb  5 08:29:51 PST 2021
+v38 Wed Feb 10 10:57:13 PST 2021
 
 
 This program is free software; you can redistribute it and/or modify

@@ -1,5 +1,6 @@
 #!/usr/bin/perl
-# #!/home/utils/perl-5.26/5.26.2-058/bin/perl
+# #!/home/utils/perl5/perlbrew/perls/5.26.2-060/bin/perl
+##!/home/utils/perl-5.26/5.26.2-058/bin/perl
 # This code has been tested on perl 5.6.1 through 5.30
 use warnings;
 use strict;
@@ -177,6 +178,8 @@ sub usage {
                               For example, to convert all spaces to newlines, use:
                                   -search '\\s+'  -replace '\\n'
 
+                              If case-insensitive search is needed, also use option -case
+
        -replaceTable file     Specify a two-column file which will be used for search/replace
                               The delimiter is any amount of spaces
                               Terms in the file are treated as regular expressions
@@ -200,15 +203,19 @@ sub usage {
        
        -json              Compare two json files, sorting the keys
 
+       -removeDictKeys 'regex'
+                          For use with -yaml or -json
+                          Removes all dictionary keys matching the regex
+
+       -perlEval          The input file is a perl hashref
+                          Print the keys in alphabetical order
+
        -perlDump          Useful when comparing previously captured output of Data::Dumper
                           filter out all SCALAR/HASH/ARRAY/REF/GLOB/CODE addresses from output of Dumpvalue,
                           since they change on every execution
                               'SPECS' => HASH(0x9880110)    becomes    'SPECS' => HASH()
                           Also works on Python object dumps:
                               <_sre.SRE_Pattern object at 0x216e600>
-
-       -perlEval          The input file is a perl hashref
-                          Print the keys in alphabetical order
 
       
     Preprocessing options (before filtering):
@@ -327,6 +334,8 @@ sub usage {
                                      or
                                  $scriptName */file -report
 
+      -fast                  When used with -report, use file size to compare, instead of md5sum
+
       -includeFiles <regex>  
       -excludeFiles <regex>  Both options are for use with two directories  or  -dir2 <dir>  or  -gold
                              For example:
@@ -395,15 +404,18 @@ sub usage {
 
 
     Other features:
-        Compares .xls|.xlsm|.xlsx files (if the Perl Spreadsheet::BasicRead module is installed)
-        
-        Attempts to compare .pdf files (if the Perl CAM::PDF module is installed)
-        
-        Automatically uncompress files from these formats into intermediate files:
+        Automatically uncompresses files from these formats into intermediate files:
             .gz
             .bz2
             .xz
             .zip  (single files only)
+        
+        Compares values inside .xls|.xlsm|.xlsx files  (if the Perl Spreadsheet::BasicRead module is installed)
+        
+        Compares values inside .ods OpenOffice spreadsheet files  (if the Perl Spreadsheet::Read module is installed)
+        
+        Attempts to compare text inside .pdf files  (if the Perl CAM::PDF module is installed)
+        
            
 
     Default compare tool:
@@ -649,7 +661,7 @@ if ( $defaults{history} ) {
 }
 
 # Options can be overridden with user config file ~/.dif.options  (key/value format)
-Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort|s', 'paragraphSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'ppOnly', 'white|w', 'noWhite', 'case', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'stopIgnoreLine', 'function=s', 'functionSort', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'listFiles', 'report|r', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
+Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort|s', 'paragraphSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'stopIgnoreLine', 'function=s', 'functionSort', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'removeDictKeys=s', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'listFiles', 'report|r', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
 # noDirs is not in usage.  It excludes directories
 $opt{quiet}  = 1 if $opt{silent};       # for backwards compatibility of -silent
 $opt{report} = 1 if $opt{listFiles};    # for backwards compatibility of -listFiles
@@ -776,9 +788,16 @@ d '$gui';
 # Fall back to gvimdiff if gui is not installed
 if ( $gui ne 'none' ) {
     if ( !whichCommand($gui) ) {
-        say "Using gvimdiff since '$gui' is not installed" unless $opt{quiet};
         # sudo apt install kompare
-        $gui = 'gvimdiff';
+        if ( whichCommand('gvimdiff') ) {
+            say "Using gvimdiff since '$gui' is not installed" unless $opt{quiet};
+            $gui = 'gvimdiff';
+        } elsif ( whichCommand('gvim') ) {
+            say "Using 'gvim -d' since '$gui' is not installed" unless $opt{quiet};
+            $gui = 'gvim -d';
+        } else {
+            die "ERROR:  Could not find a compare gui on this OS, such as 'meld', 'gvimdiff', or 'gvim -d'";
+        }
     }
 }
 if ($windows) {
@@ -830,7 +849,7 @@ if ( $opt{function} ) {
 # Decide if file needs to go through the preprocessing code
 # If not, then we can later do a quick md5sum check to determine equality
 my $preprocessOptions = 0;
-$preprocessOptions = 1 if $opt{sort} or $opt{paragraphSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or $opt{round} or $opt{basenames} or $opt{dos2unix} or defined $opt{grep} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{perlEval} or $opt{yaml} or $opt{json} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
+$preprocessOptions = 1 if $opt{sort} or $opt{paragraphSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or defined $opt{round} or $opt{basenames} or $opt{dos2unix} or defined $opt{grep} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or defined $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{perlEval} or $opt{yaml} or $opt{json} or defined $opt{removeDictKeys} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
 my $preprocessRequired = $preprocessOptions;
 for my $file (@files) {
     if ( $file =~ /\.tar(\.gz|bz2|xz|zip)?(#(\d+|head|\-|\+))?$/ ) {
@@ -838,7 +857,9 @@ for my $file (@files) {
             # do nothing, will be handled later
         } else {
             $preprocessRequired = 1;
-            $gui                = 'gvimdiff';
+            unless ( $gui =~ /^(gvim|gvimdiff)/ ) {
+                $gui = 'gvimdiff';
+            }
         }
     }
     if ( $file =~ /\.gz$/ ) {
@@ -852,13 +873,13 @@ for my $file (@files) {
         # TODO check if uncompress is really required with the various GUIs
     }
 }
-if ( $gui =~ "gvimdiff" and $preprocessRequired ) {
+if ( $gui =~ /^(gvim|gvimdiff)/ and $preprocessRequired ) {
     # Set gvim options to speed up comparison
     # Only for preprocessed files, since the options will prevent reading of compressed files
     # gvimdiff can natively display .gz files
     $gui = 'gvimdiff -u NONE -U NONE -N -R +"set number" +"set ic" +"set hlsearch"';
 }
-if ( $gui =~ /gvimdiff/ ) {
+if ( $gui =~ /^(gvim|gvimdiff)/ ) {
     $defaults{fold} = 80;    # columns used by -fold, gvimdiff uses larger font than kompare
 }
 d '$preprocessRequired $gui';
@@ -921,6 +942,13 @@ if ( $opt{fold} or $opt{foldChars} ) {
 if ( $opt{trim} or $opt{trimChars} ) {
     $opt{trim} = $opt{trimChars} ? $opt{trimChars} : $defaults{fold};
 }
+if ( defined $opt{removeDictKeys} and ( !$opt{yaml} and !$opt{json} ) ) {
+    if ( $files[0] =~ /\.ya?ml(\.gz)?$/ ) {
+        $opt{yaml} = 1;
+    } elsif ( $files[0] =~ /\.json(\.gz)?$/ ) {
+        $opt{json} = 1;
+    }
+}
 
 my $fieldsNegate = 0;
 if ( defined $opt{fields} ) {
@@ -960,11 +988,13 @@ if ( $opt{search} or $opt{replace} or $opt{replaceTable} or $opt{replaceDates} )
         my $timezoneRegex    = qr/([ECMP][SD]T|UTC)/;
         my $dayRegex         = qr/\d{1,2}/;
         my $yearRegex        = qr/\d{4}/;
-        my $dateYMDregex     = qr<\d{4,98}[/\-.]\d{1,2}[/\-.]\d{1,2}>;                                                                                                       # YYYY-MM-DD   ,99 is a kludge to make the regex longer, and therefore appear before $dateDMYregex
-        my $dateDMYregex     = qr<\d{1,2}[/\-.]\d{1,2}[/\-.]\d{2,4}>;                                                                                                        # DD-MM-YYYY
+        my $dateYMDregex     = qr<\d{4,98}[/\-._]\d{1,2}[/\-._]\d{1,2}>;                                                                                                     # YYYY-MM-DD   ,99 is a kludge to make the regex longer, and therefore appear before $dateDMYregex
+        my $dateDMYregex     = qr<\d{1,2}[/\-._]\d{1,2}[/\-._]\d{2,4}>;                                                                                                      # DD-MM-YYYY  DD and MM are interchangeable
         my $replaceDates_ref = {
             qr/($weekdayRegex\s+)?$monthRegex\s*$dayRegex(\s+$timeRegex)?(\s*$timezoneRegex)?(\s*$yearRegex)?/ => 'date',
-            qr/${dateYMDregex}T${timeRegex}(\+\d\d:\d\d|Z)/                                                    => 'date',                                                    # 2020-07-27T21:13:23+00:00
+            qr/${dateYMDregex}(T|\s+)${timeRegex}(\+\d\d:\d\d|Z)?/                                             => 'date',                                                    # 2020-07-27T21:13:23+00:00
+            qr/${dateDMYregex}(T|\s+)${timeRegex}(\+\d\d:\d\d|Z)?/                                             => 'date',                                                    # 2020-07-27T21:13:23+00:00
+            qr/${timeRegex}/                                                                                   => 'date',                                                    # 21:13:23
             qr/\d{8}T\d{6}Z/                                                                                   => 'date',                                                    # 20200727T211323Z
             $dateYMDregex                                                                                      => 'date',                                                    # 'YYYY-MM-DD'
             $dateDMYregex                                                                                      => 'date',                                                    # 'DD-MM-YYYY'
@@ -1587,8 +1617,15 @@ if ( scalar(@files) == 2 and not -d $files[0] and not $opt{stdout} ) {
     # Check exit status
     if ( $? == 0 ) {
         d '@files @localFiles @processedFiles';
-        chomp( my $status1 = `md5sum '$localFiles[0]' | cut -d ' ' -f 1` );
-        chomp( my $status2 = `md5sum '$localFiles[1]' | cut -d ' ' -f 1` );
+        my ( $status1, $status2 );
+        if ( whichCommand('md5sum') ) {
+            # Prefering this method since it's likely faster
+            chomp( $status1 = `md5sum '$localFiles[0]' | cut -d ' ' -f 1` );
+            chomp( $status2 = `md5sum '$localFiles[1]' | cut -d ' ' -f 1` );
+        } else {
+            $status1 = getHash( file => $localFiles[0] );
+            $status2 = getHash( file => $localFiles[1] );
+        }
         d '$status1 $status2';
         if ( $status1 ne $status2 ) {
             say "These files are identical after preprocessing.  Exiting.\n";
@@ -1641,7 +1678,7 @@ if ( $gui =~ /meld|kompare/ ) {
     d '$gui';
 }
 ( my $guiAbbrev = $gui ) =~ s/^(\S+).*/$1/;
-if ( $guiAbbrev =~ /(gvimdiff)/ and !$opt{keeptmp} ) {
+if ( $guiAbbrev =~ /^(gvimdiff)$/ and !$opt{keeptmp} ) {
     # In contrast to meld, gvimdiff by default forks a subprocess
     # Wait for gvimdiff to finish before cleaning up files
     $gui .= ' --nofork';
@@ -1655,6 +1692,9 @@ if ( $opt{stdout} ) {
 } elsif ( $opt{noBackgroundProcess} ) {
     # Added automatically for dif //path/file#1..#3  and  for -dir2 when multiple files are chosen
     $command = "$gui $processedFiles";
+} elsif ( $gui eq 'gvim -d' ) {
+    # Prevent files from being cleaned up
+    $command = "$gui $processedFiles ; sleep 2";
 } elsif ( $opt{keeptmp} ) {
     $command = "$gui $processedFiles &";
 } else {
@@ -1766,16 +1806,13 @@ sub preprocessFile {
             ls $tmpfile;
         }
         open( $F, "cat '$tmpfile' |" ) or die "ERROR: Cannot open file for reading:  $tmpfile\n\n";
-        #} elsif ( $file =~ /\.(xls[mx]?|ods)$/ and ! $opt{report} ) {
     } elsif ( $file =~ /\.(ods)$/ and !$opt{report} ) {
-        eval 'use Spreadsheet::Read (); use Spreadsheet::ReadSXC ()';
+        eval 'use Spreadsheet::Read ();  use Spreadsheet::ParseODS ()';
         if ($@) {
-            #say "ERROR:  Install Spreadsheet::Read and Spreadsheet::ReadSXC from CPAN to parse xls|xlsm|xlsx|ods spreadsheets";
-            say "ERROR:  Install Spreadsheet::Read and Spreadsheet::ReadSXC from CPAN to parse .ods spreadsheets";
+            say "ERROR:  Install Spreadsheet::Read and Spreadsheet::ParseODS from CPAN to parse .ods spreadsheets";
             say "        sudo cpan";
             say "            install Spreadsheet::Read";
-            say "            install Spreadsheet::ReadSXC";
-            #say "            install Spreadsheet::ReadSXC  (only if .ods OpenOffice support is needed)";
+            say "            install Spreadsheet::ParseODS";
             exit 1;
         } else {
             my $tmpfile = sprintf( "$globaltmpdir/%s_%s_%s.dumpODS", basename($0), $$, basename($file) );
@@ -1837,11 +1874,30 @@ sub preprocessFile {
     } elsif ( $file =~ /\.(xls[mx]?)$/ and !$opt{report} ) {
         eval 'use Spreadsheet::BasicRead ()';
         if ($@) {
-            say "ERROR:  Install Spreadsheet::BasicRead from CPAN to parse xls|xlsm|xlsx spreadsheets";
+            say "ERROR:  Install modules from CPAN to parse xls|xlsm|xlsx spreadsheets";
             say "        sudo cpan";
             say "            install Spreadsheet::BasicRead";
+            say "            install Spreadsheet::ParseExcel    (for xls)";
+            say "            install Spreadsheet::XLSX          (for xlsx)";
             exit 1;
         } else {
+            if ( $file =~ /\.(xls)$/ ) {
+                eval 'use Spreadsheet::ParseExcel ()';
+                if ($@) {
+                    say "ERROR:  Install ParseExcel from CPAN to parse xls spreadsheets";
+                    say "        sudo cpan";
+                    say "            install Spreadsheet::ParseExcel";
+                    exit 1;
+                }
+            } elsif ( $file =~ /\.(xls[mx])$/ ) {
+                eval 'use Spreadsheet::XLSX ()';
+                if ($@) {
+                    say "ERROR:  Install Spreadsheet::XLSX from CPAN to parse xlsx spreadsheets";
+                    say "        sudo cpan";
+                    say "            install Spreadsheet::XLSX";
+                    exit 1;
+                }
+            }
             my $tmpfile = sprintf( "$globaltmpdir/%s_%s_%s.dumpXLS", basename($0), $$, basename($file) );
             open( my $TMP, ">", $tmpfile ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";
             my $ss = new Spreadsheet::BasicRead($file) || die "Could not open '$file': $!";
@@ -2047,7 +2103,12 @@ sub preprocessFile {
             for my $key (@sub_keys_ordered) {
                 #d('$key $replaceTable_ref->{$key}'); # Global symbol "$key" requires explicit package name at (eval 15) line 1, <F> line 1
                 if ($d) { say "preprocess_file:  key = $key    replaceTable_ref->{$key} = $replaceTable_ref->{$key}" }
-                my $cnt = ( $line =~ s/$key/$replaceTable_ref->{$key}/g );
+                my $cnt;
+                if ( $opt{case} ) {
+                    $cnt = ( $line =~ s/$key/$replaceTable_ref->{$key}/gi );
+                } else {
+                    $cnt = ( $line =~ s/$key/$replaceTable_ref->{$key}/g );
+                }
                 #my $cnt = ($line =~ s/HASH(0x\S+)/$replaceTable_ref->{$key}/g);
                 #d("Found $key and replaced with $replaceTable_ref->{$key} on:  $line") if $cnt;
             }
@@ -2109,7 +2170,13 @@ sub getHash {
         if ($@) {
             eval 'use Digest::MD5 ()';
             if ($@) {
-                $getHash{hashingMethod} = 'md5sum';
+                if ( whichCommand('md5sum') ) {
+                    $getHash{hashingMethod} = 'md5sum';
+                } elsif ( whichCommand('md5') ) {
+                    $getHash{hashingMethod} = 'md5';    # Apple OS
+                } else {
+                    die "ERROR: Could not determine method for md5sum\n\n";
+                }
             } else {
                 $getHash{hashingMethod} = 'Digest::MD5';
                 $getHash{eval}{'Digest::MD5'} = 1;
@@ -2146,6 +2213,10 @@ sub getHash {
         my $cmd = 'md5sum';
         chomp( $result = `$cmd $file 2> /dev/null` );
         $result =~ s/^(\S+).*/$1/;
+    } elsif ( $getHash{hashingMethod} eq 'md5' ) {
+        my $cmd = 'md5';
+        chomp( $result = `$cmd $file 2> /dev/null` );
+        $result =~ s/^.*=\s*(\S+)\s*$/$1/;
     } else {
         die "Program bug!";
     }
@@ -2311,6 +2382,9 @@ sub sortYamlPerlJson {
             $ref = YAML::XS::Load($data);
             #$ref = YAML::Syck::Load($data);
             d '$ref';
+            if ( $opt{removeDictKeys} ) {
+                removeDictKeys( $ref, { removeRegex => $opt{removeDictKeys} }, $d );
+            }
             if (1) {
                 $Data::Dumper::Indent   = 1;    # default = 2, which uses a lot of horizontal space
                 $Data::Dumper::Sortkeys = 1;    # produces warning on 5.6.1
@@ -2336,12 +2410,15 @@ sub sortYamlPerlJson {
         } else {
             $ref = JSON::XS::decode_json($data);
             d '$ref';
+            if ( $opt{removeDictKeys} ) {
+                removeDictKeys( $ref, { removeRegex => $opt{removeDictKeys} }, $d );
+            }
             if (1) {
                 $Data::Dumper::Indent   = 1;    # default = 2, which uses a lot of horizontal space
                 $Data::Dumper::Sortkeys = 1;    # produces warning on 5.6.1
                 return Dumper($ref);
             } else {
-                my $text = JSON::XS::Dump($ref);
+                my $text = JSON::XS::encode_json($ref);
                 return $text;
             }
         }
@@ -2423,20 +2500,20 @@ sub findFilePairs {
     my @files1 = runFileFind( $dir1, $includeRegex, $excludeRegex );
     my @files2 = runFileFind( $dir2, $includeRegex, $excludeRegex );
     d '@files1 @files2';
-    my ( %filePairHash, @filePairs );
+    my ( %filePairDict, @filePairs );
     for my $file1 (@files1) {
         ( my $file = $file1 ) =~ s{^$dir1/}{};
-        $filePairHash{$file}[0] = "$dir1/$file";
-        $filePairHash{$file}[1] = "$dir2/$file";    # May or may not exist
+        $filePairDict{$file}[0] = "$dir1/$file";
+        $filePairDict{$file}[1] = "$dir2/$file";    # May or may not exist
     }
     for my $file2 (@files2) {
         ( my $file = $file2 ) =~ s{^$dir2/}{};
-        $filePairHash{$file}[0] = "$dir1/$file" if !defined $filePairHash{$file}[0];
-        $filePairHash{$file}[1] = "$dir2/$file";
+        $filePairDict{$file}[0] = "$dir1/$file" if !defined $filePairDict{$file}[0];
+        $filePairDict{$file}[1] = "$dir2/$file";
     }
-    d '%filePairHash';
-    for my $file ( sort keys %filePairHash ) {
-        push @filePairs, @{ $filePairHash{$file} };
+    d '%filePairDict';
+    for my $file ( sort keys %filePairDict ) {
+        push @filePairs, @{ $filePairDict{$file} };
     }
     d '@filePairs';
     return @filePairs;
@@ -2610,10 +2687,72 @@ sub extension2zipcat {
     }
 }
 
+sub removeDictKeys {
+    my ( $hash, $options, $d ) = @_;
+    die "Second argument of removeDictKeys() must be an options hash ref!" unless ref($options) && ref($options) eq "HASH";
+    if ( ref($hash) eq 'HASH' ) {
+        for my $key ( keys %{$hash} ) {
+            if ( $options->{keepRegex} ) {
+                if ( $key !~ /$options->{keepRegex}/ ) {
+                    delete $hash->{$key};
+                    next;
+                }
+            } elsif ( $options->{removeRegex} ) {
+                if ( $key =~ /$options->{removeRegex}/ ) {
+                    delete $hash->{$key};
+                    next;
+                }
+            }
+            if ( ref( $hash->{$key} ) ) {
+                if ( ref( $hash->{$key} ) eq "HASH" ) {
+                    removeDictKeys( $hash->{$key}, $options );
+                } elsif ( ref( $hash->{$key} ) eq "ARRAY" ) {
+                    removeDictKeys( $hash->{$key}, $options );
+                } else {
+                    # do nothing for reference to scalar or other
+                }
+            } else {
+                # do nothing for scalar
+            }
+        }
+    } elsif ( ref($hash) eq 'ARRAY' ) {
+        for my $n ( 0 .. scalar @{$hash} - 1 ) {
+            if ( $options->{keepRegex} ) {
+                if ( $hash->[$n] !~ /$options->{keepRegex}/ ) {
+                    if ( ref( $hash->[$n] ) or $options->{removeArrayElements} ) {
+                        delete $hash->[$n];
+                        next;
+                    }
+                }
+            } elsif ( $options->{removeRegex} ) {
+                if ( $hash->[$n] =~ /$options->{removeRegex}/ ) {
+                    if ( ref( $hash->[$n] ) or $options->{removeArrayElements} ) {
+                        delete $hash->[$n];
+                        next;
+                    }
+                }
+            }
+            if ( ref( $hash->[$n] ) ) {
+                if ( ref( $hash->[$n] ) eq "HASH" ) {
+                    removeDictKeys( $hash->[$n], $options );
+                } elsif ( ref( $hash->[$n] ) eq "ARRAY" ) {
+                    removeDictKeys( $hash->[$n], $options );
+                } else {
+                    # do nothing for reference to scalar or other
+                }
+            } else {
+                # do nothing for scalar
+            }
+        }
+    } else {
+        die "First argument of removeDictKeys() must be a hash or array ref!" unless ref($hash);
+    }
+}
+
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v33 Fri Feb  5 08:29:51 PST 2021
+v38 Wed Feb 10 10:57:13 PST 2021
 
 
 This program is free software; you can redistribute it and/or modify

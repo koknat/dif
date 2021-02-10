@@ -1,25 +1,13 @@
 ---
-- cast:
-  - Felicity Jones
-  - Armie Hammer
-  - Justin Theroux
-  - Jack Reynor
-  - Cailee Spaeny
-  - Sam Waterston
-  - Kathy Bates
-  genres:
-  - Biography
-  - Drama
-  year: 2018
-  title: On the Basis of Sex
-- cast:
-  - Nicole Kidman
-  - Tatiana Maslany
-  - Sebastian Stan
-  - Toby Kebbell
-  - Scoot McNairy
-  genres:
-  - Crime
-  - Thriller
-  year: 2018
-  title: Destroyer
+eggs:
+  ham: sausage
+  menu:
+  - bacon
+  - name: Lidl
+    type: crispy
+  - jam
+side: lobster thermidor aux crevettes with a Mornay sauce
+spam:
+- beans
+- toast
+cheese: gouda
