@@ -126,6 +126,7 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        -split             Splits each line on whitespace
        
        -splitChar 'char'  Splits each line on 'char'
+                          For example:  -splitChar ','
        
        -trim              Trims each line to 105 characters
                           Useful when lines are very long, and the important information is near the beginning
@@ -133,13 +134,16 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        -trimChars N       Trims with specified number of characters, instead of 105
        
        -comments          Remove any comments like // or # or single-line */ /*.  Also removes trailing whitespace
-       
+
        -dos2unix          Run all files through dos2unix
        
        -round 'string'    Round all numbers according to the sprintf string
                           For example -round '%0.2f'
+       
+       -basenames         Convert path/file to file
+                          This can be useful when comparing log files which contain temporary directories
 
-       -grep 'regex'      Only show lines which match the user-specified regex
+       -grep 'regex'      Only show lines which match the user-specified Perl regex
                           Multiple regexs can be specified, for example:  -grep '(regexA|regexB)'
                           To grep for lines above/below matches, see the help text for option -externalPreprocessScript
 
@@ -172,7 +176,7 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                           are in alphabetical order
 
        -search 'regex'
-       -replace 'regex'   On each line, do global regex search and replace
+       -replace 'regex'   On each line, do a global regex search and replace
                               For example, to replace temporary filenames such as '/tmp/foo123456/bar.log' with '/tmp/file':
                                   -search '/tmp/\S+' -replace '/tmp/file'
                                   
@@ -187,6 +191,8 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                               Make sure you use 'single-quotes' instead of double-quotes
                               For example, to convert all spaces to newlines, use:
                                   -search '\s+'  -replace '\n'
+
+                              If case-insensitive search is needed, also use option -case
 
        -replaceTable file     Specify a two-column file which will be used for search/replace
                               The delimiter is any amount of spaces
@@ -211,6 +217,13 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        
        -json              Compare two json files, sorting the keys
 
+       -removeDictKeys 'regex'
+                          For use with -yaml or -json
+                          Removes all dictionary keys matching the regex
+
+       -perlEval          The input file is a perl hashref
+                          Print the keys in alphabetical order
+
        -perlDump          Useful when comparing previously captured output of Data::Dumper
                           filter out all SCALAR/HASH/ARRAY/REF/GLOB/CODE addresses from output of Dumpvalue,
                           since they change on every execution
@@ -218,15 +231,12 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                           Also works on Python object dumps:
                               <_sre.SRE_Pattern object at 0x216e600>
 
-       -perlEval          The input file is a perl hashref
-                          Print the keys in alphabetical order
-
       
     Preprocessing options (before filtering):
-       -bcpp              Run each input file through bcpp with options:  -s -bcl -tbcl -ylcnc
+       -bcpp              Run each cpp input file through bcpp with options:  /home/ckoknat/cs2/linux/bcpp -s -bcl -tbcl -ylcnc
 
-       -perltidy          Run each input file through perltidy with options:  -l=110 -ce
-       
+       -perltidy          Run each Perl input file through perltidy with options:  /home/utils/perl5/perlbrew/perls/5.26.2-060/bin/perltidy -l=110 -ce
+
        -externalPreprocessScript <script>          
                           Run each input file through your custom preprocessing script
                           It must take input from STDIN and send output to STDOUT, similar to unix 'sort'
@@ -234,16 +244,22 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                           Trivial example:
                               -externalPreprocessScript 'sort'
 
-                          Example using grep to show 2 lines above and below lines matching 'opt'
-                              -ext 'grep -C 2 opt'
+                          Example using grep to show 2 lines above and below lines matching the regex 'foo'
+                              -ext 'grep -C 2 foo'
                           
                           Examples for comparing binary files:
                               -ext '/usr/bin/xxd'
+                              -ext '/usr/bin/xxd -c1 -p'
                               -ext '/usr/bin/hexdump -c'
-                          Although for the case of comparing binary files,
-                              a standalone diff tool may be preferable,
-                              for example 'qdiff' by Johannes Overmann & Tong Sun
-                              or 'colorbindiff' by Jerome Lelasseux
+                          However, a standalone diff tool may be preferable for comparing binary files
+                          For example:
+                              'qdiff' by Johannes Overmann and Tong Sun
+                              'colorbindiff' by Jerome Lelasseux 
+                              'VBinDiff' by Christopher J. Madsen
+                              'dhex'
+                         
+        -bin             Compare binary files
+                         This is a shortcut for running -ext '/usr/bin/xxd'
 
 
     Postprocessing options (after filtering):
@@ -252,7 +268,7 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        -uniq              Run Linux 'uniq' on each input file to eliminate duplicated adjacent lines
                           Use with -sort to eliminate all duplicates
        
-       -strings           Run Linux 'strings' command on each input file to strip out binary characters
+       -strings           Run equivalent of Linux 'strings' command on each input file to strip out binary characters
 
        -fold              Run 'fold' on each input file with default of 105 characters per column
                           Useful for comparing long lines,
@@ -266,17 +282,20 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
     Viewing options:
        -quiet             Do not print to screen
 
-       -verbose           Print names and file sizes of preprocessed temp files, before comparing
+       -verbose           Print names and file sizes of preprocessed temporary files, before comparing
 
-       -gui cmd           Instead of using meld to graphically compare the files, use a different tool
+       -gui cmd           Instead of using kompare to graphically compare the files, use a different tool
                           This supports any tool which has command line usage similar to gvimdiff
-                          i.e. 'gvimdiff file1 file2'.  This has been tested on meld, gvimdiff, tkdiff, and kompare
-                          (and likely works with diffmerge, diffuse, kdiff, kdiff3, wdiff, xxdiff, colordiff, beyond compare, etc)
+                          i.e. 'gvimdiff file1 file2'.  This has been tested on meld, gvimdiff, kdiff3, tkdiff, and kompare
+                          (and likely works with diffmerge, diffuse, kdiff, wdiff, xxdiff, colordiff, beyond compare, etc)
                           Examples:
 
                           -gui gvimdiff
                               Uses gvimdiff as a GUI
                           
+                          -gui kdiff3
+                              Uses kdiff3 as a GUI
+
                           -gui tkdiff
                               Uses tkdiff as a GUI
 
@@ -288,14 +307,14 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                               Note that meld does not display line numbers by default
                               Meld / Preferences / Editor / Display / Show line numbers
                               If the box is greyed out, install python-gtksourceview2
-                           
-                          -gui ''          
+
+                          -gui none
                               This is useful when comparing from a script
                               in an automated process such as regression testing
                               After running dif, check the return status:
                                   0 = files are equal
                                   1 = files are different
-                                  dif a.yml b.yml -gui '' -quiet ; echo $?
+                                  dif a.yml b.yml -gui none -quiet ; echo $?
                            
                           -gui diff
                               Prints diff to stdout instead of to a GUI
@@ -316,17 +335,20 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                              
                              Any of the preprocessing options may be used
       
-      -report                For use with two directories  or  -dir2 <dir>  or  -gold
+      -report                When used with two directories  or  -dir2 <dir>  or  -gold
                              Instead of opening GUIs for each file pair, generate report of mismatching or missing files
                              For example:
                                  dif dirA dirB -report
                              Any of the preprocessing options may be used
-                             
-                             It can also be used to print a report of file sizes and md5sums
+
+                             It can also be used to print a simple report of
+                             file sizes, number of lines, and md5sums (not a comparison)
                              For example:
                                  dif * -report
                                      or
                                  dif */file -report
+
+      -fast                  When used with -report, use file size to compare, instead of md5sum
 
       -includeFiles <regex>  
       -excludeFiles <regex>  Both options are for use with two directories  or  -dir2 <dir>  or  -gold
@@ -378,7 +400,6 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                              Any of the preprocessing options may be used
        
       -tree <dir1> <dir2>    Special case.  Run unix 'tree' on each of the directories.  Does not preprocess files
-
     
     Other options:
        -stdin             Parse input from stdin and send output to stdout
@@ -391,16 +412,32 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                           For example:
                               dif file -stdout <options> | another_script
                           If -stdin is given, then -stdout is assumed
-                          
+       
        -keeptmp           Default behavior is to remove the tmp directory containing preprocessed files
                           This option keeps it
 
+
+    Other features:
+        Automatically uncompresses files from these formats into intermediate files:
+            .gz
+            .bz2
+            .xz
+            .zip  (single files only)
+        
+        Compares values inside .xls|.xlsm|.xlsx files  (if the Perl Spreadsheet::BasicRead module is installed)
+        
+        Compares values inside .ods OpenOffice spreadsheet files  (if the Perl Spreadsheet::Read module is installed)
+        
+        Attempts to compare text inside .pdf files  (if the Perl CAM::PDF module is installed)
+        
+           
 
     Default compare tool:
         The default compare GUI is kompare
         To change this, create the text file ~/.dif.defaults with one of these content lines:
             gui: gvimdiff
             gui: tkdiff
+            gui: kdiff3
             gui: kompare
             gui: meld
             gui: tkdiff
@@ -408,14 +445,6 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
         The default is 2000000 bytes
             meldSizeLimit: 1000000
 
-
-    File formats:
-        dif will automatically uncompress files from these formats into intermediate files:
-            .gz
-            .bz2
-            .xz
-            .zip  (single files only)
-           
 
     For convenience, link to this code from ~/bin
         ln -s /path/dif ~/bin/dif
@@ -451,7 +480,7 @@ To run dif:
 * ./dif file1 file2 <options>
        
 To run the tests (optional):
-* download dif from GitHub and untar it
+* download dif from GitHub and uncompress it
 * cd dif/test
 * ./dif.t
 
