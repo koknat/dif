@@ -2473,7 +2473,7 @@ sub functionSort {
 sub whichCommand {
     my $executableAndOptions = shift;
     ( my $executable = $executableAndOptions ) =~ s/^(\S+).*/$1/;    # Strip any options before using 'which'
-    my $which = `which $executable 2> /dev/null`;
+    chomp( my $which = `which $executable 2> /dev/null` );
     #say "$which";die;
     #my $which = `which $executable`;
     #return undef if $which eq '' or $which =~ /Command not found/;
