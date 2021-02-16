@@ -10,7 +10,7 @@ Preprocessing options include:
 * *many other options (see far below)*  
   
   
-!["Screenshot of  meld  vs  dif with option -comments"](dif_before_after.png)
+!["Screenshot of  meld  vs  dif with option -comments"](screenshots/dif_before_after.png)
   
   
   
@@ -18,7 +18,7 @@ Preprocessing options include:
 'dif' can also be used to compare directories recursively, after optionally preprocessing each file
   
   
-!["Screenshot of  dif comparing two directories"](dif_before_after_directory_meld.png)
+!["Screenshot of  dif comparing two directories"](screenshots/dif_before_after_directory_meld.png)
   
   
   
