@@ -234,14 +234,12 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        -function 'function_name'
                           Compare same  Python def / Perl sub / TCL proc  function from two source files
                           Internally, this leverages the -start -stop functionality
-                          The algorithm requires that the opening brace is on the same line as the function name
                           This feature will also work for some C source files
 
        -functionSort
                           Useful when Python/Perl/TCL functions have been moved within a file
                           This option preprocesses each file, so that the function definitions
                           appear in alphabetical order
-                          The algorithm requires that the opening brace is on the same line as the function name
                           This feature will also work for some C source files
 
 
