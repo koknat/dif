@@ -4,7 +4,6 @@ use strict;
 
 sub a {
     foo();
-    bar();
 }
 
 sub b {

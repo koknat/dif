@@ -49,6 +49,7 @@ my $pass = 0;
 my $fail = 256;
 my $err = 512;
 print "\n\n\n\n";
+my $globaltmpdir = tempdir( '/tmp/d_XXXX', CLEANUP => 1 );
 
 if ( runtests('white') ) {
     testcmd( $dif, "case01a_hosts.txt case01a_hosts.txt",             "",         $pass );
@@ -163,12 +164,54 @@ if ( runtests('fields') ) {
 }
 
 if ( runtests('start_stop') ) {
-    testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-start '( collect| k)' -stop '( csv_print| kwhite)' ", $pass );
+    my ($options, $cmd, $result);
+
+    $options = "-start '^def offset' -stop '^\\s*\$'";
+    $cmd = "$dif $testDir/case12_start_stop.py -stdout $options | wc -l";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    is($result, 5, "start_stop -start and -stop");
+
+    $options = "-start '^def offset'";
+    $cmd = "$dif $testDir/case12_start_stop.py -stdout $options | wc -l";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    is($result, 23, "start_stop -start without -stop");
+    
+    $options = "-stop '^\\s*\$'";
+    $cmd = "$dif $testDir/case12_start_stop.py -stdout $options | wc -l";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    is($result, 3, "start_stop -stop without -start");
+
+    $options = "-start '^def line^^display^^world' -stop '^\\s*\$'";
+    $cmd = "$dif $testDir/case12_start_stop.py -stdout $options | wc -l";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    is($result, 2, "start_stop -start with 3 matches needed");
+    
+    $options = "-start '^def' -stop '^\\s*\$' -startMultiple";
+    $cmd = "$dif $testDir/case12_start_stop.py -stdout $options | wc -l";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    is($result, 22, "start_stop -startMultiple");
+
+    $options = "-start '^def offset' -stop '^\\s*\$' -startIgnoreFirstLine";
+    $cmd = "$dif $testDir/case12_start_stop.py -stdout $options | wc -l";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    is($result, 4, "start_stop -startIgnoreFirstLine");
+    
+    $options = "-start '^def offset' -stop '^\\s*\$' -startIgnoreFirstLine -stopIgnoreLastLine";
+    $cmd = "$dif $testDir/case12_start_stop.py -stdout $options | wc -l";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    is($result, 3, "start_stop -startIgnoreFirstLine -stopIgnoreLastLine");
 }
 
 if ( runtests('start1_stop1_start2_stop2') ) {
-    # -stopIgnoreLine is needed here because Python has no '^}' to delimit def blocks
-    testcmd( $dif, "case15a.py case15b.py", "-start1 '^def factor' -stop1 '^def ' -start2 '^def factor' -stop2 '^def ' -stopIgnoreLine", $pass );
+    # -stopIgnoreLastLine is needed here because Python has no '^}' to delimit def blocks
+    testcmd( $dif, "case15a.py case15b.py", "-start1 '^def factor' -stop1 '^def ' -start2 '^def factor' -stop2 '^def ' -stopIgnoreLastLine", $pass );
 }
 
 if ( runtests('search_replace') ) {
@@ -190,10 +233,18 @@ if ( runtests('replaceTable') ) {
 
 if ( runtests('stdin_stdout') ) {
     my ($cmd, $result);
+
     $cmd = "cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates | grep 'date' | wc -l";
     chomp($result = `$cmd`);
     d '$cmd $result';
     is($result, 16, "stdin__stdout");
+    
+    my $tmpfile = "$globaltmpdir/dif_out.txt";
+    $cmd = "cat $testDir/case06a_replaceDates.txt | $dif -stdin -out $tmpfile -replaceDates ; grep 'date' $tmpfile | wc -l";
+    chomp($result = `$cmd`);
+    $result =~ s/^\s*//;
+    d '$cmd $result';
+    is($result, 16, "stdin__stdout out");
 
     # Test that -replaceDates works in conjunction with -search -replace
     $cmd = "cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -search 'A' -replace 'AA' | grep 'date' | wc -l";
@@ -324,19 +375,29 @@ if ( runtests('perleval') ) {
 }
 
 if ( runtests('function') ) {
-    testcmd( $dif, "case13a.pl case13b.pl", "-function a", $pass );
-    testcmd( $dif, "case13a.pl case13c.pl", "-function a", $fail );
+    # a vs b = changes within a function
+    # b vs c = sorting
+    testcmd( $dif, "case13a.pl case13b.pl", "-function a", $fail );
+    testcmd( $dif, "case13b.pl case13c.pl", "-function a", $pass );
+
     testcmd( $dif, "case15a.py case15b.py", "-function quickSort", $fail );
     testcmd( $dif, "case15b.py case15c.py", "-function quickSort", $pass );
+    
+    testcmd( $dif, "case17a.c case17b.c", "-function sieve", $fail );
+    testcmd( $dif, "case17b.c case17b.c", "-function sieve", $pass );
 }
 
 if ( runtests('functionSort') ) {
-    testcmd( $dif, "case13a.pl case13b.pl", "", $fail );
-    testcmd( $dif, "case13a.pl case13b.pl", "-functionSort", $pass );
-    testcmd( $dif, "case13a.pl case13c.pl", "-functionSort", $fail );
+    testcmd( $dif, "case13b.pl case13c.pl", "", $fail );
+    testcmd( $dif, "case13b.pl case13c.pl", "-functionSort", $pass );
+
     testcmd( $dif, "case15b.py case15c.py", "", $fail );
     testcmd( $dif, "case15b.py case15c.py", "-functionSort", $pass );
     testcmd( $dif, "case15a.py case15c.py", "-functionSort", $fail );
+    
+    testcmd( $dif, "case17b.c case17c.c", "", $fail );
+    testcmd( $dif, "case17b.c case17c.c", "-functionSort", $pass );
+    testcmd( $dif, "case17a.c case17b.c", "-functionSort", $fail );
 }
 
 if ( runtests('ext') ) {
@@ -368,7 +429,11 @@ if ( runtests('dos2unix')  and  whichCommand('dos2unix') ) {
 }
 
 eval 'use YAML::XS ()';
-if (! $@) {
+if ($@) {
+    if ( $whoami eq 'ckoknat' and ! defined $opt{test} ) {
+        say "WARNING:  Not running tests 'yaml' and 'externalPreprocessScript";
+    }
+} else {
     if ( runtests('yaml') ) {
         testcmd( $dif, "case14a.yml case14b.yml", "",            $fail );
         testcmd( $dif, "case14a.yml case14b.yml", "-yaml",       $pass );
@@ -386,7 +451,11 @@ if (! $@) {
 }
 
 eval 'use JSON::XS ()';
-if (! $@) {
+if ($@) {
+    if ( $whoami eq 'ckoknat' and ! defined $opt{test} ) {
+        say "WARNING:  Not running tests 'yaml' and 'externalPreprocessScript'";
+    }
+} else {
     if ( runtests('json') ) {
         testcmd( $dif, "case14a.json case14b.json", "",            $fail );
         testcmd( $dif, "case14a.json case14b.json", "-json",       $pass );
@@ -398,7 +467,11 @@ if (! $@) {
 }
 
 eval 'use Spreadsheet::BasicRead ()  ;  use Spreadsheet::ParseExcel ()';
-if (! $@) {
+if ($@) {
+    if ( $whoami eq 'ckoknat' and ! defined $opt{test} ) {
+        say "WARNING:  Not running test 'xls'";
+    }
+} else {
     if ( runtests('xls') ) {
         testcmd( $dif, "case08a.xls case08b.xls", "", $pass );  # 08b has bold text, but same values
         testcmd( $dif, "case08a.xls case08c.xls", "", $fail );  # 08c has different values
@@ -406,7 +479,11 @@ if (! $@) {
 }
 
 eval 'use Spreadsheet::Read ();  use Spreadsheet::ParseODS ()';
-if (! $@) {
+if ($@) {
+    if ( $whoami eq 'ckoknat' and ! defined $opt{test} ) {
+        say "WARNING:  Not running test 'ods'";
+    }
+} else {
     if ( runtests('ods') ) {
         testcmd( $dif, "case08a.ods case08b.ods", "", $pass );  # 08b has bold text, but same values
         testcmd( $dif, "case08a.ods case08c.ods", "", $fail );  # 08c has different values
@@ -414,7 +491,11 @@ if (! $@) {
 }
 
 eval 'use CAM::PDF ()';
-if (! $@) {
+if ($@) {
+    if ( $whoami eq 'ckoknat' and ! defined $opt{test} ) {
+        say "WARNING:  Not running test 'pdf'";
+    }
+} else {
     if ( runtests('pdf') ) {
         testcmd( $dif, "case01a_hosts.pdf case01e_hosts_scrambled.pdf", "", $fail );
         testcmd( $dif, "case01a_hosts.pdf case01e_hosts_scrambled.pdf", "-sort", $pass );
@@ -464,7 +545,6 @@ sub testcmd {
 # test_cmdquiet($cmd, $filelist, $options, $expected_exitstatus)
 sub test_cmdquiet {
     my ( $cmd, $filelist, $options, $expected_exitstatus ) = @_;
-    my $globaltmpdir = tempdir( '/tmp/d_XXXX', CLEANUP => 1 );
     my $tmpfile = "$globaltmpdir/dif_${$}_quiet.txt";
     my @filelist = split /\s+/, $filelist;
     if ( @filelist ) {
@@ -549,7 +629,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v38 Wed Feb 10 10:57:13 PST 2021
+v42 Tue Feb 23 13:58:21 PST 2021
 
 
 This program is free software; you can redistribute it and/or modify

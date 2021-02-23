@@ -2,16 +2,15 @@
 use warnings;
 use strict;
 
-sub a {
-    foo();
-    bar();
-    baz();
-}
-
 sub b {
     bar();
     baz();
 }
 
+sub a {
+    foo();
+    bar();
+}
+
 __END__
-commentA
+commentB
