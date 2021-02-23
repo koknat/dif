@@ -49,17 +49,6 @@ This allows you to concentrate on the important differences, and ignore the rest
 #### Problem: differences in whitespace or comments or case cause mismatches
 Solution:  Use options -white or -nowhite or -comments or -case
 
-#### Problem: input files are too large for a quick comparison
-Solution 1:  Use -head or -tail to only compare the first or last N lines
-
-Solution 2:  Use -start and -stop to specify a section of the file using regexes
-
-#### Problem: files are sorted differently
-Solution:  Use -sort
-
-#### Problem: lines are too long to visually compare easily
-Solution:  Use -fold to wrap
-
 #### Problem: files both need to be filtered using regexes, to strip out certain characters or sequences
 Solution 1:  Use -grep <regex> or -ignore <regex> to filter in or out
 
@@ -82,7 +71,6 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
 
 ## Usage examples
 * dif file1 file2
-* dif file1 file2 -sort
 * dif file1 file2 -white -case
 * dif file1 file2 file3 -comments
 * dif file1 file2 -search 'foo' -replace 'bar'
