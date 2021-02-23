@@ -26,7 +26,7 @@ Preprocessing options include:
 ## Overview
 The graphical compare tools **meld**, **gvimdiff**, **kdiff3**, **tkdiff**, and **kompare** are used to compare text files on Linux
 
-In many cases, it is difficult and time-consuming to visually compare large files because of formatting differences
+In many cases, it is difficult and time-consuming to visually compare large files because of the large number of differences
 
 For example:
 * different versions of code may differ only in comments or whitespace
