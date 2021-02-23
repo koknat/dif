@@ -79,30 +79,7 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
 
 
 ## Options
-       -head              Compare only the first 10000 lines
-       
-       -headLines N       Compare only the first N lines
-
-       -tail              Compare only the first 10000 lines
-       
-       -tailLines N       Compare only the first N lines
-
-       -fields N          Compare only fields N
-                          Multiple fields may be given, separated by commas (-fields N,M)
-                          Field numbers start at 0
-                          Fields in the input files are assumed to be separated by spaces, unless the filename ends with .csv (separated by commas)
-                          Example:  -fields 2
-                          Example:  -fields 0,2      (fields 0 and 2)
-                          Example:  -fields -1       (last field)
-                          Example:  -fields 2+       (field 2 and onwards)
-                          Example:  -fields not2+    (ignore fields 2 and onwards)
-                          Example:  -fields not0,5+  (ignore fields 0, 5, and onwards)
-
-       -fieldSeparator regex    Only needed if default field separators above are not sufficient
-                                Example:  -fieldSeparator ':'
-                                Example:  -fieldSeparator '[,=]' 
-
-       -fieldJustify      Make all fields the same width, right-justified
+       -comments          Remove any comments such as // or # or single-line */ /*.  Also removes trailing whitespace
 
        -white             Remove blank lines and leading/trailing whitespace
                           Condense multiple whitespace to a single space
@@ -111,76 +88,31 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
 
        -case              Convert files to lowercase before comparing
        
-       -split             Splits each line on whitespace
-       
-       -splitChar 'char'  Splits each line on 'char'
-                          For example:  -splitChar ','
-       
-       -trim              Trims each line to 105 characters
-                          Useful when lines are very long, and the important information is near the beginning
-       
-       -trimChars N       Trims with specified number of characters, instead of 105
-       
-       -comments          Remove any comments like // or # or single-line */ /*.  Also removes trailing whitespace
-
-       -dos2unix          Run all files through dos2unix
-       
-       -round 'string'    Round all numbers according to the sprintf string
-                          For example -round '%0.2f'
-       
-       -basenames         Convert path/file to file
-                          This can be useful when comparing log files which contain temporary directories
-
-       -grep 'regex'      Only show lines which match the user-specified Perl regex
+       -grep 'regex'      Only display lines which match the user-specified Perl regex
                           Multiple regexs can be specified, for example:  -grep '(regexA|regexB)'
-                          To grep for lines above/below matches, see the help text for option -externalPreprocessScript
+                          To display lines above/below matches, see the help text for option -externalPreprocessScript
 
        -ignore 'regex'    Ignore any lines which match the user-specified regex
                           This is the opposite of the -grep function
-                          
-       -start 'regex'     Start comparing file when line matches regex
-       
-       -stop 'regex'      Stop comparing file when line matches regex
-                          The last matching line contains the 'stop' regex
 
-       -stopIgnoreLine    This modifies the 'stop' operation, so that
-                          The last matching line does not contain the 'stop' regex
+       -search 'regex'    On each line, do a global regex search and replace
+       -replace 'regex'   
+                          For example, to replace temporary filenames such as '/tmp/foo123456/bar.log' with '/tmp/file':
+                              -search '/tmp/\S+' -replace '/tmp/file'
+                              
+                          Since the search/replace terms are interpreted as regex,
+                          remember to escape any parentheses
+                              Exception:  if you are using regex grouping, 
+                                          do not escape the parentheses
+                              For example:
+                                  -search '(A|B|C)'  -replace 'D'
 
-       -start1 -stop1 -start2 -stop2
-                          Similar to -start and -stop
-                          The '1' and '2' refer the files
-                          Enables comparing different sections within the same file, or different sections within different files
-                          
-                          For example, to compare Perl functions 'add' and 'subtract' within single file:
-                              dif a.pm -start1 'sub add' -stop1 '^}' -start2 'sub subtract' -stop '^}'
+                          Since the replace term is run through 'eval', make sure to escape any $ dollar signs
+                          Make sure to use 'single-quotes' instead of double-quotes
+                          For example, to convert all spaces to newlines, use:
+                              -search '\s+'  -replace '\n'
 
-       -function 'function_name'
-                          Compare same  Python def / Perl sub / TCL proc  function from two source files
-                          Internally, this piggybacks on the -start -stop functionality
-
-       -functionSort
-                          Useful when Python/Perl/TCL function have been moved within a file
-                          This option preprocesses each file, so that the function definitions
-                          are in alphabetical order
-
-       -search 'regex'
-       -replace 'regex'   On each line, do a global regex search and replace
-                              For example, to replace temporary filenames such as '/tmp/foo123456/bar.log' with '/tmp/file':
-                                  -search '/tmp/\S+' -replace '/tmp/file'
-                                  
-                              Since the search/replace terms are interpreted as regex,
-                              remember to escape any parentheses
-                                  Exception:  if you are using regex grouping, 
-                                              do not escape the parentheses
-                                  For example:
-                                      -search '(A|B|C)'  -replace 'D'
-
-                              Since the replace term is run through eval, make sure to escape any $ dollar signs
-                              Make sure you use 'single-quotes' instead of double-quotes
-                              For example, to convert all spaces to newlines, use:
-                                  -search '\s+'  -replace '\n'
-
-                              If case-insensitive search is needed, also use option -case
+                          If case-insensitive search is needed, also use option -case
 
        -replaceTable file     Specify a two-column file which will be used for search/replace
                               The delimiter is any amount of spaces
@@ -195,12 +127,44 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                                1970.01.01
                                1/1/1970
 
-       -tartv             Compare tarfiles using tar -tv, and compare the names and file sizes
-                          If file sizes are not desired in the comparison (names only), also use -fields 1
+       -fields N          Compare only field(s) N
+                          Multiple fields may be given, separated by commas (-fields N,M)
+                          Field numbers start at 0
+                          Fields in the input files are assumed to be separated by spaces,
+                              unless the filename ends with .csv (separated by commas)
+                          Example:  -fields 2
+                          Example:  -fields 0,2      (fields 0 and 2)
+                          Example:  -fields -1       (last field)
+                          Example:  -fields 2+       (field 2 and above)
+                          Example:  -fields not2+    (ignore fields 2 and above)
+                          Example:  -fields not0,5+  (ignore fields 0, 5, and above)
+
+       -fieldSeparator regex    Only needed if default field separators above are not sufficient
+                                Example:  -fieldSeparator ':'
+                                Example:  -fieldSeparator '[,=]' 
+
+       -fieldJustify      Make all fields the same width, right-justified
+
+       -split             Splits each line on whitespace
        
-       -lsl               Useful when comparing previously captured output of 'ls -l'
-                          Filters out everything except names and file sizes
-          
+       -splitChar 'char'  Splits each line on 'char'
+                          For example:  -splitChar ',' to split on comma
+                          For example:  -splitChar ' \s+' to split on whitespace
+                                                           each word will be on its own line
+
+       -trim              Trims each line to 105 characters, discarding the overflow
+                          Useful when lines are very long, and the important information is near the beginning
+       
+       -trimChars N       Trims with specified number of characters, instead of 105
+       
+       -head              Compare only the first 10000 lines
+       
+       -headLines N       Compare only the first N lines
+
+       -tail              Compare only the first 10000 lines
+       
+       -tailLines N       Compare only the first N lines
+
        -yaml              Compare two yaml files, sorting the keys
        
        -json              Compare two json files, sorting the keys
@@ -209,6 +173,20 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                           For use with -yaml or -json
                           Removes all dictionary keys matching the regex
 
+       -basenames         Convert path/file to file
+                          This can be useful when comparing log files which contain temporary directories
+       
+       -round 'string'    Round all numbers according to the sprintf string
+                          For example -round '%0.2f'
+       
+       -dos2unix          Run all files through dos2unix
+
+       -lsl               Useful when comparing previously captured output of 'ls -l'
+                          Compares only names and file sizes
+
+       -tartv             Compare tarfiles using tar -tv, and compare the names and file sizes
+                          If file sizes are not desired in the comparison (names only), also use -fields 1
+          
        -perlEval          The input file is a perl hashref
                           Print the keys in alphabetical order
 
@@ -220,11 +198,54 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                               <_sre.SRE_Pattern object at 0x216e600>
 
       
+    Filtering options to target a section of the file:    
+
+       -start 'regex'     Start comparing file when line matches 'regex'
+
+                          If multiple lines matching regexes should be required to start capturing,
+                          Separate the regexes with ^^
+                          For example, to start capture after line matching 'abc' and then line matching 'def':
+                          -start 'abc^^def'
+
+                          By default, only the first occurrence of the start/stop sequence will be captured,
+                          if multiple occurrences exist within the file
+
+       -stop 'regex'      Stop comparing file when line matches regex
+                          The last matching line will be captured, unless specified otherwise
+
+       -startIgnoreFirstLine    This modifies the 'start' operation, so that
+                                The first matching line will not be captured
+       
+       -stopIgnoreLastLine      This modifies the 'stop' operation, so that
+                                The last matching line will not be captured
+       
+       -startMultiple     This modifies the 'start' operation, so that
+                          multiple occurrences of the same start/stop sequence may be captured
+
+       -start1 -stop1 -start2 -stop2
+                          Similar to -start and -stop
+                          The '1' and '2' refer the files
+                          Enables comparing different sections within the same file,
+                          or different sections within different files
+                          
+                          For example, to compare functions 'add' and 'subtract' within a single file:
+                              dif a.pm -start1 'sub add' -stop1 '^}' -start2 'sub subtract' -stop '^}'
+
+       -function 'function_name'
+                          Compare same  Python def / Perl sub / TCL proc  function from two source files
+                          Internally, this leverages the -start -stop functionality
+                          The algorithm requires that the opening brace is on the same line as the function name
+                          This feature will also work for some C source files
+
+       -functionSort
+                          Useful when Python/Perl/TCL functions have been moved within a file
+                          This option preprocesses each file, so that the function definitions
+                          appear in alphabetical order
+                          The algorithm requires that the opening brace is on the same line as the function name
+                          This feature will also work for some C source files
+
+
     Preprocessing options (before filtering):
-       -bcpp              Run each cpp input file through bcpp with options:  /home/ckoknat/cs2/linux/bcpp -s -bcl -tbcl -ylcnc
-
-       -perltidy          Run each Perl input file through perltidy with options:  /home/utils/perl5/perlbrew/perls/5.26.2-060/bin/perltidy -l=110 -ce
-
        -externalPreprocessScript <script>          
                           Run each input file through your custom preprocessing script
                           It must take input from STDIN and send output to STDOUT, similar to unix 'sort'
@@ -246,8 +267,12 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                               'VBinDiff' by Christopher J. Madsen
                               'dhex'
                          
-        -bin             Compare binary files
-                         This is a shortcut for running -ext '/usr/bin/xxd'
+       -bin               Compare binary files
+                          This is a shortcut for running -ext '/usr/bin/xxd'
+
+       -bcpp              Run each cpp input file through bcpp linting tool with options:  /home/ckoknat/cs2/linux/bcpp -s -bcl -tbcl -ylcnc
+
+       -perltidy          Run each Perl input file through perltidy linting tool with options:  /home/utils/perl5/perlbrew/perls/5.26.2-060/bin/perltidy -l=110 -ce
 
 
     Postprocessing options (after filtering):
@@ -256,15 +281,14 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        -uniq              Run Linux 'uniq' on each input file to eliminate duplicated adjacent lines
                           Use with -sort to eliminate all duplicates
        
-       -strings           Run equivalent of Linux 'strings' command on each input file to strip out binary characters
+       -strings           Run equivalent of Linux 'strings' command on each input file to remove binary characters
 
        -fold              Run 'fold' on each input file with default of 105 characters per column
-                          Useful for comparing long lines,
-                          so that scrolling right is not needed within the GUI
+                          Useful for comparing long lines, so that scrolling right is not needed within the GUI
 
        -foldChars N       Run 'fold' on each input file with N characters per column
 
-       -ppOnly            Stop after creating processed files
+       -ppOnly            Stop after creating preprocessed files
 
 
     Viewing options:
@@ -274,8 +298,9 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
 
        -gui cmd           Instead of using kompare to graphically compare the files, use a different tool
                           This supports any tool which has command line usage similar to gvimdiff
-                          i.e. 'gvimdiff file1 file2'.  This has been tested on meld, gvimdiff, kdiff3, tkdiff, and kompare
-                          (and likely works with diffmerge, diffuse, kdiff, wdiff, xxdiff, colordiff, beyond compare, etc)
+                          i.e. 'gvimdiff file1 file2'.
+                          This has been tested on meld, gvimdiff, kdiff3, tkdiff, and kompare, and likely works
+                          with diffmerge, diffuse, kdiff, wdiff, xxdiff, colordiff, beyond compare, etc
                           Examples:
 
                           -gui gvimdiff
@@ -299,7 +324,7 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                           -gui none
                               This is useful when comparing from a script
                               in an automated process such as regression testing
-                              After running dif, check the return status:
+                              After running dif, the return status will be:
                                   0 = files are equal
                                   1 = files are different
                                   dif a.yml b.yml -gui none -quiet ; echo $?
@@ -324,7 +349,8 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                              Any of the preprocessing options may be used
       
       -report                When used with two directories  or  -dir2 <dir>  or  -gold
-                             Instead of opening GUIs for each file pair, generate report of mismatching or missing files
+                             Instead of opening GUIs for each file pair,
+                             generate report of mismatching or missing files
                              For example:
                                  dif dirA dirB -report
                              Any of the preprocessing options may be used
@@ -337,6 +363,7 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                                  dif */file -report
 
       -fast                  When used with -report, use file size to compare, instead of md5sum
+                             This is much faster, but could miss cases where bits are flipped
 
       -includeFiles <regex>  
       -excludeFiles <regex>  Both options are for use with two directories  or  -dir2 <dir>  or  -gold
@@ -344,7 +371,8 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                                  dif -includeFiles '*log' dirA dirB
                              Will open GUI for each pair of mismatching files
 
-                             When used with -dir2 or -gold, finds files in the current directory matching the Perl regex
+                             When used with -dir2 or -gold,
+                             finds files in the current directory matching the Perl regex
                              For example:
                                  dif -includeFiles '*log' -dir2 ../old
 
@@ -392,7 +420,7 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
     Other options:
        -stdin             Parse input from stdin and send output to stdout
                           For example:
-                              grep foo bar | dif -stdin <options> | baz | qux
+                              grep foo bar | dif -stdin <options> | script2 | script3
 
        -stdout            Cat all preprocessed files to stdout
                           In this use case, dif could be called on only one file
@@ -400,6 +428,9 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                           For example:
                               dif file -stdout <options> | another_script
                           If -stdin is given, then -stdout is assumed
+
+       -out <file>        Similar to -stdout, but send output to file
+                          This can be useful if dif is used as a preprocessing engine
        
        -keeptmp           Default behavior is to remove the tmp directory containing preprocessed files
                           This option keeps it
@@ -412,16 +443,18 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
             .xz
             .zip  (single files only)
         
-        Compares values inside .xls|.xlsm|.xlsx files  (if the Perl Spreadsheet::BasicRead module is installed)
+        Compares values inside .xls|.xlsm|.xlsx files
+            requires the Perl Spreadsheet::BasicRead, Spreadsheet::ParseExcel, and Spreadsheet::XLSX modules to be installed
         
-        Compares values inside .ods OpenOffice spreadsheet files  (if the Perl Spreadsheet::Read module is installed)
+        Compares values inside .ods OpenOffice spreadsheet files  
+            requires the Perl Spreadsheet::Read and Spreadsheet::ParseODS module to be installed
         
-        Attempts to compare text inside .pdf files  (if the Perl CAM::PDF module is installed)
-        
-           
+        Attempts to compare text inside .pdf files
+            requires the Perl CAM::PDF module to be installed
+       
 
     Default compare tool:
-        The default compare GUI is kompare
+        The default compare GUI is meld
         To change this, create the text file ~/.dif.defaults with one of these content lines:
             gui: gvimdiff
             gui: tkdiff
