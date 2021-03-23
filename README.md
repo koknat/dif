@@ -175,6 +175,8 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
 
        -basenames         Convert path/file to file
                           This can be useful when comparing log files which contain temporary directories
+                          
+       -lineWordSort      Sort the words in each line (space delimited)
        
        -round 'string'    Round all numbers according to the sprintf string
                           For example -round '%0.2f'
