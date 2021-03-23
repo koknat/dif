@@ -219,16 +219,14 @@ sub usage {
                               $scriptName a.pm -start1 'sub add' -stop1 '^}' -start2 'sub subtract' -stop '^}'
 
        -function 'function_name'
-                          Compare same  Python def / Perl sub / TCL proc  function from two source files
+                          Compare same  Python def / Perl sub / TCL proc / JavaScript function from two source files
                           Internally, this leverages the -start -stop functionality
-                          The algorithm requires that the opening brace is on the same line as the function name
                           This feature will also work for some C source files
 
        -functionSort
-                          Useful when Python/Perl/TCL functions have been moved within a file
+                          Useful when Python/Perl/TCL/JavaScript functions have been moved within a file
                           This option preprocesses each file, so that the function definitions
                           appear in alphabetical order
-                          The algorithm requires that the opening brace is on the same line as the function name
                           This feature will also work for some C source files
 
 
@@ -684,7 +682,7 @@ if ( $defaults{history} ) {
 }
 
 # Options can be overridden with user config file ~/.dif.options  (key/value format)
-Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort|s', 'paragraphSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function=s', 'functionSort', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'removeDictKeys=s', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'listFiles', 'report|r', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
+Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort|s', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function=s', 'functionSort', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'removeDictKeys=s', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'listFiles', 'report|r', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
 # noDirs is not in usage.  It excludes directories
 $opt{quiet}  = 1 if $opt{silent};       # for backwards compatibility of -silent
 $opt{report} = 1 if $opt{listFiles};    # for backwards compatibility of -listFiles
@@ -862,18 +860,20 @@ if ( $opt{function} ) {
         exit 1;
     }
     # def quickSort(a):
-    # sub usage {
-    # proc getMd5sum { file } {
+    # sub usage
+    # proc getMd5sum
     my $functionStartRegex;
-    if ( $files[0] =~ /\.c(pp)?(.gz)?$/ ) {
+    my $filetype = getFileType( $files[0], { c_variants => 1 } );
+    if ( $filetype =~ /^(pl|py|tcl|js)$/ ) {
+        $functionStartRegex = '\s*(sub|proc|def|function)';               #### function may require changing filetype regex
+        $opt{start}         = "^$functionStartRegex\\s+$opt{function}";
+        $opt{stop}          = "^($functionStartRegex|})";                 # '}' (Perl sub, TCL proc)  or  start of next sub (Perl sub, TCL proc, Python def)
+    } else {
         $functionStartRegex = '\s*(unsigned\s+|signed\s+)?(void|int|char|short|long|float|double)';
         $opt{start}         = "\\s*$functionStartRegex\\s+$opt{function}";
         $opt{stop}          = '^\s*((unsigned\s+|signed\s+)?(void|int|char|short|long|float|double)\s+([^\s;]+)|})\s*$';
-    } else {
-        $functionStartRegex = '\s*(sub|proc|def|function)';
-        $opt{start}         = "^$functionStartRegex\\s+$opt{function}";
-        $opt{stop}          = "^($functionStartRegex|})";                 # '}' (Perl sub, TCL proc)  or  start of next sub (Perl sub, TCL proc, Python def)
     }
+    $opt{startMultiple} = 1;
     if ( $files[0] =~ /\.py$/ ) {
         $opt{stopIgnoreLastLine} = 1;
     }
@@ -882,7 +882,7 @@ if ( $opt{function} ) {
 # Decide if file needs to go through the preprocessing code
 # If not, then we can later do a quick md5sum check to determine equality
 my $preprocessOptions = 0;
-$preprocessOptions = 1 if $opt{sort} or $opt{paragraphSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{length} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or defined $opt{round} or $opt{basenames} or $opt{dos2unix} or defined $opt{grep} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or defined $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{perlEval} or $opt{yaml} or $opt{json} or defined $opt{removeDictKeys} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
+$preprocessOptions = 1 if $opt{sort} or $opt{paragraphSort} or $opt{lineWordSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{length} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or defined $opt{round} or $opt{basenames} or $opt{dos2unix} or defined $opt{grep} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or defined $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{perlEval} or $opt{yaml} or $opt{json} or defined $opt{removeDictKeys} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
 my $preprocessRequired = $preprocessOptions;
 for my $file (@files) {
     if ( $file =~ /\.tar(\.gz|bz2|xz|zip)?(#(\d+|head|\-|\+))?$/ ) {
@@ -890,8 +890,9 @@ for my $file (@files) {
             # do nothing, will be handled later
         } else {
             $preprocessRequired = 1;
-            unless ( $gui =~ /^(gvim|gvimdiff)/ ) {
-                $gui = 'gvimdiff';
+            unless ( $gui =~ /^(gvim|gvimdiff)/ and !$opt{strings} ) {
+                say "Turning on option -strings because of binary content in .tar file" unless $opt{quiet};
+                $opt{strings} = 1;
             }
         }
     }
@@ -950,16 +951,18 @@ if ( grep { /\.xz/ } @zipExtension ) {
 }
 d '$zipDiff $preprocessRequired';
 
-$opt{quiet}    = 1                                                        if $opt{stdout} or defined $opt{out};
-$opt{head}     = 99999999999                                              if $opt{head} == 0;
-$opt{head}     = $defaults{head}                                          if $opt{head} == 1;
-$opt{head}     = $opt{headLines}                                          if $opt{headLines};
-$opt{tail}     = $defaults{head}                                          if $opt{tail} == 1;
-$opt{tail}     = $opt{tailLines}                                          if $opt{tailLines};
-$opt{dos2unix} = "| dos2unix"                                             if $opt{dos2unix} ne "" and whichCommand('dos2unix');
-$opt{sort}     = "| sort"                                                 if $opt{sort} ne "";
-$opt{sort}     = "| perl -n00 -e 'push \@a, \$_; END { print sort \@a }'" if $opt{paragraphSort};
-$opt{uniq}     = "| uniq"                                                 if $opt{uniq} ne "" and whichCommand('uniq');
+my ( $head, $tail );
+$opt{quiet} = 1 if $opt{stdout} or defined $opt{out};
+$head = 99999999999     if $opt{head} == 0;
+$head = $defaults{head} if $opt{head} == 1;
+$head = $opt{headLines} if $opt{headLines};
+$tail = $defaults{head} if $opt{tail} == 1;
+$tail = $opt{tailLines} if $opt{tailLines};
+$opt{dos2unix} = "| dos2unix" if $opt{dos2unix} ne "" and whichCommand('dos2unix');
+$opt{sort} = "| sort" if $opt{sort} ne "";
+$opt{sort} = "| perl -n00 -e 'push \@a, \$_; END { print sort \@a }'" if $opt{paragraphSort};
+$opt{uniq} = "| uniq" if $opt{uniq} ne "" and whichCommand('uniq');
+
 if ( $opt{strings} ne "" ) {
 
     if ( whichCommand('strings') ) {
@@ -2019,11 +2022,22 @@ sub preprocessFile {
         }
     }
     my $wc = "?";
-    $wc = `$zipCat '$file' | wc -l | cut -d " " -f 1` if $opt{tail};
-    d('$wc') if $opt{tail};
+    $wc = `$zipCat '$file' | wc -l | cut -d " " -f 1` if $tail;
+    d('$wc') if $tail;
     open( my $TMP, "$opt{strings} $opt{sort} $opt{uniq} $opt{fold} $opt{dos2unix} > $tmpfile" ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";    # Postprocess step
-    my $firstLine = $opt{tail} ? ( $wc - $opt{tail} + 1 ) : -1;
-    d '$firstLine';
+                                                                                                                                                                #my $firstLine = $opt{tail} ? ( $wc - $opt{tail} + 1 ) : -1;
+    my $firstLine;
+    if ( defined $tail ) {
+
+        if ( $opt{head} or $opt{headLines} ) {
+            $firstLine = $head - $tail + 1;
+        } else {
+            $firstLine = $wc - $tail + 1;
+        }
+    } else {
+        $firstLine = -1;
+    }
+    d '$head $tail $wc $firstLine';
     my $linenum       = 0;
     my $startFound    = 0;
     my $anyStartFound = 0;
@@ -2032,7 +2046,7 @@ sub preprocessFile {
     d '$start $stop';
     $startFound = 1 if defined $stop  and not defined $start;
     $stopFound  = 1 if defined $start and not defined $stop;
-    d( '$startFound', 'nc*' );                                                                                                                                  # Turn on line numbers and chomp
+    d( '$startFound', 'nc*' );    # Turn on line numbers and chomp
 
     while ( my $line = <$F> ) {
         #d '.';
@@ -2070,8 +2084,13 @@ sub preprocessFile {
             # path/file -> file
             $line =~ s{\S+/(\S+)}{$1};
         }
+        if ( $opt{lineWordSort} ) {
+            # sort words in current line
+            chomp $line;
+            $line = ( join ' ', sort( split /\s+/, $line ) ) . "\n";
+        }
 
-        if ( $linenum > $opt{head} ) {
+        if ( $linenum > $head ) {
             #d "Ignoring rest of file because of option -head";
             last;
         } elsif ( defined $stop and $startFound and !$stopFound and $line =~ /($stop)/ ) {
@@ -2515,8 +2534,11 @@ sub getFileType {
     my ( $file, $options ) = @_;
     d '$file $options';
     $file =~ s/\.gz$//;
+    $file =~ s/#.*//;     # Remove p4 rev number
     ( my $filetype = $file ) =~ s/.*\.//;
-    if ( $filetype =~ /tn/ ) {
+    if ( $filetype =~ /pm/ ) {
+        $filetype = 'pl';
+    } elsif ( $filetype =~ /tn/ ) {
         $filetype = 'tcl';
     } elsif ( $filetype =~ /yaml/ ) {
         $filetype = 'yml';
@@ -2545,32 +2567,32 @@ sub functionSort {
             last;
         } elsif ( $line =~ /^\s*$/ ) {
             # Ignore blank lines
-        } elsif ( $line =~ /^#/ ) {
+        } elsif ( $line =~ /^\s*(#|\/\/)/ ) {
             # Ignore any comments at beginning of line, since function descriptions are often immediately before the function
         } elsif ( $line =~ /^\}/ ) {
             # C / Perl / TCL
             $subs{$function} .= $line;
             $function = '__MAIN__';
-        } elsif ( $filetype eq 'c' and $function eq '__MAIN__' and $line =~ /^\s*((unsigned\s+|signed\s+)?(void|int|char|short|long|float|double)\s+([^\s;]+))\s*$/ ) {
-            # C, this is good enough for many cases
+        } elsif ( $filetype !~ /^(pl|py|tcl)$/ and $function eq '__MAIN__' and $line =~ /^\s*((unsigned\s+|signed\s+)?(void|int|char|short|long|float|double)\s+([^\s;]+))\s*$/ ) {
+            # C and some other languages, this regex is good enough for many cases
             $function = $4;
             $subs{$function} = $line;
-        } elsif ( $line =~ /^\s*(sub\s+(\S+)\s*\{)/ ) {
+        } elsif ( $filetype eq 'pl' and $line =~ /^\s*(sub\s+(\S+))/ ) {
             # Perl
             $function = $2;
             $subs{$function} = $line;
-        } elsif ( $line =~ /^\s*(def\s+(\S+))\s*:/ ) {
+        } elsif ( $filetype eq 'py' and $line =~ /^\s*(def\s+(\S+))\s*:/ ) {
             # Python
             $function = $2;
             $subs{$function} = $line;
-        } elsif ( $line =~ /^\s*(proc\s+(\S+)\s*\{)/ ) {
+        } elsif ( $filetype eq 'tcl' and $line =~ /^\s*(proc\s+(\S+))/ ) {
             # TCL
             $function = $2;
             $subs{$function} = $line;
-            #} elsif ( $line =~ /^\s*(function\s+(\S+)\s*\{)/ ) {
-            #    # JavaScript
-            #    $function = $2;
-            #    $subs{$function} = $line;
+        } elsif ( $filetype eq 'js' and $line =~ /^\s*(function\s+(\S+))/ ) {
+            # JavaScript
+            $function = $2;
+            $subs{$function} = $line;
         } else {
             $subs{$function} .= $line;
         }
@@ -2865,7 +2887,7 @@ sub removeDictKeys {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v42 Tue Feb 23 13:58:21 PST 2021
+v44 Tue Mar 23 11:26:39 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify

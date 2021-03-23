@@ -64,10 +64,29 @@ if ( runtests('white') ) {
 }
 
 if ( runtests('head') ) {
+    my ($cmd, $result);
+
+    $cmd = "$dif $testDir/case04a_lsl.txt -stdout -headlines 6 | wc -l";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    is($result, 6, "headLines 6 wc = 6");
+
     testcmd( $dif, "case01a_hosts.txt case01d_hosts_missingline.txt", "", $fail );
     testcmd( $dif, "case01a_hosts.txt case01d_hosts_missingline.txt", "-headlines 3", $pass );
 }
 if ( runtests('tail') ) {
+    my ($cmd, $result);
+
+    $cmd = "$dif $testDir/case04a_lsl.txt -stdout -taillines 3 | wc -l";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    is($result, 3, "tailLines 3 wc = 3");
+    
+    $cmd = "$dif $testDir/case04a_lsl.txt -stdout -headLines 7 -tailLines 5 | wc -l";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    is($result, 5, "headLines 7 tailLines 5 wc = 5");  # skips first 2 lines, keeps 5, skips final 3
+
     testcmd( $dif, "case01a_hosts.txt case01j_hosts_uppercase.txt", "", $fail );
     testcmd( $dif, "case01a_hosts.txt case01j_hosts_uppercase.txt", "-taillines 1", $pass );
 }
@@ -375,6 +394,28 @@ if ( runtests('perleval') ) {
 }
 
 if ( runtests('function') ) {
+    my ($cmd, $result);
+
+    $cmd = "$dif $testDir/case13b.pl -stdout -function a | wc -l";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    is($result, 4, "function a .pl wc");
+    
+    $cmd = "$dif $testDir/case15b.py -stdout -function quickSort | wc -l";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    is($result, 15, "function quickSort .py wc");
+    
+    $cmd = "$dif $testDir/case17b.c -stdout -function sieve | wc -l";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    is($result, 14, "function sieve .c wc");
+    
+    $cmd = "$dif $testDir/case19b.js -stdout -function isPrime | wc -l";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    is($result, 17, "function isPrime .js wc");
+
     # a vs b = changes within a function
     # b vs c = sorting
     testcmd( $dif, "case13a.pl case13b.pl", "-function a", $fail );
@@ -385,6 +426,9 @@ if ( runtests('function') ) {
     
     testcmd( $dif, "case17a.c case17b.c", "-function sieve", $fail );
     testcmd( $dif, "case17b.c case17b.c", "-function sieve", $pass );
+    
+    testcmd( $dif, "case19a.js case19b.js", "-function isPrime", $fail );
+    testcmd( $dif, "case19b.js case19b.js", "-function isPrime", $pass );
 }
 
 if ( runtests('functionSort') ) {
@@ -398,6 +442,10 @@ if ( runtests('functionSort') ) {
     testcmd( $dif, "case17b.c case17c.c", "", $fail );
     testcmd( $dif, "case17b.c case17c.c", "-functionSort", $pass );
     testcmd( $dif, "case17a.c case17b.c", "-functionSort", $fail );
+    
+    testcmd( $dif, "case19b.js case19c.js", "", $fail );
+    testcmd( $dif, "case19b.js case19c.js", "-functionSort", $pass );
+    testcmd( $dif, "case19a.js case19b.js", "-functionSort", $fail );
 }
 
 if ( runtests('ext') ) {
@@ -629,7 +677,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v42 Tue Feb 23 13:58:21 PST 2021
+v44 Tue Mar 23 11:26:39 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
