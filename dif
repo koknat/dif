@@ -136,8 +136,8 @@ sub usage {
        
        -splitChar 'char'  Splits each line on 'char'
                           For example:  -splitChar ',' to split on comma
-                          For example:  -splitChar ' \\s+' to split on whitespace
-                                                           each word will be on its own line
+                          For example:  -splitChar '\\s+' to split on whitespace
+                                                          each word will be on its own line
 
        -trim              Trims each line to $defaults{fold} characters, discarding the overflow
                           Useful when lines are very long, and the important information is near the beginning
@@ -162,6 +162,8 @@ sub usage {
 
        -basenames         Convert path/file to file
                           This can be useful when comparing log files which contain temporary directories
+
+       -lineWordSort      Sort the words in each line (space delimited)
        
        -round 'string'    Round all numbers according to the sprintf string
                           For example -round '%0.2f'
@@ -254,6 +256,8 @@ sub usage {
                          
        -bin               Compare binary files
                           This is a shortcut for running -ext '/usr/bin/xxd'
+       
+       -strings           Run equivalent of Linux 'strings' command on each input file to remove binary characters
 
        -bcpp              Run each cpp input file through bcpp linting tool with options:  $defaults{bcpp}
 
@@ -266,8 +270,6 @@ sub usage {
        -uniq              Run Linux 'uniq' on each input file to eliminate duplicated adjacent lines
                           Use with -sort to eliminate all duplicates
        
-       -strings           Run equivalent of Linux 'strings' command on each input file to remove binary characters
-
        -fold              Run 'fold' on each input file with default of $defaults{fold} characters per column
                           Useful for comparing long lines, so that scrolling right is not needed within the GUI
 
@@ -682,7 +684,7 @@ if ( $defaults{history} ) {
 }
 
 # Options can be overridden with user config file ~/.dif.options  (key/value format)
-Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort|s', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function=s', 'functionSort', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'removeDictKeys=s', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'listFiles', 'report|r', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
+Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function=s', 'functionSort', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'removeDictKeys=s', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'listFiles', 'report|r', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
 # noDirs is not in usage.  It excludes directories
 $opt{quiet}  = 1 if $opt{silent};       # for backwards compatibility of -silent
 $opt{report} = 1 if $opt{listFiles};    # for backwards compatibility of -listFiles
@@ -811,17 +813,14 @@ if ( $gui eq 'meld' ) {
 d '$gui';
 # Fall back to gvimdiff if gui is not installed
 if ( $gui ne 'none' ) {
-    if ( !whichCommand($gui) ) {
-        # sudo apt install kompare
-        if ( whichCommand('gvimdiff') ) {
-            say "Using gvimdiff since '$gui' is not installed" unless $opt{quiet};
-            $gui = 'gvimdiff';
-        } elsif ( whichCommand('gvim') ) {
-            say "Using 'gvim -d' since '$gui' is not installed" unless $opt{quiet};
-            $gui = 'gvim -d';
-        } else {
-            die "ERROR:  Could not find a compare gui on this OS, such as 'meld', 'gvimdiff', or 'gvim -d'";
+    my $newGui = whichCommand( $gui, 'meld', 'gvimdiff', 'gvim -d', 'kompare', 'tkdiff' );
+    if ( defined $newGui ) {
+        if ( $newGui ne $gui ) {
+            say "Using '$newGui' since '$gui' is not installed" unless $opt{quiet};
+            $gui = $newGui;
         }
+    } else {
+        die "ERROR:  Could not find a compare gui on this OS, such as 'meld', 'gvimdiff', or 'gvim -d'";
     }
 }
 if ($windows) {
@@ -863,8 +862,8 @@ if ( $opt{function} ) {
     # sub usage
     # proc getMd5sum
     my $functionStartRegex;
-    my $filetype = getFileType( $files[0], { c_variants => 1 } );
-    if ( $filetype =~ /^(pl|py|tcl|js)$/ ) {
+    my $filetype = getScriptType( file => $files[0] );
+    if ( $filetype =~ /^(php|pl|py|tcl|js)$/ ) {
         $functionStartRegex = '\s*(sub|proc|def|function)';               #### function may require changing filetype regex
         $opt{start}         = "^$functionStartRegex\\s+$opt{function}";
         $opt{stop}          = "^($functionStartRegex|})";                 # '}' (Perl sub, TCL proc)  or  start of next sub (Perl sub, TCL proc, Python def)
@@ -966,10 +965,10 @@ $opt{uniq} = "| uniq" if $opt{uniq} ne "" and whichCommand('uniq');
 if ( $opt{strings} ne "" ) {
 
     if ( whichCommand('strings') ) {
-        $opt{strings} = "| strings";
+        $opt{strings} = "strings";
     } else {
         # Use perl if 'strings' executable does not exist in Linux.  This is somewhat slower, and not exactly the same output
-        $opt{strings} = "| perl -nle 'print \$& while m/[[:print:]]{4,}/g'";
+        $opt{strings} = "perl -nle 'print \$& while m/[[:print:]]{4,}/g'";
     }
 }
 if ( $opt{fold} or $opt{foldChars} ) {
@@ -979,7 +978,7 @@ if ( $opt{trim} or $opt{trimChars} ) {
     $opt{trim} = $opt{trimChars} ? $opt{trimChars} : $defaults{fold};
 }
 if ( defined $opt{removeDictKeys} and ( !$opt{yaml} and !$opt{json} ) ) {
-    if ( getFileType( $files[0] ) eq 'yml' ) {
+    if ( getFileType( $files[0] ) =~ /^(yaml|yml)$/ ) {
         $opt{yaml} = 1;
     } elsif ( getFileType( $files[0] ) eq 'json' ) {
         $opt{json} = 1;
@@ -1131,10 +1130,11 @@ if ( ( $opt{gold} or $opt{dir2} or defined $opt{includeFiles} ) and !$opt{report
         d '@filePairs';
         # Remove files from original command line
         d '$originalCmdLine';
-        my $originalFiles = "'" . join( "' '", @files_orig ) . "'";
-        d '$originalFiles';
-        ( my $commandLineWithoutFiles = $originalCmdLine ) =~ s/$originalFiles//;
-        d '$originalCmdLine';
+        my $commandLineWithoutFiles = $originalCmdLine;
+        for my $file (@files) {
+            $commandLineWithoutFiles =~ s/'$file'/ /;
+        }
+        d '$commandLineWithoutFiles';
         d '@filePairs';
         for my $file (@filePairs) {
             # This can lead to many windows being opened successively, with Ctrl-C not working well
@@ -1148,14 +1148,17 @@ if ( ( $opt{gold} or $opt{dir2} or defined $opt{includeFiles} ) and !$opt{report
             d '$cmd';
             # dif normally runs the gui tool in the backgrounds 'dif file1 file2 &', so that the command line remains available
             # However, in this use case, we want dif to pause while the GUI is open.  When the user closes the GUI, move on to the next file
-            $cmd = "echo $cmd" if $ENV{DEBUG_DIF};
-            if ( $defaults{openMultipleGUIs} ) {
-                system "$cmd &";
+            if ( $ENV{DEBUG_DIF} ) {
+                $cmd = "echo $cmd" if $ENV{DEBUG_DIF};
             } else {
-                if ( scalar @filePairs > 1 ) {
-                    $cmd .= ' -noBackgroundProcess';
+                if ( $defaults{openMultipleGUIs} ) {
+                    system "$cmd &";
+                } else {
+                    if ( scalar @filePairs > 1 ) {
+                        $cmd .= ' -noBackgroundProcess';
+                    }
+                    system "$cmd";
                 }
-                system "$cmd";
             }
             select( undef, undef, undef, 0.1 );    # Sleep for 100 ms to allow Ctrl-C to work better.  Works with any version of Perl
         }
@@ -1280,7 +1283,12 @@ if ( $opt{report} ) {
             exit 1;
         }
         if ( -f $file or -l $file ) {
-            print `ls -l '$file'` if $opt{verbose};
+            if ( $opt{verbose} ) {
+                chomp( my $lsl   = `ls -l '$file'` );
+                chomp( my $lines = `wc -l '$file' | cut -d ' ' -f 1` );
+                chomp( my $words = `wc -w '$file' | cut -d ' ' -f 1` );
+                say "$lsl    $lines lines    $words words";
+            }
         }
     }
 }
@@ -1740,7 +1748,15 @@ if ( defined $opt{out} ) {
         $command = $windows ? "type $processedFiles" : "cat $processedFiles > $opt{out}";
     }
 } elsif ( $opt{stdout} ) {
-    $command = $windows ? "type $processedFiles" : "cat $processedFiles";
+    #$command = $windows ? "type $processedFiles" : "cat $processedFiles";
+    if ( $opt{verbose} ) {
+        for my $file (@processedFiles) {
+            $command .= "echo '\n### $file ###' ; ";
+            $command .= "cat '$file' ; ";
+        }
+    } else {
+        $command = "cat $processedFiles";
+    }
 } elsif ( $opt{noBackgroundProcess} ) {
     # Added automatically for dif //path/file#1..#3  and  for -dir2 when multiple files are chosen
     $command = "$gui $processedFiles";
@@ -1759,14 +1775,14 @@ if ( $d and not $opt{stdout} ) {
     say "Exiting because d = $d\n";
     exit 0;
 }
-if ( scalar(@files) > 2 and $gui =~ /^(kompare|tkdiff)$/ ) {
+if ( !$opt{stdout} and scalar(@files) > 2 and $gui =~ /^(kompare|tkdiff)$/ ) {
     say "Not running $gui because it only takes 2 files";
     exit 1;
 }
 if ( $files[0] =~ /\.p[lm]$/ and not $opt{perltidy} ) {
     say "You seem to be comparing Perl source files.  You may want to use the -perltidy option next time." unless $opt{quiet};
 }
-if ( getFileType( $files[0] ) eq 'yml' and not $opt{yaml} ) {
+if ( getFileType( $files[0] ) =~ /^(yml|yaml)$/ and not $opt{yaml} ) {
     say "You seem to be comparing YAML files.  You may want to use the -yaml option next time to improve the formatting." unless $opt{quiet};
 }
 if ( getFileType( $files[0] ) eq 'json' and not $opt{json} ) {
@@ -1993,6 +2009,10 @@ sub preprocessFile {
             # This is a preprocess step so that blank lines are removed during the main loop
             $preprocess_pipe .= "| perl -0777 -pe 's{/\\*.*?\\*/}{}gs'";
         }
+        if ( $opt{strings} ) {
+            # This is a preprocess step so that any remaining junk could be preprocessed, for example with -search -replace
+            $preprocess_pipe .= "| $opt{strings}";
+        }
         if ( $opt{externalPreprocessScript} ) {
             die "ERROR:  preprocessing script not found:  '$opt{externalPreprocessScript}'\n" if !whichCommand( $opt{externalPreprocessScript} );
             $preprocess_pipe .= "| $opt{externalPreprocessScript}";
@@ -2024,8 +2044,8 @@ sub preprocessFile {
     my $wc = "?";
     $wc = `$zipCat '$file' | wc -l | cut -d " " -f 1` if $tail;
     d('$wc') if $tail;
-    open( my $TMP, "$opt{strings} $opt{sort} $opt{uniq} $opt{fold} $opt{dos2unix} > $tmpfile" ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";    # Postprocess step
-                                                                                                                                                                #my $firstLine = $opt{tail} ? ( $wc - $opt{tail} + 1 ) : -1;
+    open( my $TMP, "$opt{sort} $opt{uniq} $opt{fold} $opt{dos2unix} > $tmpfile" ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";    # Postprocess step
+                                                                                                                                                  #my $firstLine = $opt{tail} ? ( $wc - $opt{tail} + 1 ) : -1;
     my $firstLine;
     if ( defined $tail ) {
 
@@ -2273,10 +2293,9 @@ sub getHash {
         if ($@) {
             eval 'use Digest::MD5 ()';
             if ($@) {
-                if ( whichCommand('md5sum') ) {
-                    $getHash{hashingMethod} = 'md5sum';
-                } elsif ( whichCommand('md5') ) {
-                    $getHash{hashingMethod} = 'md5';    # Apple OS
+                my $hashingMethod = whichCommand( 'md5sum', 'md5' );    # 'md5' is Apple OS
+                if ( defined $hashingMethod ) {
+                    $getHash{hashingMethod} = $hashingMethod;
                 } else {
                     die "ERROR: Could not determine method for md5sum\n\n";
                 }
@@ -2531,31 +2550,71 @@ sub sortYamlPerlJson {
 }
 
 sub getFileType {
-    my ( $file, $options ) = @_;
-    d '$file $options';
+    my ($file) = @_;
+    d '$file';
     $file =~ s/\.gz$//;
     $file =~ s/#.*//;     # Remove p4 rev number
     ( my $filetype = $file ) =~ s/.*\.//;
-    if ( $filetype =~ /pm/ ) {
-        $filetype = 'pl';
-    } elsif ( $filetype =~ /tn/ ) {
-        $filetype = 'tcl';
-    } elsif ( $filetype =~ /yaml/ ) {
+    if ( $filetype =~ /yaml/ ) {
         $filetype = 'yml';
     }
-    if ( $options->{c_variants} ) {
-        if ( $filetype =~ /^(cpp)$/ ) {
-            $filetype = 'c';
+    return $filetype;
+}
+
+sub getScriptType {
+    my %options = @_;
+    d '%options';
+    my $file = $options{file};
+    $file =~ s/#.*//;     # Remove p4 rev number
+    my $filetype;
+    if ( $file =~ /\.(awk|cpp|js|php|pl|py|r|rb|tcl)$/i ) {
+        $filetype = lc($1);
+        return $filetype;
+    } elsif ( $file =~ /\.c$/ ) {
+        return 'cpp';
+    } elsif ( $file =~ /\.pm$/ ) {
+        return 'pl';
+    } elsif ( $file =~ /\.tn$/ ) {
+        return 'tcl';
+    } else {
+        # Filename does not have a recognized extension.  Look at the shebang
+        if ( -f $file ) {
+            chomp( my $line = `grep '^#!' $file | head -n 1` );
+            d '$line';
+            if ( $line =~ m{^\#!(\S+/env\s+)?(\S+)} ) {
+                # #!/usr/bin/python
+                # #!/usr/bin/env python
+                $filetype = basename($2);
+                d '$filetype';
+            }
         }
     }
-    return $filetype;
+    d '$filetype';
+    if ( defined $filetype ) {
+        # from shebang
+        if ( $filetype =~ /^(node|nodejs)$/ ) {
+            return 'js';
+        } elsif ( $filetype =~ /^(perl)$/ ) {
+            return 'pl';
+        } elsif ( $filetype =~ /^(python)[0-9.]*$/ ) {
+            return 'py';
+        } elsif ( $filetype =~ /^ruby$/ ) {
+            return 'rb';
+        }
+    }
+    if ( $options{scriptsOnly} ) {
+        return '';
+    } else {
+        ( $filetype = $file ) =~ s/.*\.//;
+        return $filetype;
+    }
 }
 
 # Written for Python/Perl/TCL, but could be extended to other languages
 # As a side effect, this removes blank lines
 sub functionSort {
     my ($file) = @_;
-    my $filetype = getFileType( $file, { c_variants => 1 } );
+    my $filetype = getScriptType( file => $file );
     d '$file $filetype';
     my %subs;
     my $function = '__MAIN__';
@@ -2606,14 +2665,13 @@ sub functionSort {
 }
 
 sub whichCommand {
-    my $executableAndOptions = shift;
-    ( my $executable = $executableAndOptions ) =~ s/^(\S+).*/$1/;    # Strip any options before using 'which'
-    chomp( my $which = `which $executable 2> /dev/null` );
-    #say "$which";die;
-    #my $which = `which $executable`;
-    #return undef if $which eq '' or $which =~ /Command not found/;
-    return undef if $which eq '';
-    return $which;
+    my @executableAndOptionsArray = @_;
+    for my $executableAndOptions (@executableAndOptionsArray) {
+        ( my $executable = $executableAndOptions ) =~ s/^(\S+).*/$1/;    # Strip any options before using 'which'
+        chomp( my $which = `which $executable 2> /dev/null` );
+        return $executableAndOptions if $which ne '';
+    }
+    return undef;
 }
 
 # Convert list to pairs
@@ -2887,7 +2945,7 @@ sub removeDictKeys {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v44 Tue Mar 23 11:26:39 PDT 2021
+v46 Fri Apr  9 15:18:52 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
