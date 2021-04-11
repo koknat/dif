@@ -813,14 +813,14 @@ if ( $gui eq 'meld' ) {
 d '$gui';
 # Fall back to gvimdiff if gui is not installed
 if ( $gui ne 'none' ) {
-    my $newGui = whichCommand( $gui, 'meld', 'gvimdiff', 'gvim -d', 'kompare', 'tkdiff' );
+    my $newGui = whichCommand( $gui, 'meld', 'gvimdiff', 'vim -d', 'kompare', 'tkdiff' );
     if ( defined $newGui ) {
         if ( $newGui ne $gui ) {
             say "Using '$newGui' since '$gui' is not installed" unless $opt{quiet};
             $gui = $newGui;
         }
     } else {
-        die "ERROR:  Could not find a compare gui on this OS, such as 'meld', 'gvimdiff', or 'gvim -d'";
+        die "ERROR:  Could not find a compare gui on this OS, such as 'meld', 'gvimdiff', or 'vim -d'";
     }
 }
 if ($windows) {
@@ -1760,7 +1760,7 @@ if ( defined $opt{out} ) {
 } elsif ( $opt{noBackgroundProcess} ) {
     # Added automatically for dif //path/file#1..#3  and  for -dir2 when multiple files are chosen
     $command = "$gui $processedFiles";
-} elsif ( $gui eq 'gvim -d' ) {
+} elsif ( $gui eq 'vim -d' ) {
     # Prevent files from being cleaned up
     $command = "$gui $processedFiles ; sleep 2";
 } elsif ( $opt{keeptmp} ) {
@@ -1859,8 +1859,7 @@ sub preprocessFile {
         eval 'use CAM::PDF ()';
         if ($@) {
             say "ERROR:  Install CAM::PDF from CPAN to parse pdf files";
-            say "        sudo cpan";
-            say "            install CAM::PDF";
+            say "        sudo cpan install CAM::PDF";
             exit 1;
         } else {
             $tmpfile = sprintf( "$globaltmpdir/%s_%s_%s.dumpPDF", basename($0), $$, basename($file) );
@@ -1884,9 +1883,7 @@ sub preprocessFile {
         eval 'use Spreadsheet::Read ();  use Spreadsheet::ParseODS ()';
         if ($@) {
             say "ERROR:  Install Spreadsheet::Read and Spreadsheet::ParseODS from CPAN to parse .ods spreadsheets";
-            say "        sudo cpan";
-            say "            install Spreadsheet::Read";
-            say "            install Spreadsheet::ParseODS";
+            say "        sudo cpan install Spreadsheet::Read Spreadsheet::ParseODS";
             exit 1;
         } else {
             my $tmpfile = sprintf( "$globaltmpdir/%s_%s_%s.dumpODS", basename($0), $$, basename($file) );
@@ -2497,8 +2494,7 @@ sub sortYamlPerlJson {
         #eval 'use YAML::Syck ()';
         if ($@) {
             say "ERROR:  Install YAML::XS from CPAN to use option -yaml";
-            say "        sudo cpan";
-            say "            install YAML::XS";
+            say "        sudo cpan install YAML::XS";
             exit 1;
         } else {
             $ref = YAML::XS::Load($data);
@@ -2526,8 +2522,7 @@ sub sortYamlPerlJson {
         eval 'use JSON::XS ()';
         if ($@) {
             say "ERROR:  Install JSON::XS from CPAN to use option -json";
-            say "        sudo cpan";
-            say "            install YAML::XS";
+            say "        sudo cpan install YAML::XS";
             exit 1;
         } else {
             $ref = JSON::XS::decode_json($data);
@@ -2567,7 +2562,7 @@ sub getScriptType {
     my $file = $options{file};
     $file =~ s/#.*//;     # Remove p4 rev number
     my $filetype;
-    if ( $file =~ /\.(awk|cpp|js|php|pl|py|r|rb|tcl)$/i ) {
+    if ( $file =~ /\.(awk|cpp|go|js|php|r|pl|py|rb|swift|tcl)$/i ) {
         $filetype = lc($1);
         return $filetype;
     } elsif ( $file =~ /\.c$/ ) {
@@ -2600,6 +2595,8 @@ sub getScriptType {
             return 'py';
         } elsif ( $filetype =~ /^ruby$/ ) {
             return 'rb';
+        } elsif ( $filetype =~ /^(tn_shell)$/ ) {
+            return 'tcl';
         }
     }
     if ( $options{scriptsOnly} ) {
@@ -2945,7 +2942,7 @@ sub removeDictKeys {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v46 Fri Apr  9 15:18:52 PDT 2021
+v47 Sun Apr 11 11:49:55 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
