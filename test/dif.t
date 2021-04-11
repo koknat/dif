@@ -3,6 +3,7 @@
 ##!/home/utils/perl-5.26/5.26.2-058/bin/perl
 ##!/home/utils/perl5/perlbrew/perls/5.26.2-060/bin/perl
 use warnings;
+#use warnings FATAL => qw( all );
 use strict;
 use File::Basename qw(basename dirname);
 use File::Temp qw(tempdir);
@@ -65,9 +66,7 @@ if ( runtests('white') ) {
 
 if ( runtests('head') ) {
     my ($cmd, $result);
-
-    $cmd = "$dif $testDir/case04a_lsl.txt -stdout -headlines 6 -q | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -headlines 6 -q");
     d '$cmd $result';
     is($result, 6, "headLines 6 wc = 6");
 
@@ -77,13 +76,11 @@ if ( runtests('head') ) {
 if ( runtests('tail') ) {
     my ($cmd, $result);
 
-    $cmd = "$dif $testDir/case04a_lsl.txt -stdout -taillines 3 -q | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -taillines 3 -q");
     d '$cmd $result';
     is($result, 3, "tailLines 3 wc = 3");
     
-    $cmd = "$dif $testDir/case04a_lsl.txt -stdout -headLines 7 -tailLines 5 -q | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -headLines 7 -tailLines 5 -q");
     d '$cmd $result';
     is($result, 5, "headLines 7 tailLines 5 wc = 5");  # skips first 2 lines, keeps 5, skips final 3
 
@@ -186,44 +183,37 @@ if ( runtests('start_stop') ) {
     my ($options, $cmd, $result);
 
     $options = "-start '^def offset' -stop '^\\s*\$'";
-    $cmd = "$dif $testDir/case12_start_stop.py -stdout $options -q | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("$dif $testDir/case12_start_stop.py -stdout $options -q");
     d '$cmd $result';
     is($result, 5, "start_stop -start and -stop");
 
     $options = "-start '^def offset'";
-    $cmd = "$dif $testDir/case12_start_stop.py -stdout $options -q | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("$dif $testDir/case12_start_stop.py -stdout $options -q");
     d '$cmd $result';
     is($result, 23, "start_stop -start without -stop");
     
     $options = "-stop '^\\s*\$'";
-    $cmd = "$dif $testDir/case12_start_stop.py -stdout $options -q | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("$dif $testDir/case12_start_stop.py -stdout $options -q");
     d '$cmd $result';
     is($result, 3, "start_stop -stop without -start");
 
     $options = "-start '^def line^^display^^world' -stop '^\\s*\$'";
-    $cmd = "$dif $testDir/case12_start_stop.py -stdout $options -q | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("$dif $testDir/case12_start_stop.py -stdout $options -q");
     d '$cmd $result';
     is($result, 2, "start_stop -start with 3 matches needed");
     
     $options = "-start '^def' -stop '^\\s*\$' -startMultiple";
-    $cmd = "$dif $testDir/case12_start_stop.py -stdout $options -q | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("$dif $testDir/case12_start_stop.py -stdout $options -q");
     d '$cmd $result';
     is($result, 22, "start_stop -startMultiple");
 
     $options = "-start '^def offset' -stop '^\\s*\$' -startIgnoreFirstLine";
-    $cmd = "$dif $testDir/case12_start_stop.py -stdout $options -q | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("$dif $testDir/case12_start_stop.py -stdout $options -q");
     d '$cmd $result';
     is($result, 4, "start_stop -startIgnoreFirstLine");
     
     $options = "-start '^def offset' -stop '^\\s*\$' -startIgnoreFirstLine -stopIgnoreLastLine";
-    $cmd = "$dif $testDir/case12_start_stop.py -stdout $options -q | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("$dif $testDir/case12_start_stop.py -stdout $options -q");
     d '$cmd $result';
     is($result, 3, "start_stop -startIgnoreFirstLine -stopIgnoreLastLine");
 }
@@ -253,25 +243,21 @@ if ( runtests('replaceTable') ) {
 if ( runtests('stdin_stdout') ) {
     my ($cmd, $result);
 
-    $cmd = "cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -q | grep 'date' | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -q | grep 'date'");
     d '$cmd $result';
     is($result, 16, "stdin__stdout");
     
     my $tmpfile = "$globaltmpdir/dif_out.txt";
-    $cmd = "cat $testDir/case06a_replaceDates.txt | $dif -stdin -out $tmpfile -replaceDates -q ; grep 'date' $tmpfile | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("cat $testDir/case06a_replaceDates.txt | $dif -stdin -out $tmpfile -replaceDates -q ; grep 'date' $tmpfile");
     $result =~ s/^\s*//;
     d '$cmd $result';
     is($result, 16, "stdin__stdout out");
 
     # Test that -replaceDates works in conjunction with -search -replace
-    $cmd = "cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -search 'A' -replace 'AA' -q | grep 'date' | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -search 'A' -replace 'AA' -q | grep 'date'");
     d '$cmd $result';
     is($result, 16, "stdin__stdout -replaceDates in conjunction with -search -replace");
-    $cmd = "cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -search 'foo' -replace 'bar' -q | grep 'bar' | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -search 'foo' -replace 'bar' -q | grep 'bar'");
     d '$cmd $result';
     is($result, 1, "stdin__stdout -replaceDates in conjunction with -search -replace");
 }
@@ -398,23 +384,19 @@ if ( runtests('perleval') ) {
 if ( runtests('function') ) {
     my ($cmd, $result);
 
-    $cmd = "$dif $testDir/case13b.pl -stdout -function a -q | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("$dif $testDir/case13b.pl -stdout -function a -q");
     d '$cmd $result';
     is($result, 4, "function a .pl wc");
     
-    $cmd = "$dif $testDir/case15b.py -stdout -function quickSort -q | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("$dif $testDir/case15b.py -stdout -function quickSort -q");
     d '$cmd $result';
     is($result, 15, "function quickSort .py wc");
     
-    $cmd = "$dif $testDir/case17b.c -stdout -function sieve -q | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("$dif $testDir/case17b.c -stdout -function sieve -q");
     d '$cmd $result';
     is($result, 14, "function sieve .c wc");
     
-    $cmd = "$dif $testDir/case19b.js -stdout -function isPrime -q | wc -l";
-    chomp($result = `$cmd`);
+    $result = getNumLines("$dif $testDir/case19b.js -stdout -function isPrime -q");
     d '$cmd $result';
     is($result, 17, "function isPrime .js wc");
 
@@ -577,6 +559,14 @@ if ( $whoami eq 'ckoknat' ) {
     }
 }
 
+sub getNumLines {
+    my $cmd = shift;
+    $cmd = "$cmd | wc -l";
+    chomp(my $numLines = `$cmd`);
+    $numLines =~ s/^\s+//;  # macOS
+    return $numLines;
+}
+
 # testcmd($cmd, $filelist, $options, $expected_exitstatus);
 sub testcmd {
     print "#\n#\n";
@@ -679,7 +669,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v47 Sun Apr 11 11:49:55 PDT 2021
+v48 Sun Apr 11 13:03:12 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify

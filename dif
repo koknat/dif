@@ -942,7 +942,8 @@ if ( grep { /\.xz/ } @zipExtension ) {
 } elsif ( $zipExtension[0] eq $zipExtension[1] ) {
     my %diffref = ( '.gz' => 'zdiff', '.bz2' => 'bzdiff', '.xz' => 'xzdiff' );
     $zipDiff = $diffref{ $zipExtension[0] };
-    $zipDiff = 'zdiff' if !$zipDiff;    # .txt
+    $zipDiff = 'diff' if !$zipDiff;            # .txt
+                                               #$zipDiff = 'zdiff' if !$zipDiff;    # .txt
 } else {
     # Files have different zip formats
     $preprocessRequired = 1;
@@ -1284,9 +1285,9 @@ if ( $opt{report} ) {
         }
         if ( -f $file or -l $file ) {
             if ( $opt{verbose} ) {
-                chomp( my $lsl   = `ls -l '$file'` );
-                chomp( my $lines = `wc -l '$file' | cut -d ' ' -f 1` );
-                chomp( my $words = `wc -w '$file' | cut -d ' ' -f 1` );
+                chomp( my $lsl = `ls -l '$file'` );
+                my $lines = wc($file);
+                my $words = wc( $file, '-w' );
                 say "$lsl    $lines lines    $words words";
             }
         }
@@ -1504,13 +1505,13 @@ if ( $opt{report} ) {
                 } else {
                     $tmpfile1 = $file1;
                 }
-                $size1 = sprintf( "%10s", -s $tmpfile1 );
-                chomp( $numlines1 = `wc -l $tmpfile1 | cut -f 1 -d ' '` );
-                $hash1 = getHash( file => $tmpfile1 );
-                $hash1 = '_' x ( ( 32 - length($hash1) ) / 2 ) . $hash1 . '_' x ( ( 32 - length($hash1) ) / 2 );    # pad with _ for 32 total characters
+                $size1     = sprintf( "%10s", -s $tmpfile1 );
+                $numlines1 = wc($tmpfile1);
+                $hash1     = getHash( file => $tmpfile1 );
+                $hash1     = '_' x ( ( 32 - length($hash1) ) / 2 ) . $hash1 . '_' x ( ( 32 - length($hash1) ) / 2 );    # pad with _ for 32 total characters
             }
         } elsif ( -d $file1 ) {
-            chomp( $size1 = `find $file1 -type f | wc -l` );
+            $size1     = wc($file1);
             $numlines1 = "";
             $hash1     = '___________DIRECTORY____________';
         } else {
@@ -1531,13 +1532,13 @@ if ( $opt{report} ) {
                 } else {
                     $tmpfile2 = $file2;
                 }
-                $size2 = sprintf( "%10s", -s $tmpfile2 );
-                chomp( $numlines2 = `wc -l $tmpfile2 | cut -f 1 -d ' '` );
-                $hash2 = getHash( file => $tmpfile2 );
-                $hash2 = '_' x ( ( 32 - length($hash2) ) / 2 ) . $hash2 . '_' x ( ( 32 - length($hash2) ) / 2 );    # pad with _ for 32 total characters
+                $size2     = sprintf( "%10s", -s $tmpfile2 );
+                $numlines2 = wc($tmpfile2);
+                $hash2     = getHash( file => $tmpfile2 );
+                $hash2     = '_' x ( ( 32 - length($hash2) ) / 2 ) . $hash2 . '_' x ( ( 32 - length($hash2) ) / 2 );    # pad with _ for 32 total characters
             }
         } elsif ( -d $file2 ) {
-            chomp( $size2 = `find $file2 -type f | wc -l` );
+            $size1     = wc($file2);
             $numlines2 = "";
             $hash2     = '___________DIRECTORY____________';
         } else {
@@ -2038,23 +2039,26 @@ sub preprocessFile {
             say "Preprocessing $filenum $file";
         }
     }
-    my $wc = "?";
-    $wc = `$zipCat '$file' | wc -l | cut -d " " -f 1` if $tail;
-    d('$wc') if $tail;
+    my $numLines = "?";
+    if ($tail) {
+        $numLines = `$zipCat '$file' | wc -l | cut -d " " -f 1`;
+        $numLines =~ s/^\s+//;         # macOS
+    }
+    d('$numLines') if $tail;
     open( my $TMP, "$opt{sort} $opt{uniq} $opt{fold} $opt{dos2unix} > $tmpfile" ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";    # Postprocess step
-                                                                                                                                                  #my $firstLine = $opt{tail} ? ( $wc - $opt{tail} + 1 ) : -1;
+                                                                                                                                                  #my $firstLine = $opt{tail} ? ( $numLines - $opt{tail} + 1 ) : -1;
     my $firstLine;
     if ( defined $tail ) {
 
         if ( $opt{head} or $opt{headLines} ) {
             $firstLine = $head - $tail + 1;
         } else {
-            $firstLine = $wc - $tail + 1;
+            $firstLine = $numLines - $tail + 1;
         }
     } else {
         $firstLine = -1;
     }
-    d '$head $tail $wc $firstLine';
+    d '$head $tail $numLines $firstLine';
     my $linenum       = 0;
     my $startFound    = 0;
     my $anyStartFound = 0;
@@ -2661,6 +2665,16 @@ sub functionSort {
     return $result;
 }
 
+sub wc {
+    my ( $file, $options ) = @_;
+    if ( !defined $options ) {
+        $options = ' -l';
+    }
+    chomp( my $result = `wc $options '$file' | cut -d ' ' -f 1` );
+    $result =~ s/^\s+//;    # macOS
+    return $result;
+}
+
 sub whichCommand {
     my @executableAndOptionsArray = @_;
     for my $executableAndOptions (@executableAndOptionsArray) {
@@ -2942,7 +2956,7 @@ sub removeDictKeys {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v47 Sun Apr 11 11:49:55 PDT 2021
+v48 Sun Apr 11 13:03:12 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
