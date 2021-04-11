@@ -968,7 +968,7 @@ $opt{uniq} = "| uniq" if $opt{uniq} ne "" and whichCommand('uniq');
 
 if ( $opt{strings} ne "" ) {
 
-    if ( whichCommand('strings') ) {
+    if ( whichCommand('strings') and !$macOS ) {
         $opt{strings} = "strings";
     } else {
         # Use perl if 'strings' executable does not exist in Linux.  This is somewhat slower, and not exactly the same output
@@ -2966,7 +2966,7 @@ sub removeDictKeys {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v51 Sun Apr 11 14:55:32 PDT 2021
+v52 Sun Apr 11 15:08:23 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
