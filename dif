@@ -692,7 +692,8 @@ die "\nERROR:  -recursive <regex> is now called -includeFiles <regex>\n" if $opt
 
 my ( $globaltmpdir, %getHash );
 my $cleanup = $opt{keeptmp} ? 0 : 1;
-my $windows = ( $^O =~ /Win/ ) ? 1 : 0;                                                         # Are we running on Windows?
+my $macOS   = ( $^O =~ /darwin/i ) ? 1 : 0;                                                     # Are we running on MacOS?
+my $windows = ( $^O =~ /Win/i )    ? 1 : 0;                                                     # Are we running on Windows?
 if ($windows) {
     $globaltmpdir = tempdir( 'C:\Windows\Temp\d_XXXX', CLEANUP => $cleanup );
 } else {
@@ -951,6 +952,7 @@ if ( grep { /\.xz/ } @zipExtension ) {
     $zipDiff            = 'zdiff';
 }
 d '$zipDiff $preprocessRequired';
+$zipDiff = 'diff' if $macOS;                   # zdiff doesn't work on MacOS "/usr/bin/zdiff: line 49: setvar: command not found" (at least in Catalina)
 
 my ( $head, $tail );
 $opt{quiet} = 1 if $opt{stdout} or defined $opt{out};
@@ -1358,13 +1360,18 @@ if ( $opt{tree} ) {
 
         for my $line ( sort @tar ) {
             my @fields = split /\s+/, $line;
-            #if ( $line =~ /^d/ ) {
-            #    $text .= $line;
-            #} else {
-            my ( $size, $filename ) = @fields[ 2, 5 ];
+            my ( $size, $filename );
+            if ( scalar @fields == 9 ) {
+                # -r--r--r-- ckoknat hardware 187 Sep 19 2015 12:18 case10a_tar/case01a_hosts.txt  (macOS)
+                ( $size, $filename ) = @fields[ 3, 8 ];
+            } elsif ( scalar @fields == 6 ) {
+                # -r--r--r-- ckoknat/hardware 187 2015-09-17 12:18 case10a_tar/case01a_hosts.txt   (Linux)
+                ( $size, $filename ) = @fields[ 2, 5 ];
+            } else {
+                die "ERROR:  Could not parse output of  tar -tv\n        $line";
+            }
             $filename =~ s|^$basefile/||;
             $text .= "$size  $filename\n";
-            #}
         }
         d '$text';
         print $TMP $text;
@@ -2872,7 +2879,9 @@ sub extension2zipcat {
     $file =~ s/(#(\d+|head|\-|\+))?$//;
     $file =~ s/^.*(\.(gz|bz2|xz|zip))$/$1/;
     $file = '.gz' if !defined $file;
-    my %catref = ( '.gz' => 'zcat -c', '.bz2' => 'bzcat -c', '.xz' => 'xzcat -c', '.zip' => 'unzip -cq' );
+    #my %catref = ( '.gz' => 'zcat -c', '.bz2' => 'bzcat -c', '.xz' => 'xzcat -c', '.zip' => 'unzip -cq' );
+    my %catref = ( '.gz' => 'gunzip -c', '.bz2' => 'bzcat -c', '.xz' => 'xzcat -c', '.zip' => 'unzip -cq' );
+    # macOS issue:  "zcat: can't stat: foo.txt.gz (foo.txt.gz.Z): No such file or directory"
     my $zipCat = $catref{$file};
 
     if ( !$zipCat ) {
@@ -2957,7 +2966,7 @@ sub removeDictKeys {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v50 Sun Apr 11 14:00:13 PDT 2021
+v51 Sun Apr 11 14:55:32 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
