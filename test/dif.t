@@ -28,10 +28,10 @@ die "ERROR:  Did not expect '@ARGV'.  Did you forget '-t' ? " if @ARGV;
 my $dif;  # dif executable
 my $testDir;  # dif/test directory
 chomp( my $pwd = `pwd` );
-if ( $pwd =~ m{/dif(-master)?/test$} ) {
+if ( $pwd =~ m{/dif(-master.*)?/test$} ) {
     $dif = dirname($pwd) . '/dif';
     $testDir = "$pwd";
-} elsif ( $pwd =~ m{/dif(-master)?$} ) {
+} elsif ( $pwd =~ m{/dif(-master.*)?$} ) {
     $dif = "$pwd/dif";
     $testDir = "$pwd/test";
 } else {
@@ -669,7 +669,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v48 Sun Apr 11 13:03:12 PDT 2021
+v50 Sun Apr 11 14:00:13 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify

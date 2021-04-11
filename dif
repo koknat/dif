@@ -901,7 +901,7 @@ for my $file (@files) {
         } elsif ( $gui eq 'none' ) {
             $preprocessRequired = 1;
         }    # Avoids "binary files differ"
-    } elsif ( $file =~ /\.(bz2|xz|zip|pdf|xls[mx]?)$/ ) {
+    } elsif ( $file =~ /\.(bz2|xz|zip|ods|pdf|xls[mx]?)$/ ) {
         $preprocessRequired = 1;
         # TODO check if uncompress is really required with the various GUIs
     }
@@ -920,6 +920,7 @@ d '$preprocessRequired $gui';
 # Setup for uncompression
 my @zipExtension = @files;
 for my $f (@zipExtension) {
+    $f =~ s/^.*\././;
     $f =~ s/^.*(\.(gz|bz2|xz|zip))$/$1/;
     $f = '.gz' if !defined $f;    # .gz zdiff is the default since it handles uncompressed files
 }
@@ -1286,8 +1287,8 @@ if ( $opt{report} ) {
         if ( -f $file or -l $file ) {
             if ( $opt{verbose} ) {
                 chomp( my $lsl = `ls -l '$file'` );
-                my $lines = wc($file);
-                my $words = wc( $file, '-w' );
+                my $lines = getNumLines("cat $file");
+                my $words = getNumLines( "cat $file", '-w' );
                 say "$lsl    $lines lines    $words words";
             }
         }
@@ -1506,12 +1507,12 @@ if ( $opt{report} ) {
                     $tmpfile1 = $file1;
                 }
                 $size1     = sprintf( "%10s", -s $tmpfile1 );
-                $numlines1 = wc($tmpfile1);
+                $numlines1 = getNumLines("cat $tmpfile1");
                 $hash1     = getHash( file => $tmpfile1 );
                 $hash1     = '_' x ( ( 32 - length($hash1) ) / 2 ) . $hash1 . '_' x ( ( 32 - length($hash1) ) / 2 );    # pad with _ for 32 total characters
             }
         } elsif ( -d $file1 ) {
-            $size1     = wc($file1);
+            $size1     = getNumLines("cat $file1");
             $numlines1 = "";
             $hash1     = '___________DIRECTORY____________';
         } else {
@@ -1533,12 +1534,12 @@ if ( $opt{report} ) {
                     $tmpfile2 = $file2;
                 }
                 $size2     = sprintf( "%10s", -s $tmpfile2 );
-                $numlines2 = wc($tmpfile2);
+                $numlines2 = getNumLines("cat $tmpfile2");
                 $hash2     = getHash( file => $tmpfile2 );
                 $hash2     = '_' x ( ( 32 - length($hash2) ) / 2 ) . $hash2 . '_' x ( ( 32 - length($hash2) ) / 2 );    # pad with _ for 32 total characters
             }
         } elsif ( -d $file2 ) {
-            $size1     = wc($file2);
+            $size1     = getNumLines("cat $file2");
             $numlines2 = "";
             $hash2     = '___________DIRECTORY____________';
         } else {
@@ -2041,8 +2042,7 @@ sub preprocessFile {
     }
     my $numLines = "?";
     if ($tail) {
-        $numLines = `$zipCat '$file' | wc -l | cut -d " " -f 1`;
-        $numLines =~ s/^\s+//;         # macOS
+        $numLines = getNumLines("$zipCat '$file'");
     }
     d('$numLines') if $tail;
     open( my $TMP, "$opt{sort} $opt{uniq} $opt{fold} $opt{dos2unix} > $tmpfile" ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";    # Postprocess step
@@ -2665,14 +2665,15 @@ sub functionSort {
     return $result;
 }
 
-sub wc {
-    my ( $file, $options ) = @_;
+sub getNumLines {
+    my ( $cmd, $options ) = @_;
     if ( !defined $options ) {
         $options = ' -l';
     }
-    chomp( my $result = `wc $options '$file' | cut -d ' ' -f 1` );
-    $result =~ s/^\s+//;    # macOS
-    return $result;
+    $cmd = "$cmd | wc $options";
+    chomp( my $numLines = `$cmd` );
+    $numLines =~ s/^\s+//;    # macOS
+    return $numLines;
 }
 
 sub whichCommand {
@@ -2956,7 +2957,7 @@ sub removeDictKeys {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v48 Sun Apr 11 13:03:12 PDT 2021
+v50 Sun Apr 11 14:00:13 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
