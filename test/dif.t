@@ -669,7 +669,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v52 Sun Apr 11 15:08:23 PDT 2021
+v53 Sun Apr 11 15:12:10 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
