@@ -304,9 +304,12 @@ sub usage {
 
                           -gui meld
                               Uses meld as a GUI
-                              Note that meld does not display line numbers by default
-                              Meld / Preferences / Editor / Display / Show line numbers
-                              If the box is greyed out, install python-gtksourceview2
+                              Note that meld does not display line numbers by default on some OS
+                                  Meld / Preferences / Editor / Display / Show line numbers
+                                  If the box is greyed out, install python-gtksourceview2
+                          
+                          -gui opendiff
+                              Use the macOS FileMerge tool (requires Xcode)
 
                           -gui none
                               This is useful when comparing from a script
@@ -2709,9 +2712,11 @@ sub pairwise {
 # Run for case of two directories
 sub findFilePairs {
     my ( $dir1, $dir2, $includeRegex, $excludeRegex ) = @_;
+    $dir1 =~ s{/$}{};                        # Remove trailing '/' in case user included it, since it affects the next substitution
+    $dir2 =~ s{/$}{};
     my @files1 = runFileFind( $dir1, $includeRegex, $excludeRegex );
     my @files2 = runFileFind( $dir2, $includeRegex, $excludeRegex );
-    d '@files1 @files2';
+    d '$dir1 $dir2 @files1 @files2';
     my ( %filePairDict, @filePairs );
     for my $file1 (@files1) {
         ( my $file = $file1 ) =~ s{^$dir1/}{};
@@ -2966,7 +2971,7 @@ sub removeDictKeys {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v53 Sun Apr 11 15:12:10 PDT 2021
+v54 Tue Apr 13 11:00:01 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
