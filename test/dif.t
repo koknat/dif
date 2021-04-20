@@ -25,14 +25,15 @@ GetOptions( \%opt, 'test|t=s', 'extraTests', 'modernPerl', 'd' => sub { $d = 1 }
 my $t = defined $opt{test} ? $opt{test} : 'ALL';
 die "ERROR:  Did not expect '@ARGV'.  Did you forget '-t' ? " if @ARGV;
 
+my $script = 'dif';
 my $dif;  # dif executable
 my $testDir;  # dif/test directory
 chomp( my $pwd = `pwd` );
-if ( $pwd =~ m{/dif(-master.*)?/test$} ) {
-    $dif = dirname($pwd) . '/dif';
+if ( $pwd =~ m{/$script(-master.*)?/test$} ) {
+    $dif = dirname($pwd) . "/$script";
     $testDir = "$pwd";
-} elsif ( $pwd =~ m{/dif(-master.*)?$} ) {
-    $dif = "$pwd/dif";
+} elsif ( $pwd =~ m{/$script(-master.*)?$} ) {
+    $dif = "$pwd/$script";
     $testDir = "$pwd/test";
 } else {
     die "ERROR:  This must be run from the dif/test directory!\n";
@@ -69,6 +70,10 @@ if ( runtests('head') ) {
     $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -headlines 6 -q");
     d '$cmd $result';
     is($result, 6, "headLines 6 wc = 6");
+    
+    $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -headlines '-6' -q");
+    d '$cmd $result';
+    is($result, 4, "headLines -6 wc = 4");
 
     testcmd( $dif, "case01a_hosts.txt case01d_hosts_missingline.txt", "", $fail );
     testcmd( $dif, "case01a_hosts.txt case01d_hosts_missingline.txt", "-headlines 3", $pass );
@@ -76,13 +81,22 @@ if ( runtests('head') ) {
 if ( runtests('tail') ) {
     my ($cmd, $result);
 
+    # case04a_lsl.txt contains 10 lines
     $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -taillines 3 -q");
     d '$cmd $result';
     is($result, 3, "tailLines 3 wc = 3");
     
+    $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -taillines '-3' -q");
+    d '$cmd $result';
+    is($result, 7, "tailLines -3 wc = 7");
+    
     $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -headLines 7 -tailLines 5 -q");
     d '$cmd $result';
     is($result, 5, "headLines 7 tailLines 5 wc = 5");  # skips first 2 lines, keeps 5, skips final 3
+    
+    $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -headLines '-3' -tailLines '-2' -q");
+    d '$cmd $result';
+    is($result, 5, "headLines -3 tailLines -2 wc = 5");  # skips first 2 lines, and final 3
 
     testcmd( $dif, "case01a_hosts.txt case01j_hosts_uppercase.txt", "", $fail );
     testcmd( $dif, "case01a_hosts.txt case01j_hosts_uppercase.txt", "-taillines 1", $pass );
@@ -227,6 +241,7 @@ if ( runtests('search_replace') ) {
     testcmd( $dif, "case01a_hosts.txt case01h_hosts_misspelling.txt", "",                                              $fail );
     testcmd( $dif, "case01a_hosts.txt case01a_hosts.txt",             "-search 'HOST' -replace 'host'",                $pass );
     testcmd( $dif, "case01a_hosts.txt case01h_hosts_misspelling.txt", "-search 'HOST' -replace 'host'",                $pass );
+    testcmd( $dif, "case18a.asm case18b.asm", "-search '\\s*(;.*)?\$' -replace ''",                                    $pass );
 }
 
 if ( runtests('replaceDates') ) {
@@ -290,6 +305,12 @@ if ( runtests('zip')  and  whichCommand('unzip') ) {
     testcmd( $dif, "case01a_hosts.txt.gz case01a_hosts.txt.zip",            "",      $pass );
     testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt.zip",  "",      $fail );
     testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt.zip",  "-sort", $pass );
+}
+
+if ( runtests('Z')  and  whichCommand('uncompress') ) {
+    testcmd( $dif, "case01a_hosts.txt.gz case01a_hosts.txt.Z",            "",      $pass );
+    testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt.Z",  "",      $fail );
+    testcmd( $dif, "case01a_hosts.txt.gz case01e_hosts_scrambled.txt.Z",  "-sort", $pass );
 }
 
 if ( runtests('bz')  and  whichCommand('bzcat') ) {
@@ -557,7 +578,7 @@ d '$num_failed';
 if ( $whoami eq 'ckoknat' ) {
     if ( ! defined $opt{test}  and  ! $num_failed ) {
         say "If everything passes do this:";
-        say "    ~/r/dif/test2/dif2.t";
+        say "    ~/r/$script/test2/${script}2.t";
     }
 }
 
@@ -671,7 +692,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v54 Tue Apr 13 11:00:01 PDT 2021
+v54 Tue Apr 20 16:15:38 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify

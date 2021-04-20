@@ -68,6 +68,10 @@ sub usage {
     Filtering options:    
        -comments          Remove any comments such as // or # or single-line */ /*.  Also removes trailing whitespace
 
+                          To remove comments in other languages, use the search/replace options:
+                          For example, to replace comments (marked with ';') in assembly language:
+                              -search '\\s*(;.*)?\$' -replace ''
+
        -white             Remove blank lines and leading/trailing whitespace
                           Condense multiple whitespace to a single space
        
@@ -86,7 +90,7 @@ sub usage {
        -replace 'regex'   
                           For example, to replace temporary filenames such as '/tmp/foo123456/bar.log' with '/tmp/file':
                               -search '/tmp/\\S+' -replace '/tmp/file'
-                              
+
                           Since the search/replace terms are interpreted as regex,
                           remember to escape any parentheses
                               Exception:  if you are using regex grouping, 
@@ -147,10 +151,12 @@ sub usage {
        -head              Compare only the first $defaults{head} lines
        
        -headLines N       Compare only the first N lines
+                          If a negative number is used, ignore the first -N lines
 
        -tail              Compare only the first $defaults{head} lines
        
        -tailLines N       Compare only the first N lines
+                          If a negative number is used, ignore the last -N lines
 
        -yaml              Compare two yaml files, sorting the keys
        
@@ -431,6 +437,7 @@ sub usage {
             .gz
             .bz2
             .xz
+            .Z
             .zip  (single files only)
         
         Compares values inside .xls|.xlsm|.xlsx files
@@ -888,7 +895,7 @@ my $preprocessOptions = 0;
 $preprocessOptions = 1 if $opt{sort} or $opt{paragraphSort} or $opt{lineWordSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{length} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or defined $opt{round} or $opt{basenames} or $opt{dos2unix} or defined $opt{grep} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or defined $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{perlEval} or $opt{yaml} or $opt{json} or defined $opt{removeDictKeys} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
 my $preprocessRequired = $preprocessOptions;
 for my $file (@files) {
-    if ( $file =~ /\.tar(\.gz|bz2|xz|zip)?(#(\d+|head|\-|\+))?$/ ) {
+    if ( $file =~ /\.tar(\.gz|bz2|xz|Z|zip)?(#(\d+|head|\-|\+))?$/ ) {
         if ( $opt{tartv} ) {
             # do nothing, will be handled later
         } else {
@@ -905,7 +912,7 @@ for my $file (@files) {
         } elsif ( $gui eq 'none' ) {
             $preprocessRequired = 1;
         }    # Avoids "binary files differ"
-    } elsif ( $file =~ /\.(bz2|xz|zip|ods|pdf|xls[mx]?)$/ ) {
+    } elsif ( $file =~ /\.(bz2|xz|Z|zip|ods|pdf|xls[mx]?)$/ ) {
         $preprocessRequired = 1;
         # TODO check if uncompress is really required with the various GUIs
     }
@@ -925,7 +932,7 @@ d '$preprocessRequired $gui';
 my @zipExtension = @files;
 for my $f (@zipExtension) {
     $f =~ s/^.*\././;
-    $f =~ s/^.*(\.(gz|bz2|xz|zip))$/$1/;
+    $f =~ s/^.*(\.(gz|bz2|xz|Z|zip))$/$1/;
     $f = '.gz' if !defined $f;    # .gz zdiff is the default since it handles uncompressed files
 }
 $zipExtension[1] = $zipExtension[0] if !defined $zipExtension[1];    # perforce#NNN without 2nd file
@@ -945,7 +952,7 @@ if ( grep { /\.xz/ } @zipExtension ) {
     $preprocessRequired = 1;
     $zipDiff            = 'zdiff';    # zdiff handles uncompresed files.  The preprocessing will unzip them
 } elsif ( $zipExtension[0] eq $zipExtension[1] ) {
-    my %diffref = ( '.gz' => 'zdiff', '.bz2' => 'bzdiff', '.xz' => 'xzdiff' );
+    my %diffref = ( '.gz' => 'zdiff', '.bz2' => 'bzdiff', '.xz' => 'xzdiff', '.Z' => 'uncompress' );
     $zipDiff = $diffref{ $zipExtension[0] };
     $zipDiff = 'diff' if !$zipDiff;            # .txt
                                                #$zipDiff = 'zdiff' if !$zipDiff;    # .txt
@@ -959,7 +966,8 @@ $zipDiff = 'diff' if $macOS;                   # zdiff doesn't work on MacOS "/u
 
 my ( $head, $tail );
 $opt{quiet} = 1 if $opt{stdout} or defined $opt{out};
-$head = 99999999999     if $opt{head} == 0;
+my $MAXHEAD = 99999999999;
+$head = $MAXHEAD        if $opt{head} == 0;
 $head = $defaults{head} if $opt{head} == 1;
 $head = $opt{headLines} if $opt{headLines};
 $tail = $defaults{head} if $opt{tail} == 1;
@@ -1349,7 +1357,7 @@ if ( $opt{tree} ) {
     my $count = 1;
     for my $f (@origFiles) {
         my $basefile = basename($f);
-        $basefile =~ s/\.tar(\.(gz|bz2|xz|zip))?$//;
+        $basefile =~ s/\.tar(\.(gz|bz2|xz|Z|zip))?$//;
         d '$basefile';
         my $tmpfile = "$globaltmpdir/" . basename($f) . "_" . $count++;
         d '$tmpfile';
@@ -1705,7 +1713,7 @@ ls $processedFiles;
 # Use gvimdiff instead of meld or kompare once the file size reaches a limit
 if ( $gui =~ /meld|kompare/ ) {
     #     10MB uncompressed file takes 2 seconds on gvimdiff vs 39 seconds on kompare and similar on meld (meld will open but not show differences for a while)
-    if ( $processedFiles[0] =~ /\.(gz|zip|bz2|xz|zip)$/ ) {
+    if ( $processedFiles[0] =~ /\.(gz|zip|bz2|xz|Z|zip)$/ ) {
         # This only happens if the processed file is compressed, meaning that we haven't done processing on it
         # This is not the case for meld, as we have already done  gunzip -c $file > $processedFile
         $defaults{meldSizeLimit} /= 10;
@@ -2056,17 +2064,46 @@ sub preprocessFile {
     }
     d('$numLines') if $tail;
     open( my $TMP, "$opt{sort} $opt{uniq} $opt{fold} $opt{dos2unix} > $tmpfile" ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";    # Postprocess step
-                                                                                                                                                  #my $firstLine = $opt{tail} ? ( $numLines - $opt{tail} + 1 ) : -1;
     my $firstLine;
     if ( defined $tail ) {
-
+        # Later, it will use this logic:
+        #     if ( $linenum < $firstLine ) {
+        #         #d "Ignoring line because of option -tail";
+        #         next;
+        #     }
+        #     if ( $linenum > $head ) {
+        #         #d "Ignoring rest of file because of option -head";
+        #         last;
+        #     }
         if ( $opt{head} or $opt{headLines} ) {
-            $firstLine = $head - $tail + 1;
+            if ( $tail >= 0 ) {
+                # keep only the middle
+                # first keep $tail lines, then keep the first $head of those
+                $firstLine = $head - $tail + 1;
+            } else {
+                # Alternate using negative numbers
+                $firstLine = -$head + 1;
+                $head      = $numLines + $tail;
+            }
         } else {
-            $firstLine = $numLines - $tail + 1;
+            if ( $tail >= 0 ) {
+                # keep the last $tail lines
+                $firstLine = $numLines - $tail + 1;
+            } else {
+                # ignores the last $tail lines
+                $firstLine = -1;
+                $head      = $numLines + $tail;
+            }
         }
     } else {
-        $firstLine = -1;
+        if ( $head >= 0 ) {
+            # keep the first $head lines
+            $firstLine = -1;
+        } else {
+            # ignore the first $head lines
+            $firstLine = -$head + 1;
+            $head      = $MAXHEAD;
+        }
     }
     d '$head $tail $numLines $firstLine';
     my $linenum       = 0;
@@ -2870,7 +2907,7 @@ sub determineTmpFilename {
     $tmpfile =~ s/\s+/_/g;
     $tmpfile =~ s/#/_/g;
     $tmpfile =~ s{/}{\\}g if $windows;
-    $tmpfile =~ s/(\.(gz|bz2|xz|zip))//;
+    $tmpfile =~ s/(\.(gz|bz2|xz|Z|zip))//;
     return $tmpfile;
 }
 
@@ -2882,10 +2919,10 @@ sub extension2zipcat {
     my $file = shift;
     d '$file';
     $file =~ s/(#(\d+|head|\-|\+))?$//;
-    $file =~ s/^.*(\.(gz|bz2|xz|zip))$/$1/;
+    $file =~ s/^.*(\.(gz|bz2|xz|Z|zip))$/$1/;
     $file = '.gz' if !defined $file;
     #my %catref = ( '.gz' => 'zcat -c', '.bz2' => 'bzcat -c', '.xz' => 'xzcat -c', '.zip' => 'unzip -cq' );
-    my %catref = ( '.gz' => 'gunzip -c', '.bz2' => 'bzcat -c', '.xz' => 'xzcat -c', '.zip' => 'unzip -cq' );
+    my %catref = ( '.gz' => 'gunzip -c', '.bz2' => 'bzcat -c', '.xz' => 'xzcat -c', '.Z' => 'uncompress -c', '.zip' => 'unzip -cq' );
     # macOS issue:  "zcat: can't stat: foo.txt.gz (foo.txt.gz.Z): No such file or directory"
     my $zipCat = $catref{$file};
 
@@ -2971,7 +3008,7 @@ sub removeDictKeys {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v54 Tue Apr 13 11:00:01 PDT 2021
+v54 Tue Apr 20 16:15:38 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
