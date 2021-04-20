@@ -80,6 +80,10 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
 
 ## Options
        -comments          Remove any comments such as // or # or single-line */ /*.  Also removes trailing whitespace
+                          
+                          To remove comments in other languages, use the search/replace options:
+                          For example, to replace comments (marked with ';') in assembly language:
+                              -search '\s*(;.*)?$' -replace ''
 
        -white             Remove blank lines and leading/trailing whitespace
                           Condense multiple whitespace to a single space
