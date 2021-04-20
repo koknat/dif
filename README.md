@@ -164,10 +164,12 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        -head              Compare only the first 10000 lines
        
        -headLines N       Compare only the first N lines
+                          If a negative number is used, ignore the first -N lines
 
        -tail              Compare only the first 10000 lines
        
        -tailLines N       Compare only the first N lines
+                          If a negative number is used, ignore the last -N lines
 
        -yaml              Compare two yaml files, sorting the keys
        
