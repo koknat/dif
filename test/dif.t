@@ -67,11 +67,11 @@ if ( runtests('white') ) {
 
 if ( runtests('head') ) {
     my ($cmd, $result);
-    $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -headlines 6 -q");
+    $result = getNumLines("$dif $testDir/case20a.txt -stdout -headlines 6 -q");
     d '$cmd $result';
     is($result, 6, "headLines 6 wc = 6");
     
-    $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -headlines '-6' -q");
+    $result = getNumLines("$dif $testDir/case20a.txt -stdout -headlines '-6' -q");
     d '$cmd $result';
     is($result, 4, "headLines -6 wc = 4");
 
@@ -81,20 +81,20 @@ if ( runtests('head') ) {
 if ( runtests('tail') ) {
     my ($cmd, $result);
 
-    # case04a_lsl.txt contains 10 lines
-    $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -taillines 3 -q");
+    # case20a.txt contains 10 lines
+    $result = getNumLines("$dif $testDir/case20a.txt -stdout -taillines 3 -q");
     d '$cmd $result';
     is($result, 3, "tailLines 3 wc = 3");
     
-    $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -taillines '-3' -q");
+    $result = getNumLines("$dif $testDir/case20a.txt -stdout -taillines '-3' -q");
     d '$cmd $result';
     is($result, 7, "tailLines -3 wc = 7");
     
-    $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -headLines 7 -tailLines 5 -q");
+    $result = getNumLines("$dif $testDir/case20a.txt -stdout -headLines 7 -tailLines 5 -q");
     d '$cmd $result';
     is($result, 5, "headLines 7 tailLines 5 wc = 5");  # skips first 2 lines, keeps 5, skips final 3
     
-    $result = getNumLines("$dif $testDir/case04a_lsl.txt -stdout -headLines '-3' -tailLines '-2' -q");
+    $result = getNumLines("$dif $testDir/case20a.txt -stdout -headLines '-3' -tailLines '-2' -q");
     d '$cmd $result';
     is($result, 5, "headLines -3 tailLines -2 wc = 5");  # skips first 2 lines, and final 3
 
@@ -339,8 +339,17 @@ if ( runtests('report') ) {
     chomp($result = `$cmd`);
     d '$cmd $result';
     like($result, qr{190}, 'report');
-
+    
+    $cmd = "$dif dirA -report -fast";
+    chomp($result = `$cmd`);
+    d '$cmd $result';
+    like($result, qr{190}, 'report');
+    
     chdir("$pwd");
+    
+    $result = getNumLines("$dif $testDir -report -stdout | grep DOES_NOT_EXIST");
+    d '$cmd $result';
+    is($result, 0, "report with one file should not complain of files which do not exist");
 }
 
 if ( runtests('dirs') ) {
@@ -692,7 +701,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v54 Tue Apr 20 16:15:38 PDT 2021
+v60 Tue Apr 27 18:47:28 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
