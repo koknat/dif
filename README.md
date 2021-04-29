@@ -161,12 +161,14 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        
        -trimChars N       Trims with specified number of characters, instead of 105
        
-       -head              Compare only the first 10000 lines
+       -head              Compare only the first 10% of the file,
+                            with a minimum of 50, and a maximum of 10000 lines
        
        -headLines N       Compare only the first N lines
                           If a negative number is used, ignore the first -N lines
 
-       -tail              Compare only the first 10000 lines
+       -tail              Compare only the last 10% of the file,
+                            with a minimum of 50, and a maximum of 10000 lines
        
        -tailLines N       Compare only the first N lines
                           If a negative number is used, ignore the last -N lines
