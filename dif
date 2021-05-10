@@ -16,12 +16,14 @@ sub say { print @_, "\n" }
 my %defaults;
 $defaults{gui}              = 'meld';                       # meld or gvimdiff or kompare or kdiff3...
 $defaults{meldSizeLimit}    = 2000000;                      # switch to gvimdiff once uncompressed file size is over this limit
-$defaults{head}             = 10000;                        # number of lines used by options -head and -tail
+$defaults{head}             = 10000;                        # max number of lines used by options -head and -tail
 $defaults{history}          = 0;                            # log options used to ~/.dif.history
 $defaults{fold}             = 105;                          # columns used by -fold
 $defaults{bcpp}             = "/usr/bin/bcpp";              # location of bcpp
 $defaults{perltidy}         = "$^X" . "tidy -l=110 -ce";    # perltidy location and options
 $defaults{openMultipleGUIs} = 0;                            # when using option -dir2 or -gold, open all GUI windows at the same time
+my $MAXHEAD = 99999999999;
+my $MINHEAD = 50;
 my %opt;
 
 my $scriptName = 'dif';
@@ -134,7 +136,7 @@ sub usage {
        -fieldSeparator regex    Only needed if default field separators above are not sufficient
                                 Example:  -fieldSeparator ':'
                                 Example:  -fieldSeparator '[,=]' 
-
+       
        -fieldJustify      Make all fields the same width, right-justified
 
        -split             Splits each line on whitespace
@@ -149,14 +151,16 @@ sub usage {
        
        -trimChars N       Trims with specified number of characters, instead of $defaults{fold}
        
-       -head              Compare only the first $defaults{head} lines
+       -head              Compare only the first 10% of the file,
+                            with a minimum of $MINHEAD, and a maximum of $defaults{head} lines
        
        -headLines N       Compare only the first N lines
                           If a negative number is used, ignore the first -N lines
 
-       -tail              Compare only the first $defaults{head} lines
+       -tail              Compare only the last 10% of the file
+                            with a minimum of $MINHEAD, and a maximum of $defaults{head} lines
        
-       -tailLines N       Compare only the first N lines
+       -tailLines N       Compare only the last N lines
                           If a negative number is used, ignore the last -N lines
 
        -yaml              Compare two yaml files, sorting the keys
@@ -547,27 +551,28 @@ To run $scriptName
 }
 
 # Program flow:
+#   The program flows linearly from top to bottom
 # 	Handle ~/.dif.options and ~/.dif.defaults
 # 	Parse input arguments, create @files
-# 	handle special case of -includeFiles <regex> with -dir2 or -gold, search one dir to populate @files
-# 	determine which GUI to use for comparison, and determine any decompression
-# 	handle options -search -replace -replaceDates -replaceTable
+# 	Handle special case of -includeFiles <regex> with -dir2 or -gold, search one dir to populate @files
+# 	Determine which GUI to use for comparison, and determine any decompression
+# 	Handle options -search -replace -replaceDates -replaceTable
 # 	if (-gold or -dir2 or -includeFiles <regex>) and not -report:
 # 		if single file:
 # 			determine pair of files and continue
 # 		else (multiple files):
 # 			spawn multiple additional dif processes
-# 	handle p4/svn/git
-# 	test for existence of files
-# 	handle options -tree & -tartv
+# 	Handle p4/svn/git
+# 	Test for existence of files
+# 	Handle options -tree & -tartv
 # 	if -report and (-gold or -dir2 or -includeFiles <regex> dirA dirB):
 # 		determine @filePairs
 # 		preprocess each pair of files (if verbose then print results immediately)
 # 		print the results and exit
 # 	for my $f (@files):
 # 		preprocessFile
-# 	switch to gvimdiff if processed file size is too large
-# 	meld/gvimdiff/kdiff3/tkdiff/kompare
+# 	Switch to gvimdiff if processed file size is too large
+# 	Run meld/gvimdiff/kdiff3/tkdiff/kompare
 
 #$SIG{__WARN__} = sub { die @_ };  # die instead of produce warnings
 
@@ -702,10 +707,9 @@ if ( $defaults{history} ) {
 }
 
 # Options can be overridden with user config file ~/.dif.options  (key/value format)
-Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function=s', 'functionSort', 'language=s', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'removeDictKeys=s', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'listFiles', 'report|r', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
+Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail|t', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments|c', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function|func=s', 'functionSort', 'language=s', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript|e=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'removeDictKeys=s', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'report|r', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
 # noDirs is not in usage.  It excludes directories
-$opt{quiet}  = 1 if $opt{silent};       # for backwards compatibility of -silent
-$opt{report} = 1 if $opt{listFiles};    # for backwards compatibility of -listFiles
+$opt{quiet} = 1 if $opt{silent};                                                                # for backwards compatibility of -silent
 die "\nERROR:  -recursive <regex> is now called -includeFiles <regex>\n" if $opt{recursive};    # cannot handle this easily, because it needs to spawn more 'dif' processes
 
 my ( $globaltmpdir, %getHash );
@@ -892,9 +896,9 @@ if ( $opt{function} ) {
         $opt{start}         = "^$functionStartRegex\\s+$opt{function}\\b";
         $opt{stop}          = "^($functionStartRegex|\\s*\$)";               # '}' (Perl sub, TCL proc)  or  start of next sub (Perl sub, TCL proc, Python def)
     } else {
-        $functionStartRegex = '\s*(unsigned\s+|signed\s+)?(sub|proc|def|function|func|fun|fn|void|int|char|short|long|float|double)';
+        $functionStartRegex = '\s*(unsigned\s+|signed\s+)?(sub|proc|def|function|func|fun|fn|void|int|char|short|long|float|double|size_t|string|vector|unsigned|istream|ostream)';
         $opt{start}         = "\\s*$functionStartRegex\\s+$opt{function}\\b";
-        $opt{stop}          = '^\s*((unsigned\s+|signed\s+)?(sub|proc|def|function|func|fun|fn|void|int|char|short|long|float|double)\s+([^\s;]+)|})\s*$';
+        $opt{stop}          = '^\s*((unsigned\s+|signed\s+)?(sub|proc|def|function|func|fun|fn|void|int|char|short|long|float|double|size_t|string|vector|istream|ostream)\s+([^\s;]+)|})\s*$';
     }
     $opt{startMultiple} = 1;
     if ( $files[0] =~ /\.py$/ ) {
@@ -984,12 +988,38 @@ $zipDiff = 'diff' if $macOS;                   # zdiff doesn't work on MacOS "/u
 
 my ( $head, $tail );
 $opt{quiet} = 1 if $opt{stdout} or defined $opt{out};
-my $MAXHEAD = 99999999999;
-$head = $MAXHEAD        if $opt{head} == 0;
-$head = $defaults{head} if $opt{head} == 1;
-$head = $opt{headLines} if $opt{headLines};
-$tail = $defaults{head} if $opt{tail} == 1;
-$tail = $opt{tailLines} if $opt{tailLines};
+if ( $opt{headLines} ) {
+    $head = $opt{headLines};
+} elsif ( $opt{head} ) {
+    my $zipCat     = extension2zipcat( $files[0] );
+    my $numLines   = getNumLines("$zipCat '$files[0]'");
+    my $tenPercent = $numLines / 10;
+    if ( $tenPercent < $MINHEAD ) {
+        $head = $MINHEAD;
+    } elsif ( $tenPercent < $defaults{head} ) {
+        $head = $tenPercent;
+    } else {
+        $head = $defaults{head};
+    }
+} else {
+    $head = $MAXHEAD;
+}
+if ( $opt{tailLines} ) {
+    $tail = $opt{tailLines};
+} elsif ( $opt{tail} ) {
+    my $zipCat     = extension2zipcat( $files[0] );
+    my $numLines   = getNumLines("$zipCat '$files[0]'");
+    my $tenPercent = $numLines / 10;
+    if ( $tenPercent < $MINHEAD ) {
+        $tail = $MINHEAD;
+    } elsif ( ($numLines) / 10 < $defaults{head} ) {
+        $tail = $numLines / 10;
+    } else {
+        $tail = $defaults{head};
+    }
+} else {
+    $tail = $MAXHEAD;
+}
 $opt{dos2unix} = "| dos2unix" if $opt{dos2unix} ne "" and whichCommand('dos2unix');
 $opt{sort} = "| sort" if $opt{sort} ne "";
 $opt{sort} = "| perl -n00 -e 'push \@a, \$_; END { print sort \@a }'" if $opt{paragraphSort};
@@ -1218,6 +1248,7 @@ if ( -d "$file0dir/.svn" ) {
     }
 }
 if ( $scms{Perforce} or $scms{SVN} or $scms{GIT} ) {
+    # The environment supports P4, SVN, or git
     my $foundVCSfile = 0;
     if ( not $files[1] and $files[0] =~ /^([^#\s]+)#(\d+)\.\.#?(\d+|h|head)$/ ) {
         # dif //path/file#1..#3
@@ -1242,7 +1273,6 @@ if ( $scms{Perforce} or $scms{SVN} or $scms{GIT} ) {
                 system "$cmd";
                 push @files, $tmpfile;
             }
-            d '@files';
         } else {
             # dif p4file#revA..revB
             # Spawn multiple processes:
@@ -1258,6 +1288,7 @@ if ( $scms{Perforce} or $scms{SVN} or $scms{GIT} ) {
         }
     }
 
+    d '@files';
     if ( -d $files[0] ) {
         # directory, do nothing
     } elsif ( not defined $files[1] and not $opt{stdout} and not defined $opt{out} and not $opt{dir2} and not $opt{gold} ) {
@@ -1265,12 +1296,14 @@ if ( $scms{Perforce} or $scms{SVN} or $scms{GIT} ) {
             # If only one file was specified, and it's a perforce p4 rev, get the current non-revved version
             # dif file#123  => dif file#123 file
             # dif file#head => dif file#head file
+            d 1;
             my $nonrevp4file = $1;
             say "1st file will be $files[0]"     unless $opt{quiet};
             say "2nd file will be $nonrevp4file" unless $opt{quiet};
             push @files, $nonrevp4file;
             $foundVCSfile = 1;
         } else {
+            d 2;
             # If only one file was specified, compare to the head rev
             # dif file      => dif file#head file
             if ( -e $files[0] ) {
@@ -1570,7 +1603,7 @@ if ( $opt{report} ) {
                 $hash1     = '_' x $hashLength;
                 $fastOK    = 1;
             }
-            if ( !defined $fastOK ) {
+            if ( !$fastOK ) {
                 $tmpfile1 = determineTmpFilename( $file1, $count );
                 if ($preprocessOptions) {
                     preprocessFile( $file1, $tmpfile1, "$pairCount/$numFilePairs", $count % 2 );    # %2 for -start2 -stop2
@@ -1580,7 +1613,9 @@ if ( $opt{report} ) {
                 $size1     = sprintf( "%10s", -s $tmpfile1 );
                 $numlines1 = getNumLines("cat $tmpfile1");
                 $hash1     = getHash( file => $tmpfile1 );
-                $hash1     = '_' x ( ( $hashLength - length($hash1) ) / 2 ) . $hash1 . '_' x ( ( $hashLength - length($hash1) ) / 2 );    # pad with _ for 32 total characters
+                if ( ( $hashLength - length($hash1) ) > 0 ) {
+                    $hash1 = '_' x ( ( $hashLength - length($hash1) ) / 2 ) . $hash1 . '_' x ( ( $hashLength - length($hash1) ) / 2 );    # pad with _ for 32 total characters
+                }
             }
         } elsif ( -d $file1 ) {
             $size1     = getNumLines("find $file1 -type f | wc -l");
@@ -1593,7 +1628,7 @@ if ( $opt{report} ) {
         }
         $count++;
         if ( -f $file2 ) {
-            if ( defined $fastOK ) {
+            if ($fastOK) {
                 $size2     = sprintf( "%10s", -s $file2 );
                 $numlines2 = "";
                 $hash2     = '_' x $hashLength;
@@ -1607,7 +1642,9 @@ if ( $opt{report} ) {
                 $size2     = sprintf( "%10s", -s $tmpfile2 );
                 $numlines2 = getNumLines("cat $tmpfile2");
                 $hash2     = getHash( file => $tmpfile2 );
-                $hash2     = '_' x ( ( $hashLength - length($hash2) ) / 2 ) . $hash2 . '_' x ( ( $hashLength - length($hash2) ) / 2 );    # pad with _ for 32 total characters
+                if ( ( $hashLength - length($hash2) ) > 0 ) {
+                    $hash2 = '_' x ( ( $hashLength - length($hash2) ) / 2 ) . $hash2 . '_' x ( ( $hashLength - length($hash2) ) / 2 );    # pad with _ for 32 total characters
+                }
             }
         } elsif ( -d $file2 ) {
             $size2     = getNumLines("find $file2 -type f | wc -l");
@@ -1677,7 +1714,7 @@ if ( $opt{report} ) {
 }
 
 # If all files match md5sum, there is no need to uncompress or preprocess
-if ( scalar @files == 2 and !$opt{report} and !defined $opt{start2} and !defined $opt{stop2} and $files[0] !~ /#(\d+|head)$/ and $files[1] !~ /#(\d+|head)$/ ) {
+if ( scalar @files == 2 and !$opt{report} and !defined $opt{start2} and !defined $opt{stop2} and $files[0] !~ m{^//} and $files[1] !~ m{^//} and $files[0] !~ /#(\d+|head)$/ and $files[1] !~ /#(\d+|head)$/ ) {
     my @mismatch = filesMismatch(@files);
     d '@mismatch';
     if ( !@mismatch ) {
@@ -1739,6 +1776,8 @@ if ( !defined $files[1] and not $opt{stdout} and not defined $opt{out} ) {
     exit 0;
 }
 
+# @localFiles are original files or files immediately after p4 print
+# @processedFiles are files after all processing, gunzipping, etc
 # Check if files/directories are identical
 # Uncompress files if needed beforehand
 my $processedFiles = join " ", @processedFiles;
@@ -1755,10 +1794,12 @@ if ( scalar(@files) == 2 and not -d $files[0] and not $opt{stdout} and not defin
         d '@files @localFiles @processedFiles';
         my @status = filesMismatch(@localFiles);
         if (@status) {
+            # Files mismatched before preprocessing, matched afterwards
             say "These files are identical after preprocessing.  Exiting.\n";
             say "md5sum  $status[1]  $localFiles[0]"   if $opt{verbose};
             say "md5sum  $status[2]  $localFiles[1]\n" if $opt{verbose};
         } else {
+            # Files matched, even before preprocessing
             say "These files are identical.  Exiting.\n" unless $opt{quiet};
         }
         exit 0;
@@ -1851,7 +1892,7 @@ if ( $d and not $opt{stdout} ) {
     say "Exiting because d = $d\n";
     exit 0;
 }
-if ( !$opt{stdout} and scalar(@files) > 2 and $gui =~ /^(kompare|tkdiff)$/ ) {
+if ( !$opt{stdout} and scalar(@files) > 2 and $gui =~ /(kompare|tkdiff)$/ ) {
     say "Not running $gui because it only takes 2 files";
     exit 1;
 }
@@ -1881,7 +1922,7 @@ sub preprocessFile {
     d '.';
     $filenumStartStop = 2 if $filenumStartStop > 2;    # Normally there are 2 files, but with 3-file comparison, the 3rd file will use the -start2 -stop2 parameters
     if ( $scms{Perforce} or $scms{SVN} or $scms{GIT} ) {
-        # p4 print file  or  svn cat file  or  git show file
+        # May need to  p4 print file  or  svn cat file  or  git show file
         $file = handleSCM($file);
     } else {
         # do nothing
@@ -2114,14 +2155,15 @@ sub preprocessFile {
             say "Preprocessing $filenum $file";
         }
     }
+    d '%opt $head $tail';
     my $numLines = "?";
     if ($tail) {
         $numLines = getNumLines("$zipCat '$file'");
+        d '$numLines';
     }
-    d('$numLines') if $tail;
     open( my $TMP, "$opt{sort} $opt{uniq} $opt{fold} $opt{dos2unix} > $tmpfile" ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";    # Postprocess step
     my $firstLine;
-    if ( defined $tail ) {
+    if ( $opt{tail} or $opt{tailLines} ) {
         # Later, it will use this logic:
         #     if ( $linenum < $firstLine ) {
         #         #d "Ignoring line because of option -tail";
@@ -2409,6 +2451,7 @@ sub getHash {
     # Benchmarked using ~/o/perl/dumbbench_getHash.pl
     my %options = @_;
     my $file    = $options{file};
+    d '$file';
     if (0) {
         # for testing -report, results are in seconds for small and large directories
         #$getHash{hashingMethod} = 'md5sum';          # 1.5    19
@@ -2416,11 +2459,14 @@ sub getHash {
         #$getHash{hashingMethod} = 'Digest::xxHash';  # 0.9    11.5
         $gui = 'none';
     }
+    #$getHash{hashingMethod} = 'Digest::MD5';  # Not using Digest::MD5 because I experienced a collision
     $getHash{hashingMethod} = $options{hashingMethod} if defined $options{hashingMethod};
     if ( !defined $getHash{hashingMethod} ) {
         # Priority is given to Digest::xxHash if it exists for performance reasons, then Digest::MD5, then md5sum
         eval 'use Digest::xxHash ()';
-        if ($@) {
+        my $eval_xxHash = $@;
+        eval "use File::Map 'map_file'";
+        if ( $eval_xxHash || $@ ) {
             eval 'use Digest::MD5 ()';
             if ($@) {
                 my $hashingMethod = whichCommand( 'md5sum', 'md5' );    # 'md5' is Apple OS
@@ -2438,20 +2484,19 @@ sub getHash {
             $getHash{eval}{'Digest::xxHash'} = 1;
         }
     }
-    #d '$getHash{hashingMethod}';
+    d '$getHash{hashingMethod}';
     my $result = 0;
     if ( $getHash{hashingMethod} eq 'Digest::xxHash' ) {
         if ( !defined $getHash{eval}{'Digest::xxHash'} ) {
             eval 'use Digest::xxHash ()';
             die $@ if $@;
+            eval "use File::Map 'map_file'";
+            die $@ if $@;
             $getHash{eval}{'Digest::xxHash'} = 1;
         }
-        sysopen my $fh, $file, 0 or die "ERROR: Cannot open file for reading:  $file\n\n";
-        my $digest = 0;
-        my $chunk;
-        while ( sysread $fh, $chunk, 1024 * 1024 ) {
-            $result = Digest::xxHash::xxhash64_hex( $chunk, $result );
-        }
+        File::Map::map_file( my $data, $file, '+<' );
+        $result = Digest::xxHash::xxhash64_hex( $data, undef );
+        d '$result';
     } elsif ( $getHash{hashingMethod} eq 'Digest::MD5' ) {
         if ( !defined $getHash{eval}{'Digest::MD5'} ) {
             eval 'use Digest::MD5 ()';
@@ -2547,9 +2592,11 @@ sub readTableFile {
 
 sub handleSCM {
     my $fileNrev = shift;
+    d '$fileNrev';
     if ( $fileNrev =~ /^([^#]+)(#\d+|#head)?$/ and $fileNrev !~ m{^//} ) {
         # Resolve symbolic link, not just for perforce
         $fileNrev = Cwd::abs_path($1) . ( $2 || '' );
+        d '$fileNrev';
     }
     my ( $file, $rev );
     if ( $fileNrev =~ /(\S+)#(\d+|head)$/ ) {
@@ -2558,6 +2605,7 @@ sub handleSCM {
     } elsif ( $fileNrev =~ m{^//} ) {
         $file = $fileNrev;
     } else {
+        d 'local file';
         return $fileNrev;
     }
     d '$file $rev';
@@ -3089,7 +3137,7 @@ sub removeDictKeys {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v60 Tue Apr 27 18:47:28 PDT 2021
+v63 Mon May 10 15:11:16 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
