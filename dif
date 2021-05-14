@@ -77,8 +77,9 @@ sub usage {
 
        -white             Remove blank lines and leading/trailing whitespace
                           Condense multiple whitespace to a single space
+                          Remove any non-printable characters
        
-       -noWhite           Remove all whitespace
+       -noWhite           Remove all whitespace and non-printable characters
 
        -case              Convert files to lowercase before comparing
        
@@ -2236,11 +2237,13 @@ sub preprocessFile {
             $line =~ s/^\s+//;
             $line =~ s/[ |\t]+/ /g;
             $line =~ s/ $//g;
+            $line =~ s/[^[:ascii:]]//g;    # remove any non-printable characters
         }
         if ( $opt{noWhite} ) {
             $line =~ s/^\s+//g;
             $line =~ s/[ \t]+//g;
             $line =~ s/^\n//g;
+            $line =~ s/[^[:ascii:]]//g;    # remove any non-printable characters
         }
         if ( $opt{round} ) {
             # -round "%0.2f"
@@ -2459,7 +2462,7 @@ sub getHash {
         #$getHash{hashingMethod} = 'Digest::xxHash';  # 0.9    11.5
         $gui = 'none';
     }
-    #$getHash{hashingMethod} = 'Digest::MD5';  # Not using Digest::MD5 because I experienced a collision
+    $getHash{hashingMethod} = 'Digest::MD5';                                                # Not using Digest::xxHash because of error "Couldn't open file" on read-only file
     $getHash{hashingMethod} = $options{hashingMethod} if defined $options{hashingMethod};
     if ( !defined $getHash{hashingMethod} ) {
         # Priority is given to Digest::xxHash if it exists for performance reasons, then Digest::MD5, then md5sum
@@ -2469,7 +2472,7 @@ sub getHash {
         if ( $eval_xxHash || $@ ) {
             eval 'use Digest::MD5 ()';
             if ($@) {
-                my $hashingMethod = whichCommand( 'md5sum', 'md5' );    # 'md5' is Apple OS
+                my $hashingMethod = whichCommand( 'md5sum', 'md5' );                        # 'md5' is Apple OS
                 if ( defined $hashingMethod ) {
                     $getHash{hashingMethod} = $hashingMethod;
                 } else {
@@ -3137,7 +3140,7 @@ sub removeDictKeys {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v63 Mon May 10 15:11:16 PDT 2021
+v65 Fri May 14 11:27:56 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
