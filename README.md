@@ -440,6 +440,11 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        -out <file>        Similar to -stdout, but send output to file
                           This can be useful if dif is used as a preprocessing engine
        
+       -filename          Intended for use with option -stdout or -out
+                          At the beginning of each line, prepend the filename
+                          This is similar to the grep --with-filename option
+                          Useful when searching through a large set of files
+       
        -keeptmp           Default behavior is to remove the tmp directory containing preprocessed files
                           This option keeps it
 
