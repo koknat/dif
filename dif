@@ -163,7 +163,7 @@ sub usage {
        
        -tailLines N       Compare only the last N lines
                           If a negative number is used, ignore the last -N lines
-
+       
        -yaml              Compare two yaml files, sorting the keys
        
        -json              Compare two json files, sorting the keys
@@ -441,6 +441,10 @@ sub usage {
        -out <file>        Similar to -stdout, but send output to file
                           This can be useful if $scriptName is used as a preprocessing engine
        
+       -filename          Intended for use with option -stdout or -out
+                          At the beginning of each line, prepend the filename
+                          This is similar to the grep --with-filename option
+       
        -keeptmp           Default behavior is to remove the tmp directory containing preprocessed files
                           This option keeps it
 
@@ -708,7 +712,7 @@ if ( $defaults{history} ) {
 }
 
 # Options can be overridden with user config file ~/.dif.options  (key/value format)
-Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail|t', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments|c', 'grep=s', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function|func=s', 'functionSort', 'language=s', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript|e=s', 'perlDump', 'perlEval', 'yaml|yml', 'json', 'removeDictKeys=s', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'report|r', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
+Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail|t', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments|c', 'grep=s', 'filename', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function|func=s', 'functionSort', 'language=s', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript|e=s', 'perlDump', 'perlEval', 'xlsSheetName=s', 'yaml|yml', 'json', 'removeDictKeys=s', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'report|r', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
 # noDirs is not in usage.  It excludes directories
 $opt{quiet} = 1 if $opt{silent};                                                                # for backwards compatibility of -silent
 die "\nERROR:  -recursive <regex> is now called -includeFiles <regex>\n" if $opt{recursive};    # cannot handle this easily, because it needs to spawn more 'dif' processes
@@ -910,7 +914,7 @@ if ( $opt{function} ) {
 # Decide if file needs to go through the preprocessing code
 # If not, then we can later do a quick md5sum check to determine equality
 my $preprocessOptions = 0;
-$preprocessOptions = 1 if $opt{sort} or $opt{paragraphSort} or $opt{lineWordSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{length} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or defined $opt{round} or $opt{basenames} or $opt{dos2unix} or defined $opt{grep} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or defined $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{perlEval} or $opt{yaml} or $opt{json} or defined $opt{removeDictKeys} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
+$preprocessOptions = 1 if $opt{sort} or $opt{paragraphSort} or $opt{lineWordSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{length} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or defined $opt{round} or $opt{basenames} or $opt{dos2unix} or defined $opt{grep} or defined $opt{filename} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or defined $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{perlEval} or $opt{yaml} or $opt{json} or defined $opt{removeDictKeys} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
 my $preprocessRequired = $preprocessOptions;
 d '$preprocessRequired';
 for my $file (@files) {
@@ -2078,6 +2082,7 @@ sub preprocessFile {
                     say "            install Spreadsheet::ParseExcel";
                     exit 1;
                 }
+                d '. using Spreadsheet::ParseExcel';
             } elsif ( $file =~ /\.(xls[mx])$/ ) {
                 eval 'use Spreadsheet::XLSX ()';
                 if ($@) {
@@ -2086,21 +2091,39 @@ sub preprocessFile {
                     say "            install Spreadsheet::XLSX";
                     exit 1;
                 }
+                d '. using Spreadsheet::XLSX';
+            } else {
+                die "Program bug!";
             }
             my $tmpfile = sprintf( "$globaltmpdir/%s_%s_%s.dumpXLS", basename($0), $$, basename($file) );
             open( my $TMP, ">", $tmpfile ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";
             my $ss = new Spreadsheet::BasicRead($file) || die "Could not open '$file': $!";
-            do {
-                print $TMP '*** ', $ss->currentSheetName(), " ***\n";
-                # Print the data for each row of the spreadsheet to stdout using '|' as a separator
-                my $row = 0;
-                while ( my $data = $ss->getNextRow() ) {
-                    no warnings qw(uninitialized);
-                    $row++;
-                    #print $TMP join('|', $row, @$data), "\n";
-                    print $TMP join( '|', @$data ), "\n";
+            while (1) {
+                my $sheetName = $ss->currentSheetName();
+                my $printSheet;
+                if ( defined $opt{xlsSheetName} ) {
+                    if ( $sheetName =~ /$opt{xlsSheetName}/ ) {
+                        $printSheet = 1;
+                    } else {
+                        $printSheet = 0;
+                    }
+                } else {
+                    $printSheet = 1;
                 }
-            } while ( $ss->getNextSheet() );
+                d '$sheetName $printSheet';
+                if ($printSheet) {
+                    print $TMP "*** $sheetName ***\n";
+                    # Print the data for each row of the spreadsheet to stdout using '|' as a separator
+                    my $row = 0;
+                    while ( my $data = $ss->getNextRow() ) {
+                        no warnings qw(uninitialized);
+                        $row++;
+                        #print $TMP join('|', $row, @$data), "\n";
+                        print $TMP join( '|', @$data ), "\n";
+                    }
+                }
+                last if !$ss->getNextSheet();
+            }
             close $TMP;
             ls $tmpfile;
             open( $F, "cat '$tmpfile' |" ) or die "ERROR: Cannot open file for reading:  $tmpfile\n\n";
@@ -2402,6 +2425,10 @@ sub preprocessFile {
         if ( $opt{trim} ) {
             chomp( $line = substr( $line, 0, $opt{trim} ) );
             $line .= "\n";
+        }
+
+        if ( $opt{filename} ) {
+            $line = "$file:$line";
         }
 
         if ( $opt{length} ) {
@@ -3140,7 +3167,7 @@ sub removeDictKeys {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v65 Fri May 14 11:27:56 PDT 2021
+v66 Fri Jun 18 16:01:34 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
