@@ -79,16 +79,18 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
 
 
 ## Options
+    Filtering options:    
        -comments          Remove any comments such as // or # or single-line */ /*.  Also removes trailing whitespace
-                          
+
                           To remove comments in other languages, use the search/replace options:
                           For example, to replace comments (marked with ';') in assembly language:
                               -search '\s*(;.*)?$' -replace ''
 
        -white             Remove blank lines and leading/trailing whitespace
                           Condense multiple whitespace to a single space
+                          Remove any non-printable characters
        
-       -noWhite           Remove all whitespace
+       -noWhite           Remove all whitespace and non-printable characters
 
        -case              Convert files to lowercase before comparing
        
@@ -103,7 +105,7 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        -replace 'regex'   
                           For example, to replace temporary filenames such as '/tmp/foo123456/bar.log' with '/tmp/file':
                               -search '/tmp/\S+' -replace '/tmp/file'
-                              
+
                           Since the search/replace terms are interpreted as regex,
                           remember to escape any parentheses
                               Exception:  if you are using regex grouping, 
@@ -146,15 +148,15 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        -fieldSeparator regex    Only needed if default field separators above are not sufficient
                                 Example:  -fieldSeparator ':'
                                 Example:  -fieldSeparator '[,=]' 
-
+       
        -fieldJustify      Make all fields the same width, right-justified
 
        -split             Splits each line on whitespace
        
        -splitChar 'char'  Splits each line on 'char'
                           For example:  -splitChar ',' to split on comma
-                          For example:  -splitChar ' \s+' to split on whitespace
-                                                           each word will be on its own line
+                          For example:  -splitChar '\s+' to split on whitespace
+                                                          each word will be on its own line
 
        -trim              Trims each line to 105 characters, discarding the overflow
                           Useful when lines are very long, and the important information is near the beginning
@@ -167,12 +169,12 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        -headLines N       Compare only the first N lines
                           If a negative number is used, ignore the first -N lines
 
-       -tail              Compare only the last 10% of the file,
+       -tail              Compare only the last 10% of the file
                             with a minimum of 50, and a maximum of 10000 lines
        
-       -tailLines N       Compare only the first N lines
+       -tailLines N       Compare only the last N lines
                           If a negative number is used, ignore the last -N lines
-
+       
        -yaml              Compare two yaml files, sorting the keys
        
        -json              Compare two json files, sorting the keys
@@ -183,7 +185,7 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
 
        -basenames         Convert path/file to file
                           This can be useful when comparing log files which contain temporary directories
-                          
+
        -lineWordSort      Sort the words in each line (space delimited)
        
        -round 'string'    Round all numbers according to the sprintf string
@@ -242,15 +244,20 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                               dif a.pm -start1 'sub add' -stop1 '^}' -start2 'sub subtract' -stop '^}'
 
        -function 'function_name'
-                          Compare same  Python def / Perl sub / TCL proc  function from two source files
+                          Compare same  Python def / Perl sub / TCL proc / JavaScript function from two source files
                           Internally, this leverages the -start -stop functionality
                           This feature will also work for some C source files
 
        -functionSort
-                          Useful when Python/Perl/TCL functions have been moved within a file
+                          Useful when Python/Perl/TCL/JavaScript functions have been moved within a file
                           This option preprocesses each file, so that the function definitions
                           appear in alphabetical order
                           This feature will also work for some C source files
+
+       -language <lang>   For use with -function and -functionSort
+                          The language is automatically determined by inspecting the file extension and shebang
+                          Use this option if those clues are not present
+                          Languages are specified as extensions such as: js pl py tcl
 
 
     Preprocessing options (before filtering):
@@ -277,6 +284,8 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
                          
        -bin               Compare binary files
                           This is a shortcut for running -ext '/usr/bin/xxd'
+       
+       -strings           Run equivalent of Linux 'strings' command on each input file to remove binary characters
 
        -bcpp              Run each cpp input file through bcpp linting tool with options:  /home/ckoknat/cs2/linux/bcpp -s -bcl -tbcl -ylcnc
 
@@ -289,8 +298,6 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        -uniq              Run Linux 'uniq' on each input file to eliminate duplicated adjacent lines
                           Use with -sort to eliminate all duplicates
        
-       -strings           Run equivalent of Linux 'strings' command on each input file to remove binary characters
-
        -fold              Run 'fold' on each input file with default of 105 characters per column
                           Useful for comparing long lines, so that scrolling right is not needed within the GUI
 
@@ -325,9 +332,12 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
 
                           -gui meld
                               Uses meld as a GUI
-                              Note that meld does not display line numbers by default
-                              Meld / Preferences / Editor / Display / Show line numbers
-                              If the box is greyed out, install python-gtksourceview2
+                              Note that meld does not display line numbers by default on some OS
+                                  Meld / Preferences / Editor / Display / Show line numbers
+                                  If the box is greyed out, install python-gtksourceview2
+                          
+                          -gui opendiff
+                              Use the macOS FileMerge tool (requires Xcode)
 
                           -gui none
                               This is useful when comparing from a script
@@ -349,81 +359,87 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
 
 
     Options to compare a large set of files:
-       <dirA> <dirB>         If dif is run against two directories,
-                             will open GUI for each pair of mismatching files
-                             For example:
-                                 dif dirA dirB
-                             
-                             Any of the preprocessing options may be used
-      
-      -report                When used with two directories  or  -dir2 <dir>  or  -gold
-                             Instead of opening GUIs for each file pair,
-                             generate report of mismatching or missing files
-                             For example:
-                                 dif dirA dirB -report
-                             Any of the preprocessing options may be used
+       <dirA> <dirB>           If dif is run against two directories,
+                               will open GUI for each pair of mismatching files
+                               For example:
+                                   dif dirA dirB
+                          
+                               Any of the preprocessing options may be used
+     
+      -report                  When used with two directories  or  -dir2 <dir>  or  -gold
+                               Instead of opening GUIs for each file pair,
+                               generate report of mismatching or missing files
+                               For example:
+                                   dif dirA dirB -report
+                               Any of the preprocessing options may be used
 
-                             It can also be used to print a simple report of
-                             file sizes, number of lines, and md5sums (not a comparison)
-                             For example:
-                                 dif * -report
-                                     or
-                                 dif */file -report
+                               It can also be used to print a simple report of
+                               file sizes, number of lines, and md5sums (not a comparison)
+                               For example:
+                                   dif * -report
+                                       or
+                                   dif */file -report
+                                       or
+                                   dif dir -report
 
-      -fast                  When used with -report, use file size to compare, instead of md5sum
-                             This is much faster, but could miss cases where bits are flipped
+      -filePairs               Similar to -report, but only displays the files which are found in both directories, and mismatch
+
+      -filePairsWithOptions    Similar to -filePairs, but also lists the dif command and options
+
+      -fast                    When used with -report, use only the file size to compare, instead of md5sum
+                               This is much faster, but could miss cases where bits are flipped
 
       -includeFiles <regex>  
-      -excludeFiles <regex>  Both options are for use with two directories  or  -dir2 <dir>  or  -gold
-                             For example:
-                                 dif -includeFiles '*log' dirA dirB
-                             Will open GUI for each pair of mismatching files
+      -excludeFiles <regex>    Both options are for use with two directories  or  -dir2 <dir>  or  -gold
+                               For example:
+                                   dif -includeFiles '*log' dirA dirB
+                               Will open GUI for each pair of mismatching files
 
-                             When used with -dir2 or -gold,
-                             finds files in the current directory matching the Perl regex
-                             For example:
-                                 dif -includeFiles '*log' -dir2 ../old
+                               When used with -dir2 or -gold,
+                               finds files in the current directory matching the Perl regex
+                               For example:
+                                   dif -includeFiles '*log' -dir2 ../old
 
-                             Any of the preprocessing options may be used
+                               Any of the preprocessing options may be used
 
-       -dir2 <dir>           For each input file specified, run 'dif'
-                                 on the file in the current directory
-                                 against the file in the specified directory
-                             For example:
-                                 cd to the directory containing the files
-                                 dif file1 file2 file3 -dir ../old
-                             will run:
-                                 dif file1 ../old/file1
-                                 dif file2 ../old/file2
-                                 dif file3 ../old/file3
-                             Any of the preprocessing options may be used
+       -dir2 <dir>             For each input file specified, run 'dif'
+                                   on the file in the current directory
+                                   against the file in the specified directory
+                               For example:
+                                   cd to the directory containing the files
+                                   dif file1 file2 file3 -dir ../old
+                               will run:
+                                   dif file1 ../old/file1
+                                   dif file2 ../old/file2
+                                   dif file3 ../old/file3
+                               Any of the preprocessing options may be used
 
-       -gold                 When used with one filename (file or file.extension),
-                             assumes that 1st file will be (file.golden or file.golden.extension)
+       -gold                   When used with one filename (file or file.extension),
+                               assumes that 1st file will be (file.golden or file.golden.extension)
                              
-                             For example:
-                                 dif file1 -gold
-                             will run:
-                                 dif file1.golden file1.csv
-                          
-                             For example:
-                                 dif file1.csv -gold
-                             will run:
-                                 dif file1.csv.golden file1.csv
-                          
-                             When used with multiple filenames
-                             it runs dif multiple times, once for each of the pairs
-                             This option is useful when doing regressions against golden files
+                               For example:
+                                   dif file1 -gold
+                               will run:
+                                   dif file1.golden file1.csv
+                    
+                               For example:
+                                   dif file1.csv -gold
+                               will run:
+                                   dif file1.csv.golden file1.csv
+                    
+                               When used with multiple filenames
+                               it runs dif multiple times, once for each of the pairs
+                               This option is useful when doing regressions against golden files
                              
-                             For example:
-                                 dif file1 file2.csv -gold
-                             will run:
-                                 dif file1.golden file1
-                                 dif file2.csv.golden file2.csv
+                               For example:
+                                   dif file1 file2.csv -gold
+                               will run:
+                                   dif file1.golden file1
+                                   dif file2.csv.golden file2.csv
                              
-                             Any of the preprocessing options may be used
+                               Any of the preprocessing options may be used
        
-      -tree <dir1> <dir2>    Special case.  Run unix 'tree' on each of the directories.  Does not preprocess files
+      -tree <dir1> <dir2>      Special case.  Run unix 'tree' on each of the directories.  Does not preprocess files
     
     Other options:
        -stdin             Parse input from stdin and send output to stdout
@@ -454,6 +470,7 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
             .gz
             .bz2
             .xz
+            .Z
             .zip  (single files only)
         
         Compares values inside .xls|.xlsm|.xlsx files
@@ -464,9 +481,9 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
         
         Attempts to compare text inside .pdf files
             requires the Perl CAM::PDF module to be installed
-       
 
-    Default compare tool:
+  
+  Default compare tool:
         The default compare GUI is meld
         To change this, create the text file ~/.dif.defaults with one of these content lines:
             gui: gvimdiff
