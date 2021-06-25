@@ -358,6 +358,7 @@ if ( runtests('dirs') ) {
     # 01a     normal       -comments
     # 01b     (missing)    -white
     # 01c     normal       (missing)
+    # 01e     normal       normal
     chdir("$testDir");
     testcmd( $dif, "dirA dirAcopy", "", $pass );
     testcmd( $dif, "dirA/ dirAcopy/", "", $pass );
@@ -701,7 +702,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v66 Fri Jun 18 16:01:34 PDT 2021
+v68 Fri Jun 25 15:12:02 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
