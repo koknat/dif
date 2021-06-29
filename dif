@@ -172,6 +172,9 @@ sub usage {
                           For use with -yaml or -json
                           Removes all dictionary keys matching the regex
 
+       -flatten           For use with -yaml or -json
+                          Flatten nested dictionary and array structures
+
        -basenames         Convert path/file to file
                           This can be useful when comparing log files which contain temporary directories
 
@@ -717,7 +720,7 @@ if ( $defaults{history} ) {
 }
 
 # Options can be overridden with user config file ~/.dif.options  (key/value format)
-Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail|t', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments|c', 'grep=s', 'filename', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function|func=s', 'functionSort', 'language=s', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript|e=s', 'perlDump', 'perlEval', 'xlsSheetName=s', 'yaml|yml', 'json', 'removeDictKeys=s', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'report|r', 'filePairs', 'filePairsWithOptions', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
+Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail|t', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments|c', 'grep=s', 'filename', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function|func=s', 'functionSort', 'language=s', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript|e=s', 'perlDump', 'perlEval', 'xlsSheetName=s', 'yaml|yml', 'json', 'removeDictKeys=s', 'flatten', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'report|r', 'filePairs', 'filePairsWithOptions', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
 # noDirs is not in usage.  It excludes directories
 $opt{quiet} = 1 if $opt{silent};                                                                # for backwards compatibility of -silent
 die "\nERROR:  -recursive <regex> is now called -includeFiles <regex>\n" if $opt{recursive};    # cannot handle this easily, because it needs to spawn more 'dif' processes
@@ -940,7 +943,7 @@ if ( $opt{function} ) {
 # Decide if file needs to go through the preprocessing code
 # If not, then we can later do a quick md5sum check to determine equality
 my $preprocessOptions = 0;
-$preprocessOptions = 1 if $opt{sort} or $opt{paragraphSort} or $opt{lineWordSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{length} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or defined $opt{round} or $opt{basenames} or $opt{dos2unix} or defined $opt{grep} or defined $opt{filename} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or defined $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{perlEval} or $opt{yaml} or $opt{json} or defined $opt{removeDictKeys} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
+$preprocessOptions = 1 if $opt{sort} or $opt{paragraphSort} or $opt{lineWordSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{length} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or defined $opt{round} or $opt{basenames} or $opt{dos2unix} or defined $opt{grep} or defined $opt{filename} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or defined $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{perlEval} or $opt{yaml} or $opt{json} or defined $opt{removeDictKeys} or $opt{flatten} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
 my $preprocessRequired = $preprocessOptions;
 d '$preprocessRequired';
 for my $file (@files) {
@@ -1071,8 +1074,8 @@ if ( $opt{fold} or $opt{foldChars} ) {
 if ( $opt{trim} or $opt{trimChars} ) {
     $opt{trim} = $opt{trimChars} ? $opt{trimChars} : $defaults{fold};
 }
-if ( defined $opt{removeDictKeys} and ( !$opt{yaml} and !$opt{json} ) ) {
-    if ( getFileType( $files[0] ) =~ /^(yaml|yml)$/ ) {
+if ( ( defined $opt{removeDictKeys} or $opt{flatten} ) and ( !$opt{yaml} and !$opt{json} ) ) {
+    if ( getFileType( $files[0] ) eq 'yml' ) {
         $opt{yaml} = 1;
     } elsif ( getFileType( $files[0] ) eq 'json' ) {
         $opt{json} = 1;
@@ -2776,6 +2779,9 @@ sub sortYamlPerlJson {
             if ( $opt{removeDictKeys} ) {
                 removeDictKeys( $ref, { removeRegex => $opt{removeDictKeys} }, $d );
             }
+            if ( $opt{flatten} ) {
+                $ref = flatten( $ref, {}, $d );
+            }
             if (1) {
                 $Data::Dumper::Indent   = 1;    # default = 2, which uses a lot of horizontal space
                 $Data::Dumper::Sortkeys = 1;    # produces warning on 5.6.1
@@ -2802,6 +2808,9 @@ sub sortYamlPerlJson {
             d '$ref';
             if ( $opt{removeDictKeys} ) {
                 removeDictKeys( $ref, { removeRegex => $opt{removeDictKeys} }, $d );
+            }
+            if ( $opt{flatten} ) {
+                $ref = flatten( $ref, {}, $d );
             }
             if (1) {
                 $Data::Dumper::Indent   = 1;    # default = 2, which uses a lot of horizontal space
@@ -3227,10 +3236,31 @@ sub removeDictKeys {
     }
 }
 
+sub flatten {
+    my ( $hash, $options, $d ) = @_;
+    die "Second argument of removeDictKeys() must be an options hash ref!" unless ref($options) && ref($options) eq "HASH";
+    eval 'use Hash::Flatten ()';
+    if ($@) {
+        say "ERROR:  Install Hash::Flatten from CPAN to flatten yml and json files";
+        say "        sudo cpan install Hash::Flatten";
+        exit 1;
+    } else {
+        my $o = new Hash::Flatten(
+            {
+                # These pseudo-options can be defined in the ~/.dif.defaults file
+                HashDelimiter  => defined $opt{hashDelimiter}  ? $opt{hashDelimiter}  : '/',
+                ArrayDelimiter => defined $opt{arrayDelimiter} ? $opt{arrayDelimiter} : '/',
+                OnRefScalar    => 'warn',
+            }
+        );
+        return $o->flatten($hash);
+    }
+}
+
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v68 Fri Jun 25 15:12:02 PDT 2021
+v69 Tue Jun 29 12:38:14 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify

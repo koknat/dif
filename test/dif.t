@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 # #!/home/utils/perl-5.8.8/bin/perl
-##!/home/utils/perl-5.26/5.26.2-058/bin/perl
 ##!/home/utils/perl5/perlbrew/perls/5.26.2-060/bin/perl
+##!/home/utils/perl-5.26/5.26.2-058/bin/perl
 use warnings;
 #use warnings FATAL => qw( all );
 use strict;
@@ -500,12 +500,24 @@ if ($@) {
     }
 } else {
     if ( runtests('yaml') ) {
-        testcmd( $dif, "case14a.yml case14b.yml", "",            $fail );
-        testcmd( $dif, "case14a.yml case14b.yml", "-yaml",       $pass );
-        testcmd( $dif, "case14a.yml case14a.yml.gz", "",         $pass );
-        testcmd( $dif, "case14a.yml case14c.yml", "-yaml -case", $pass );
-        testcmd( $dif, "case14a.yml.gz case14c.yml.gz", "-yaml -case", $pass );
+        testcmd( $dif, "case14a.yml case14b.yml", "",                                          $fail );
+        testcmd( $dif, "case14a.yml case14b.yml", "-yaml",                                     $pass );
+        testcmd( $dif, "case14a.yml case14a.yml.gz", "",                                       $pass );
+        testcmd( $dif, "case14a.yml case14c.yml", "-yaml -case",                               $pass );
+        testcmd( $dif, "case14a.yml.gz case14c.yml.gz", "-yaml -case",                         $pass );
         testcmd( $dif, "case14a.yml.gz case14c.yml.gz", "-yaml -removeDictKeys '(eggs|spam)'", $pass );
+        eval 'use Hash::Flatten ()';
+        if ($@) {
+            if ( $whoami eq 'ckoknat' and ! defined $opt{test} ) {
+                say "WARNING:  Not running tests 'flatten'";
+                say "          To run these, need 5.26 in the .t shebang, and option -modernPerl";
+            }
+        } else {
+            testcmd( $dif, "case14a.yml case14a.yml.gz", "-flatten",                           $pass );
+            testcmd( $dif, "case14a.yml case14c.yml", "-yaml -flatten",                        $fail );
+            testcmd( $dif, "case14a.yml case14c.yml", "-yaml -case -flatten",                  $pass );
+            testcmd( $dif, "case14a.yml.gz case14c.yml.gz", "-yaml -case -flatten",            $pass );
+        }
     }
     if ( runtests('externalPreprocessScript') ) {
         # May fail because of YAML library dependency
@@ -518,16 +530,29 @@ if ($@) {
 eval 'use JSON::XS ()';
 if ($@) {
     if ( $whoami eq 'ckoknat' and ! defined $opt{test} ) {
-        say "WARNING:  Not running tests 'yaml' and 'externalPreprocessScript'";
+        say "WARNING:  Not running tests 'json'";
     }
 } else {
     if ( runtests('json') ) {
-        testcmd( $dif, "case14a.json case14b.json", "",            $fail );
-        testcmd( $dif, "case14a.json case14b.json", "-json",       $pass );
-        testcmd( $dif, "case14a.json case14a.json.gz", "",         $pass );
-        testcmd( $dif, "case14a.json case14c.json", "-json -case", $pass );
-        testcmd( $dif, "case14a.json.gz case14c.json.gz", "-json -case", $pass );
+        testcmd( $dif, "case14a.json case14b.json", "",                                          $fail );
+        testcmd( $dif, "case14a.json case14b.json", "-json",                                     $pass );
+        testcmd( $dif, "case14a.json case14a.json.gz", "",                                       $pass );
+        testcmd( $dif, "case14a.json case14c.json", "-json",                                     $fail );
+        testcmd( $dif, "case14a.json case14c.json", "-json -case",                               $pass );
+        testcmd( $dif, "case14a.json.gz case14c.json.gz", "-json -case",                         $pass );
         testcmd( $dif, "case14a.json.gz case14c.json.gz", "-json -removeDictKeys '(eggs|spam)'", $pass );
+        eval 'use Hash::Flatten ()';
+        if ($@) {
+            if ( $whoami eq 'ckoknat' and ! defined $opt{test} ) {
+                say "WARNING:  Not running tests 'flatten'";
+                say "          To run these, need 5.26 in the .t shebang, and option -modernPerl";
+            }
+        } else {
+            testcmd( $dif, "case14a.json case14a.json.gz", "-flatten",                               $pass );
+            testcmd( $dif, "case14a.json case14c.json", "-json -flatten",                            $fail );
+            testcmd( $dif, "case14a.json case14c.json", "-json -case -flatten",                      $pass );
+            testcmd( $dif, "case14a.json.gz case14c.json.gz", "-json -case -flatten",                $pass );
+        }
     }
 }
 
@@ -702,7 +727,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v68 Fri Jun 25 15:12:02 PDT 2021
+v69 Tue Jun 29 12:38:14 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
