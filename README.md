@@ -182,7 +182,11 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        -removeDictKeys 'regex'
                           For use with -yaml or -json
                           Removes all dictionary keys matching the regex
+                          Removes all dictionary keys matching the regex
 
+       -flatten           For use with -yaml or -json
+                          Flatten nested dictionary and array structures
+  
        -basenames         Convert path/file to file
                           This can be useful when comparing log files which contain temporary directories
 
