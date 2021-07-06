@@ -169,11 +169,13 @@ sub usage {
        -json              Compare two json files, sorting the keys
 
        -removeDictKeys 'regex'
-                          For use with -yaml or -json
+                          For use with yaml or json files
                           Removes all dictionary keys matching the regex
 
-       -flatten           For use with -yaml or -json
+       -flatten           For use with yaml or json files
                           Flatten nested dictionary and array structures
+                          To display only one flattened file:
+                              $scriptName file.yml -flatten -stdout | gvim -
 
        -basenames         Convert path/file to file
                           This can be useful when comparing log files which contain temporary directories
@@ -1820,10 +1822,10 @@ for my $f (@files) {
 d '@processedFiles $preprocessRequired';
 
 # Check if all processed files are zero size
-if ( $preprocessRequired and $opt{verbose} ) {
-    my $allProcessedFilesZeroSize = 1;
+my $allProcessedFilesZeroSize = 1;
+if ($preprocessRequired) {
     for my $file (@processedFiles) {
-        print `ls -l '$file'`;
+        print `ls -l '$file'` if $opt{verbose};
         if ( -s $file ) {
             #d("File $file has zero size");
             $allProcessedFilesZeroSize = 0;
@@ -1866,9 +1868,14 @@ if ( scalar(@files) == 2 and not -d $files[0] and not $opt{stdout} and not defin
         my @status = filesMismatch(@localFiles);
         if (@status) {
             # Files mismatched before preprocessing, matched afterwards
-            say "These files are identical after preprocessing.  Exiting.\n";
-            say "md5sum  $status[1]  $localFiles[0]"   if $opt{verbose};
-            say "md5sum  $status[2]  $localFiles[1]\n" if $opt{verbose};
+            if ($allProcessedFilesZeroSize) {
+                # This is redundant, but leaving it here for clarity
+                say "WARNING:  These files are both zero size after preprocessing.  Exiting.\n" unless $opt{quiet};
+            } else {
+                say "These files are identical after preprocessing.  Exiting.\n" unless $opt{quiet};
+            }
+            say "md5sum  $status[0]  $localFiles[0]"   if $opt{verbose};
+            say "md5sum  $status[1]  $localFiles[1]\n" if $opt{verbose};
         } else {
             # Files matched, even before preprocessing
             say "These files are identical.  Exiting.\n" unless $opt{quiet};
@@ -2409,6 +2416,25 @@ sub preprocessFile {
         }    # do nothing
              #d '$linenum $line';
 
+        if ( $opt{search_replace} ) {
+            #d '$opt{search_replace}';
+            #d '\n$line';
+            #d '\n@sub_keys_ordered';
+            #d '\n$replaceTable_ref';
+            for my $key (@sub_keys_ordered) {
+                #d('$key $replaceTable_ref->{$key}'); # Global symbol "$key" requires explicit package name at (eval 15) line 1, <F> line 1
+                if ($d) { say "preprocess_file:  key = $key    replaceTable_ref->{$key} = $replaceTable_ref->{$key}" }
+                my $cnt;
+                if ( $opt{case} ) {
+                    $cnt = ( $line =~ s/$key/$replaceTable_ref->{$key}/gi );
+                } else {
+                    $cnt = ( $line =~ s/$key/$replaceTable_ref->{$key}/g );
+                }
+                #my $cnt = ($line =~ s/HASH(0x\S+)/$replaceTable_ref->{$key}/g);
+                #d("Found $key and replaced with $replaceTable_ref->{$key} on:  $line") if $cnt;
+            }
+        }
+
         if ( defined $opt{fieldJustify} ) {
             my $fieldSeparator = decideFieldSeparator($file);
             my $newline        = '';
@@ -2449,25 +2475,6 @@ sub preprocessFile {
                 }
             }
             $line = "$newline\n";
-        }
-
-        if ( $opt{search_replace} ) {
-            #d '$opt{search_replace}';
-            #d '\n$line';
-            #d '\n@sub_keys_ordered';
-            #d '\n$replaceTable_ref';
-            for my $key (@sub_keys_ordered) {
-                #d('$key $replaceTable_ref->{$key}'); # Global symbol "$key" requires explicit package name at (eval 15) line 1, <F> line 1
-                if ($d) { say "preprocess_file:  key = $key    replaceTable_ref->{$key} = $replaceTable_ref->{$key}" }
-                my $cnt;
-                if ( $opt{case} ) {
-                    $cnt = ( $line =~ s/$key/$replaceTable_ref->{$key}/gi );
-                } else {
-                    $cnt = ( $line =~ s/$key/$replaceTable_ref->{$key}/g );
-                }
-                #my $cnt = ($line =~ s/HASH(0x\S+)/$replaceTable_ref->{$key}/g);
-                #d("Found $key and replaced with $replaceTable_ref->{$key} on:  $line") if $cnt;
-            }
         }
 
         if ( $opt{lsl} ) {
@@ -3260,7 +3267,7 @@ sub flatten {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v69 Tue Jun 29 12:38:14 PDT 2021
+v70 Tue Jul  6 10:33:01 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
