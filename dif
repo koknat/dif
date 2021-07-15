@@ -1291,11 +1291,16 @@ if ( $scms{Perforce} or $scms{SVN} or $scms{GIT} ) {
             # Useful in conjunction with -function <func> or -start <regex> -stop <regex>
             @files = ();
             my $bfile = basename($file);
+            my $extension;
+            if ( $bfile =~ s/\.(.*)$// ) {
+                $extension = $1;
+            }
             say "It may be helpful to use option -keeptmp" if !$opt{keeptmp} and !$opt{quiet};
             for my $rev ( $begin .. $end ) {
-                my $tmpfile = "$globaltmpdir/${bfile}_${rev}";
-                my $cmd     = "cd $pwd ; p4 print -q $file#$rev > $tmpfile";
-                d '$cmd';
+                my $tmpfile = "$globaltmpdir/${bfile}";
+                $tmpfile .= "_p4${rev}";
+                $tmpfile .= ".$extension" if defined $extension;
+                my $cmd = "cd $pwd ; p4 print -q $file#$rev > $tmpfile";
                 system "$cmd";
                 push @files, $tmpfile;
             }
@@ -1766,10 +1771,10 @@ if ( $opt{report} ) {
     }
     @files = ( $tmpfileReport1, $tmpfileReport2 );
     if ( $opt{fast} ) {
-        say "Matching was done using only file sizes because of option -fast" unless $opt{quiet};
+        say "File comparison was done using only file sizes (not checksums) because of option -fast" unless $opt{quiet};
     } else {
         if ( !$preprocessOptions ) {
-            say "Matching was done using checksums.  To check faster (comparing only file size, use -fast)" unless $opt{quiet};
+            say "File comparison was done using checksums.  To compare using only file sizes, use option -fast" unless $opt{quiet};
         }
     }
     d '@mismatches';
@@ -1778,7 +1783,7 @@ if ( $opt{report} ) {
         say "Found " . scalar(@mismatches) . " mismatching pairs of files" unless $opt{quiet};
     } else {
         if ( $opt{fast} ) {
-            say "All file pairs have matching file sizes (contents not checked because of -fast mode)" unless $opt{quiet};
+            say "All file pairs have matching file sizes (contents not checked because of option -fast)" unless $opt{quiet};
         } else {
             say "All file pairs match" unless $opt{quiet};
         }
@@ -2049,7 +2054,7 @@ sub preprocessFile {
         print $TMP2 $result;
         close $TMP2;
         open( $F, "cat '$tmpfilePerlEvalEtc' |" ) or die "ERROR: Cannot open file for reading:  $tmpfilePerlEvalEtc\n\n";
-    } elsif ( $file =~ /\.pdf$/ and !$opt{report} ) {
+    } elsif ( $file =~ /\.pdf$/ ) {
         my $tmpfile;
         eval 'use CAM::PDF ()';
         if ($@) {
@@ -2074,7 +2079,7 @@ sub preprocessFile {
             ls $tmpfile;
         }
         open( $F, "cat '$tmpfile' |" ) or die "ERROR: Cannot open file for reading:  $tmpfile\n\n";
-    } elsif ( $file =~ /\.(ods)$/ and !$opt{report} ) {
+    } elsif ( $file =~ /\.(ods)$/ ) {
         eval 'use Spreadsheet::Read ();  use Spreadsheet::ParseODS ()';
         if ($@) {
             say "ERROR:  Install Spreadsheet::Read and Spreadsheet::ParseODS from CPAN to parse .ods spreadsheets";
@@ -2137,7 +2142,7 @@ sub preprocessFile {
             ls $tmpfile;
             open( $F, "cat '$tmpfile' |" ) or die "ERROR: Cannot open file for reading:  $tmpfile\n\n";
         }
-    } elsif ( $file =~ /\.(xls[mx]?)$/ and !$opt{report} ) {
+    } elsif ( $file =~ /\.(xls[mx]?)$/ ) {
         eval 'use Spreadsheet::BasicRead ()';
         if ($@) {
             say "ERROR:  Install modules from CPAN to parse xls|xlsm|xlsx spreadsheets";
@@ -2312,8 +2317,8 @@ sub preprocessFile {
     d( '$startFound', 'nc*' );    # Turn on line numbers and chomp
 
     while ( my $line = <$F> ) {
-        #d '.';
-        #d '$line';
+        #d '.';  # comment this out for performance
+        #d '$line';  # comment this out for performance
         $linenum++;
 
         # -case and -comments and -white are at top of loop, so that the change will affect -start -stop -grep etc
@@ -2325,7 +2330,7 @@ sub preprocessFile {
             # C-style comments are handled separately
             $line =~ s{\s*//.*}{};    # C++
             $line =~ s{\s*#.*}{};     # Perl
-            $line =~ s/\s+$//;        # After stripping comments, there are sometimes trailing spaces
+            $line =~ s{\s+$}{};       # After stripping comments, there are sometimes trailing spaces
             $line .= "\n" if $line =~ /\S/;
         }
 
@@ -3267,7 +3272,7 @@ sub flatten {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v70 Tue Jul  6 10:33:01 PDT 2021
+v71 Wed Jul 14 17:07:13 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
