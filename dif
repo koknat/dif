@@ -2082,6 +2082,7 @@ sub preprocessFile {
     } elsif ( $file =~ /\.(ods)$/ ) {
         eval 'use Spreadsheet::Read ();  use Spreadsheet::ParseODS ()';
         if ($@) {
+            say "\n$@\n";
             say "ERROR:  Install Spreadsheet::Read and Spreadsheet::ParseODS from CPAN to parse .ods spreadsheets";
             say "        sudo cpan install Spreadsheet::Read Spreadsheet::ParseODS";
             exit 1;
@@ -2145,6 +2146,7 @@ sub preprocessFile {
     } elsif ( $file =~ /\.(xls[mx]?)$/ ) {
         eval 'use Spreadsheet::BasicRead ()';
         if ($@) {
+            say "\n$@\n";
             say "ERROR:  Install modules from CPAN to parse xls|xlsm|xlsx spreadsheets";
             say "        sudo cpan";
             say "            install Spreadsheet::BasicRead";
@@ -2155,6 +2157,7 @@ sub preprocessFile {
             if ( $file =~ /\.(xls)$/ ) {
                 eval 'use Spreadsheet::ParseExcel ()';
                 if ($@) {
+                    say "\n$@\n";
                     say "ERROR:  Install ParseExcel from CPAN to parse xls spreadsheets";
                     say "        sudo cpan";
                     say "            install Spreadsheet::ParseExcel";
@@ -2164,6 +2167,7 @@ sub preprocessFile {
             } elsif ( $file =~ /\.(xls[mx])$/ ) {
                 eval 'use Spreadsheet::XLSX ()';
                 if ($@) {
+                    say "\n$@\n";
                     say "ERROR:  Install Spreadsheet::XLSX from CPAN to parse xlsx spreadsheets";
                     say "        sudo cpan";
                     say "            install Spreadsheet::XLSX";
@@ -2781,6 +2785,7 @@ sub sortYamlPerlJson {
         eval 'use YAML::XS ()';
         #eval 'use YAML::Syck ()';
         if ($@) {
+            say "\n$@\n";
             say "ERROR:  Install YAML::XS from CPAN to use option -yaml";
             say "        sudo cpan install YAML::XS";
             exit 1;
@@ -2812,6 +2817,7 @@ sub sortYamlPerlJson {
         # eval because JSON::XS might not be installed
         eval 'use JSON::XS ()';
         if ($@) {
+            say "\n$@\n";
             say "ERROR:  Install JSON::XS from CPAN to use option -json";
             say "        sudo cpan install YAML::XS";
             exit 1;
@@ -3253,6 +3259,7 @@ sub flatten {
     die "Second argument of removeDictKeys() must be an options hash ref!" unless ref($options) && ref($options) eq "HASH";
     eval 'use Hash::Flatten ()';
     if ($@) {
+        say "\n$@\n";
         say "ERROR:  Install Hash::Flatten from CPAN to flatten yml and json files";
         say "        sudo cpan install Hash::Flatten";
         exit 1;
@@ -3272,7 +3279,7 @@ sub flatten {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v71 Wed Jul 14 17:07:13 PDT 2021
+v72 Wed Jul 28 09:33:07 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
