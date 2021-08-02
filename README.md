@@ -155,8 +155,9 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        
        -splitChar 'char'  Splits each line on 'char'
                           For example:  -splitChar ',' to split on comma
-                          For example:  -splitChar '\s+' to split on whitespace
-                                                          each word will be on its own line
+
+       -splitWords        Splits on whitespace.  Each word will be on its own line.
+                          Identical to -splitChar '\s+'
 
        -trim              Trims each line to 105 characters, discarding the overflow
                           Useful when lines are very long, and the important information is near the beginning
