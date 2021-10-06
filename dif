@@ -952,15 +952,14 @@ my $preprocessRequired = $preprocessOptions;
 d '$preprocessRequired';
 for my $file (@files) {
     if ( $file =~ /\.tar(\.gz|bz2|xz|Z|zip)?(#(\d+|head|\-|\+))?$/ ) {
-        if ( $opt{tartv} ) {
+        if ( $opt{tartv} or $opt{externalPreprocessScript} ) {
             # do nothing, will be handled later
         } else {
             d "preprocessing required because of .tar";
+            say "Turning on option -strings and using gvimdiff because of binary content in .tar file" unless $opt{quiet};
+            $opt{strings}       = 1;
             $preprocessRequired = 1;
-            unless ( $gui =~ /^(gvim|gvimdiff)/ and !$opt{strings} ) {
-                say "Turning on option -strings because of binary content in .tar file" unless $opt{quiet};
-                $opt{strings} = 1;
-            }
+            $gui                = 'gvimdiff';
         }
     }
     if ( $file =~ /\.gz$/ ) {
@@ -981,7 +980,7 @@ if ( $gui =~ /^(gvim|gvimdiff)/ and $preprocessRequired ) {
     # Set gvim options to speed up comparison
     # Only for preprocessed files, since the options will prevent reading of compressed files
     # gvimdiff can natively display .gz files
-    $gui = 'gvimdiff -u NONE -U NONE -N -R +"set number" +"set ic" +"set hlsearch"';
+    $gui =~ s/^(gvim(diff)?)/$1 -u NONE -U NONE -N -R +"set number" +"set ic" +"set hlsearch"/;
 }
 if ( $gui =~ /^(gvim|gvimdiff)/ ) {
     $defaults{fold} = 80;    # columns used by -fold, gvimdiff uses larger font than kompare
@@ -1300,7 +1299,7 @@ if ( $scms{Perforce} or $scms{SVN} or $scms{GIT} ) {
             say "It may be helpful to use option -keeptmp" if !$opt{keeptmp} and !$opt{quiet};
             for my $rev ( $begin .. $end ) {
                 my $tmpfile = "$globaltmpdir/${bfile}";
-                $tmpfile .= "_p4${rev}";
+                $tmpfile .= "_p4_${rev}";
                 $tmpfile .= ".$extension" if defined $extension;
                 my $cmd = "cd $pwd ; p4 print -q $file#$rev > $tmpfile";
                 system "$cmd";
@@ -3281,7 +3280,7 @@ sub flatten {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v73 Mon Aug  2 11:17:45 PDT 2021
+v75 Wed Oct  6 10:23:44 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
