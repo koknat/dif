@@ -2341,7 +2341,7 @@ sub preprocessFile {
 
         if ( $opt{white} ) {
             $line =~ s/^\s+//;
-            $line =~ s/[ |\t]+/ /g;
+            $line =~ s/[ \t]+/ /g;
             $line =~ s/ $//g;
             $line =~ s/[^[:ascii:]]//g;    # remove any non-printable characters
         }
@@ -3158,6 +3158,7 @@ sub determineTmpFilename {
     $tmpfile =~ s/#/_/g;
     $tmpfile =~ s{/}{\\}g if $windows;
     $tmpfile =~ s/(\.(gz|bz2|xz|Z|zip))//;
+    $tmpfile =~ s/\.(tar)/.$1_/;             # Don't want gvimdiff to complain that the tarfile is not valid
     return $tmpfile;
 }
 
@@ -3280,7 +3281,7 @@ sub flatten {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v75 Wed Oct  6 10:23:44 PDT 2021
+v76 Mon Oct 11 15:47:05 PDT 2021
 
 
 This program is free software; you can redistribute it and/or modify
