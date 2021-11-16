@@ -723,7 +723,7 @@ if ( $defaults{history} ) {
 }
 
 # Options can be overridden with user config file ~/.dif.options  (key/value format)
-Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail|t', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments|c', 'grep=s', 'filename', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function|func=s', 'functionSort', 'language=s', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'splitWords', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript|e=s', 'perlDump', 'perlEval', 'xlsSheetName=s', 'yaml|yml', 'json', 'removeDictKeys=s', 'flatten', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'report|r', 'filePairs', 'filePairsWithOptions', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
+Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail|t', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments|c', 'grep=s', 'filename', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function|func=s', 'functionSort', 'language=s', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'splitWords', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript|e=s', 'perlDump', 'perlEval', 'xlsSheetName=s', 'yaml|yml', 'json', 'removeDictKeys=s', 'flatten', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'report|r', 'filePairs', 'filePairsWithOptions', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'hash=s', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
 # noDirs is not in usage.  It excludes directories
 $opt{quiet} = 1 if $opt{silent};                                                                # for backwards compatibility of -silent
 die "\nERROR:  -recursive <regex> is now called -includeFiles <regex>\n" if $opt{recursive};    # cannot handle this easily, because it needs to spawn more 'dif' processes
@@ -2357,7 +2357,7 @@ sub preprocessFile {
         }
         if ( $opt{basenames} ) {
             # path/file -> file
-            $line =~ s{\S+/(\S+)}{$1};
+            $line =~ s{[\w\-\./]*/(\w+)}{$1};
         }
         if ( $opt{lineWordSort} ) {
             # sort words in current line
@@ -2572,8 +2572,8 @@ sub getHash {
         #$getHash{hashingMethod} = 'Digest::xxHash';  # 0.9    11.5
         $gui = 'none';
     }
-    $getHash{hashingMethod} = 'Digest::MD5';                                                # Not using Digest::xxHash because of error "Couldn't open file" on read-only file
-    $getHash{hashingMethod} = $options{hashingMethod} if defined $options{hashingMethod};
+    $getHash{hashingMethod} = 'Digest::MD5';                              # Not using Digest::xxHash because of error "Couldn't open file" on read-only file
+    $getHash{hashingMethod} = $options{hash} if defined $options{hash};
     if ( !defined $getHash{hashingMethod} ) {
         # Priority is given to Digest::xxHash if it exists for performance reasons, then Digest::MD5, then md5sum
         eval 'use Digest::xxHash ()';
@@ -2582,7 +2582,7 @@ sub getHash {
         if ( $eval_xxHash || $@ ) {
             eval 'use Digest::MD5 ()';
             if ($@) {
-                my $hashingMethod = whichCommand( 'md5sum', 'md5' );                        # 'md5' is Apple OS
+                my $hashingMethod = whichCommand( 'md5sum', 'md5' );      # 'md5' is Apple OS
                 if ( defined $hashingMethod ) {
                     $getHash{hashingMethod} = $hashingMethod;
                 } else {
@@ -2599,7 +2599,13 @@ sub getHash {
     }
     d '$getHash{hashingMethod}';
     my $result = 0;
-    if ( $getHash{hashingMethod} eq 'Digest::xxHash' ) {
+    if ( defined $opt{hash} ) {
+        # -hash <executable>
+        die "\nERROR: Executable not found: $opt{hash}\n" unless -f $opt{hash};
+        my $cmd = $opt{hash};
+        chomp( $result = `$cmd $file 2> /dev/null` );
+        $result =~ s/^.*=\s*(\S+)\s*$/$1/;
+    } elsif ( $getHash{hashingMethod} eq 'Digest::xxHash' ) {
         if ( !defined $getHash{eval}{'Digest::xxHash'} ) {
             eval 'use Digest::xxHash ()';
             die $@ if $@;
@@ -3281,7 +3287,7 @@ sub flatten {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v76 Mon Oct 11 15:47:05 PDT 2021
+v77 Mon Nov 15 19:59:38 PST 2021
 
 
 This program is free software; you can redistribute it and/or modify
