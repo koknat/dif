@@ -723,7 +723,7 @@ if ( $defaults{history} ) {
 }
 
 # Options can be overridden with user config file ~/.dif.options  (key/value format)
-Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail|t', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments|c', 'grep=s', 'filename', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function|func=s', 'functionSort', 'language=s', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'splitWords', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript|e=s', 'perlDump', 'perlEval', 'xlsSheetName=s', 'yaml|yml', 'json', 'removeDictKeys=s', 'flatten', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'report|r', 'filePairs', 'filePairsWithOptions', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'hash=s', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
+Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail|t', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments|c', 'grep=s', 'filename', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function|func=s', 'functionSort', 'language=s', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'splitWords', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript|e=s', 'perlDump', 'perlEval', 'xlsSheetName=s', 'yaml|yml', 'json', 'removeDictKeys=s', 'flatten', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'report|r', 'filePairs', 'filePairsWithOptions', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'missingFileDummy', 'hash=s', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
 # noDirs is not in usage.  It excludes directories
 $opt{quiet} = 1 if $opt{silent};                                                                # for backwards compatibility of -silent
 die "\nERROR:  -recursive <regex> is now called -includeFiles <regex>\n" if $opt{recursive};    # cannot handle this easily, because it needs to spawn more 'dif' processes
@@ -1236,6 +1236,9 @@ if ( ( $opt{gold} or $opt{dir2} or defined $opt{includeFiles} ) and !$opt{report
             # Could check if dir2 or gold file exists, before running another instance of dif
             $cmd =~ s/ -find(Files)?\s+(\S+)//;    # -includeFiles <regex> or -find <regex>
             d '$cmd';
+            if ( scalar @filePairs > 1 ) {
+                $cmd .= ' -missingFileDummy';
+            }
             # dif normally runs the gui tool in the backgrounds 'dif file1 file2 &', so that the command line remains available
             # However, in this use case, we want dif to pause while the GUI is open.  When the user closes the GUI, move on to the next file
             if ( $ENV{DEBUG_DIF} ) {
@@ -1393,12 +1396,22 @@ my $ls = $windows ? 'ls' : 'ls';    # TODO need equivalent of 'ls -l' for window
 if ( $opt{report} ) {
     # do nothing
 } else {
+    my $count = 1;
     for my $file (@files) {
         next if $file =~ m{^//} or $file =~ /#(\d+|head|n|next|\+|\-)$/;
         d "Testing for existence of $file";
         if ( !-e $file ) {
-            say "WARNING:  $file not found.  Exiting";
-            exit 1;
+            if ( $opt{missingFileDummy} ) {
+                say "WARNING:  $file not found";
+                my $tmpfile = "$globaltmpdir/" . basename($file) . "_" . $count++;
+                open( my $TMP, '>', $tmpfile ) or die "ERROR: Cannot open file for writing:  $tmpfile\n\n";
+                print $TMP "FILE NOT FOUND: $file";
+                close $TMP;
+                $file = $tmpfile;
+            } else {
+                say "WARNING:  $file not found.  Exiting";
+                exit 1;
+            }
         }
         if ( -f $file or -l $file ) {
             if ( $opt{verbose} ) {
@@ -1408,6 +1421,7 @@ if ( $opt{report} ) {
                 say "$lsl    $lines lines    $words words";
             }
         }
+        $count++;
     }
 }
 # TODO need to sanity check files vs dirs
@@ -3287,7 +3301,7 @@ sub flatten {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v77 Mon Nov 15 19:59:38 PST 2021
+v78 Tue Dec  7 18:29:08 PST 2021
 
 
 This program is free software; you can redistribute it and/or modify
