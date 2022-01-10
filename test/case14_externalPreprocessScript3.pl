@@ -8,27 +8,32 @@ use Getopt::Long;
 use YAML::XS ();
 use YAML::Syck ();
 
-# Usage:  cat <infile>  |  case14a_externalPreprocessScript.pl  >  <outfile>
+my %opt;
+Getopt::Long::GetOptions( \%opt, 'in=s', 'out=s' );
 
-my $input = do { local $/; <STDIN> };
+# Usage:  case14a_externalPreprocessScript3.pl --in <infile> --out <outfile>
+
+my $infile = $opt{in};
+my $outfile = $opt{out};
 my $text;
-if ( $input =~ /^---/ ) {
+if ( $infile =~ /\.yml$/ ) {
     # The input seems to be in .yml format.  Preprocess through yaml read/write to remove formatting differences
     if (1) {
         # Syck is handy because it removes the quotes
-        my $ymlRef = YAML::Syck::Load($input);
+        my $ymlRef = YAML::Syck::LoadFile($infile);
         $text = YAML::Syck::Dump($ymlRef);
     } else {
-        my $ymlRef = YAML::XS::Load($input);
+        my $ymlRef = YAML::XS::LoadFile($infile);
         $text = YAML::XS::Dump($ymlRef);
     }
 } else {
     # The input is not yml
-    $text = $input;
+    open( IN, '<', $infile ) or die "ERROR: Cannot open file for reading  $infile\n\n";
+    $text = do { local $/; <IN> };
 }
+open( OUT, '>', $outfile ) or die "ERROR: Cannot open file for writing:  $outfile\n\n";
 
 # Next, do custom substitutions
-my $out;
 for my $line ( split "\n", $text ) {
     chomp($line);
     $line =~ s/\s+/ /;       # condense multiple spaces to one space
@@ -41,15 +46,14 @@ for my $line ( split "\n", $text ) {
         $line =~ s/foo/bar/i;
         $line =~ s/baz/qux/i;
     }
-    $out .= "$line\n" if $line =~ /\S/;  # skips empty lines
+    print OUT "$line\n" if $line =~ /\S/;  # skips empty lines
 }
-print $out;
 
 __END__
 
 Example usage:
 
-dif case14a.yml case14c.yml -externalPreprocessScript case14_externalPreprocessScript.pl
+dif case14a.yml case14c.yml -externalPreprocessScript3 case14_externalPreprocessScript3.pl
 
 To modify one file without doing the diff:
-    cat file1 > case14a_externalPreprocessScript.pl > file1.modified
+    case14_externalPreprocessScript3.pl --in file1 --out file1.modified

@@ -277,6 +277,28 @@ sub usage {
                               'VBinDiff' by Christopher J. Madsen
                               'dhex'
                          
+       -externalPreprocessScript2 <script>          
+                          This is a variation on the same idea as -externalPreprocessScript
+                          Run each input file through your custom preprocessing script
+                          It must take input from its first input argument
+                              and send uncompressed output to its second input argument
+                          
+                          Example:
+                              -ext2 '/path/script.pl --options'
+                              $scriptName will run this on each file:
+                                  /path/script.pl <infile> <outfile> --options
+       
+       -externalPreprocessScript3 <script>          
+                          This is a variation on the same idea as -externalPreprocessScript
+                          Run each input file through your custom preprocessing script
+                          It must take input from its option --in <infile>
+                              and send uncompressed output to its option --out <outfile>
+                          
+                          Example:
+                              -ext3 '/path/script.pl --options'
+                              $scriptName will run this on each file:
+                                  /path/script.pl --options --in <infile> --out <outfile>
+                         
        -bin               Compare binary files
                           This is a shortcut for running -ext '/usr/bin/xxd'
        
@@ -380,6 +402,8 @@ sub usage {
       -filePairs               Similar to -report, but only displays the files which are found in both directories, and mismatch
 
       -filePairsWithOptions    Similar to -filePairs, but also lists the $scriptName command and options
+      
+      -intersection            When used with -report, only list files which exist in both directories
 
       -fast                    When used with -report, use only the file size to compare, instead of md5sum
                                This is much faster, but could miss cases where bits are flipped
@@ -448,8 +472,14 @@ sub usage {
                               dif file -stdout <options> | another_script
                           If -stdin is given, then -stdout is assumed
 
+       -in <file>         Specify input file(s)
+                          This is simply an alternate syntax to the normal use case
+                          $scriptName file1 file2
+                          $scriptName -in file1 -in file2
+
        -out <file>        Similar to -stdout, but send output to file
                           This can be useful if $scriptName is used as a preprocessing engine
+                          $scriptName -in infile -out outfile
        
        -filename          Intended for use with option -stdout or -out
                           At the beginning of each line, prepend the filename
@@ -607,9 +637,11 @@ d '$originalCmdLine';
 # Parse options
 %opt = (
     # Preprocess
-    bcpp                     => '',
-    perltidy                 => '',
-    externalPreprocessScript => '',
+    bcpp                      => '',
+    perltidy                  => '',
+    externalPreprocessScript  => '',
+    externalPreprocessScript2 => '',
+    externalPreprocessScript3 => '',
     # Postprocess
     sort      => "",
     uniq      => "",
@@ -723,7 +755,7 @@ if ( $defaults{history} ) {
 }
 
 # Options can be overridden with user config file ~/.dif.options  (key/value format)
-Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail|t', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments|c', 'grep=s', 'filename', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function|func=s', 'functionSort', 'language=s', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'splitWords', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript|e=s', 'perlDump', 'perlEval', 'xlsSheetName=s', 'yaml|yml', 'json', 'removeDictKeys=s', 'flatten', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'report|r', 'filePairs', 'filePairsWithOptions', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'missingFileDummy', 'hash=s', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
+Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail|t', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments|c', 'grep=s', 'filename', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function|func=s', 'functionSort', 'language=s', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'splitWords', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript|externalPreprocessScript1|ext|ext1|e|e1=s', 'externalPreprocessScript2|ext2|e2=s', 'externalPreprocessScript3|ext3|e3=s', 'perlDump', 'perlEval', 'xlsSheetName=s', 'yaml|yml', 'json', 'removeDictKeys=s', 'flatten', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'in=s' => \@{ $opt{in} }, 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'report|r', 'intersection', 'filePairs', 'filePairsWithOptions', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'missingFileDummy', 'hash=s', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
 # noDirs is not in usage.  It excludes directories
 $opt{quiet} = 1 if $opt{silent};                                                                # for backwards compatibility of -silent
 die "\nERROR:  -recursive <regex> is now called -includeFiles <regex>\n" if $opt{recursive};    # cannot handle this easily, because it needs to spawn more 'dif' processes
@@ -751,6 +783,8 @@ d '$commandLineWithoutFiles';
 
 # Check if files exist
 my @files = @ARGV;
+push @files, @{ $opt{in} };
+#d '@files';die;
 die "ERROR:  Directory $opt{dir2} not found!\n" if $opt{dir2} and !-d $opt{dir2};    # TODO move this earlier
 if ( $opt{stdin} ) {
     $opt{stdout} = 1 unless defined $opt{out};
@@ -947,12 +981,12 @@ if ( $opt{function} ) {
 # Decide if file needs to go through the preprocessing code
 # If not, then we can later do a quick md5sum check to determine equality
 my $preprocessOptions = 0;
-$preprocessOptions = 1 if $opt{sort} or $opt{paragraphSort} or $opt{lineWordSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{length} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or defined $opt{round} or $opt{basenames} or $opt{dos2unix} or defined $opt{grep} or defined $opt{filename} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or defined $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{perlEval} or $opt{yaml} or $opt{json} or defined $opt{removeDictKeys} or $opt{flatten} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
+$preprocessOptions = 1 if $opt{sort} or $opt{paragraphSort} or $opt{lineWordSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{length} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or defined $opt{round} or $opt{basenames} or $opt{dos2unix} or defined $opt{grep} or defined $opt{filename} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or defined $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{externalPreprocessScript2} or $opt{externalPreprocessScript3} or $opt{perlEval} or $opt{yaml} or $opt{json} or defined $opt{removeDictKeys} or $opt{flatten} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
 my $preprocessRequired = $preprocessOptions;
 d '$preprocessRequired';
 for my $file (@files) {
     if ( $file =~ /\.tar(\.gz|bz2|xz|Z|zip)?(#(\d+|head|\-|\+))?$/ ) {
-        if ( $opt{tartv} or $opt{externalPreprocessScript} ) {
+        if ( $opt{tartv} or $opt{externalPreprocessScript} or $opt{externalPreprocessScript2} or $opt{externalPreprocessScript3} ) {
             # do nothing, will be handled later
         } else {
             d "preprocessing required because of .tar";
@@ -1745,6 +1779,7 @@ if ( $opt{report} ) {
         $file2mod =~ s{^\./}{};
         if ( $opt{fast} ) {
             if ($reportFilePairs) {
+                # -filePairs or -filePairsWithOptions
                 if ( $size1 ne '' and $size2 ne '' and $size1 ne $size2 ) {
                     if ( $opt{filePairs} ) {
                         printf $REPORT1 $format, "$file1\t$file2";
@@ -1754,6 +1789,8 @@ if ( $opt{report} ) {
                     }
                     push @mismatches, $file1mod;
                 }
+            } elsif ( $opt{intersection} and ( $size1 eq '' or $size2 eq '' ) ) {
+                # do nothing
             } else {
                 printf $REPORT1 $format, $size1, $file1mod;
                 printf $REPORT2 $format, $size2, $file2mod;
@@ -1761,6 +1798,7 @@ if ( $opt{report} ) {
             }
         } else {
             if ($reportFilePairs) {
+                # -filePairs or -filePairsWithOptions
                 if ( $hash1 !~ /DOES_NOT_EXIST/ and $hash2 !~ /DOES_NOT_EXIST/ and $hash1 ne $hash2 ) {
                     if ( $opt{filePairs} ) {
                         printf $REPORT1 $format, "$file1\t$file2";
@@ -1770,6 +1808,8 @@ if ( $opt{report} ) {
                     }
                     push @mismatches, $file1mod;
                 }
+            } elsif ( $opt{intersection} and ( $size1 eq '' or $size2 eq '' ) ) {
+                # do nothing
             } else {
                 printf $REPORT1 $format, $size1, $numlines1, $hash1, $file1mod;
                 printf $REPORT2 $format, $size2, $numlines2, $hash2, $file2mod;
@@ -2230,6 +2270,10 @@ sub preprocessFile {
         if ( $opt{bin} ) {
             if ( $opt{externalPreprocessScript} ne '' ) {
                 die "ERROR:  Cannot run -externalPreprocessScript in combinaton with -bin\n";
+            } elsif ( $opt{externalPreprocessScript2} ne '' ) {
+                die "ERROR:  Cannot run -externalPreprocessScript2 in combinaton with -bin\n";
+            } elsif ( $opt{externalPreprocessScript3} ne '' ) {
+                die "ERROR:  Cannot run -externalPreprocessScript3 in combinaton with -bin\n";
             } elsif ( -f '/usr/bin/xxd' ) {
                 $opt{externalPreprocessScript} = '/usr/bin/xxd';
             } elsif ( -f '/usr/bin/hexdump' ) {
@@ -2251,6 +2295,37 @@ sub preprocessFile {
         if ( $opt{externalPreprocessScript} ) {
             die "ERROR:  preprocessing script not found:  '$opt{externalPreprocessScript}'\n" if !whichCommand( $opt{externalPreprocessScript} );
             $preprocess_pipe .= "| $opt{externalPreprocessScript}";
+        } elsif ( $opt{externalPreprocessScript2} or $opt{externalPreprocessScript3} ) {
+            my $tmpfile1 = determineTmpFilename( $file, $count + 1000000 );
+            my $tmpfile2 = determineTmpFilename( $file, $count + 1000001 );
+            my ( $cmd, $result );
+            $cmd = "$zipCat '$file' > $tmpfile1";
+            d '$cmd';
+            $result = `$cmd`;
+            d '$result';
+            if ( $opt{externalPreprocessScript2} ) {
+                die "ERROR:  preprocessing script not found:  '$opt{externalPreprocessScript2}'\n" if !whichCommand( $opt{externalPreprocessScript2} );
+                if ( $opt{externalPreprocessScript2} =~ m{^\S+/perl .*-e} ) {
+                    # perl -I... -M... -e 'magic'    -->    perl -I... -M... -e 'magic' file1 file2
+                    $cmd = "$opt{externalPreprocessScript2} $tmpfile1 $tmpfile2";
+                } else {
+                    # script.pl -options             -->    script.pl file1 file2 -options
+                    $opt{externalPreprocessScript2} =~ /^(\S+)\s*(.*)$/;
+                    my ( $extScript, $extOptions ) = ( $1, $2 );
+                    $cmd = "$extScript $tmpfile1 $tmpfile2 $extOptions";
+                }
+            } else {
+                die "ERROR:  preprocessing script not found:  '$opt{externalPreprocessScript3}'\n" if !whichCommand( $opt{externalPreprocessScript3} );
+                # -externalPreprocessScript3
+                # script.pl -options                 -->    script.pl -in file1 -out file2 -options
+                $opt{externalPreprocessScript3} =~ /^(\S+)\s*(.*)$/;
+                my ( $extScript, $extOptions ) = ( $1, $2 );
+                $cmd = "$extScript -in $tmpfile1 -out $tmpfile2 $extOptions";
+            }
+            d '$cmd';
+            $result = `$cmd`;
+            d '$result';
+            $preprocess_pipe .= "> /dev/null ; cat $tmpfile2";
         } elsif ( $opt{bcpp} ) {
             ( my $bcpp_executable = $defaults{bcpp} ) =~ s/^(\S+).*/$1/;
             if ( !-x $bcpp_executable ) {
@@ -2266,7 +2341,9 @@ sub preprocessFile {
             $preprocess_pipe .= "| $defaults{perltidy} -st";
         }
         d '$preprocess_pipe';
-        open( $F, "$zipCat '$file' $preprocess_pipe |" ) or die "ERROR: Cannot open file for reading:  $file\n\n";
+        my $openCommand = "$zipCat '$file' $preprocess_pipe |";
+        d '$openCommand';
+        open( $F, $openCommand ) or die "ERROR: Cannot open file for reading:  $file\n\n";
     }
     if ( $opt{verbose} ) {
         say "\n\n\n" if $opt{gold};    # To visually separate the diffs
@@ -2371,7 +2448,7 @@ sub preprocessFile {
         }
         if ( $opt{basenames} ) {
             # path/file -> file
-            $line =~ s{[\w\-\./]*/(\w+)}{$1};
+            $line =~ s{[\w\-\./]*/(\w+)}{$1}g;
         }
         if ( $opt{lineWordSort} ) {
             # sort words in current line
@@ -3301,7 +3378,7 @@ sub flatten {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v78 Tue Dec  7 18:29:08 PST 2021
+v86 Mon Jan 10 12:10:47 PST 2022
 
 
 This program is free software; you can redistribute it and/or modify

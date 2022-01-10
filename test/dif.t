@@ -255,26 +255,34 @@ if ( runtests('replaceTable') ) {
     testcmd( $dif, "case01a_hosts.txt case01h_hosts_misspelling.txt", "-replaceTable $testDir/case03_replaceTable", $pass );
 }
 
+if ( runtests('in') ) {
+    testcmd( $dif, "", "-in case06a_replaceDates.txt -in case06b_replaceDates.txt -replaceDates", $pass );
+}
+
 if ( runtests('stdin_stdout') ) {
     my ($cmd, $result);
+    
+    $result = getNumLines("$dif -in $testDir/case06a_replaceDates.txt -stdout -replaceDates -q | grep 'date'");
+    d '$cmd $result';
+    is($result, 16, "stdin__stdout -in");
 
     $result = getNumLines("cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -q | grep 'date'");
     d '$cmd $result';
-    is($result, 16, "stdin__stdout");
+    is($result, 16, "stdin__stdout -stdin -stdout");
     
     my $tmpfile = "$globaltmpdir/dif_out.txt";
     $result = getNumLines("cat $testDir/case06a_replaceDates.txt | $dif -stdin -out $tmpfile -replaceDates -q ; grep 'date' $tmpfile");
     $result =~ s/^\s*//;
     d '$cmd $result';
-    is($result, 16, "stdin__stdout out");
+    is($result, 16, "stdin__stdout -stdin -out");
 
     # Test that -replaceDates works in conjunction with -search -replace
     $result = getNumLines("cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -search 'A' -replace 'AA' -q | grep 'date'");
     d '$cmd $result';
-    is($result, 16, "stdin__stdout -replaceDates in conjunction with -search -replace");
+    is($result, 16, "stdin__stdout -stdin -stdout -replaceDates in conjunction with -search -replace");
     $result = getNumLines("cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -search 'foo' -replace 'bar' -q | grep 'bar'");
     d '$cmd $result';
-    is($result, 1, "stdin__stdout -replaceDates in conjunction with -search -replace");
+    is($result, 1, "stdin__stdout -stdin -stdout -replaceDates in conjunction with -search -replace");
 }
 
 if ( runtests('quiet') ) {
@@ -521,9 +529,16 @@ if ($@) {
     }
     if ( runtests('externalPreprocessScript') ) {
         # May fail because of YAML library dependency
+        # -ext requires that the external script reads from stdin and writes to stdout
         testcmd( $dif, "case14a.yml case14b.yml", "",            $fail );
         testcmd( $dif, "case14a.yml case14b.yml", "-externalPreprocessScript $testDir/case14_externalPreprocessScript.pl",       $pass );
         testcmd( $dif, "case14a.yml case14c.yml", "-externalPreprocessScript $testDir/case14_externalPreprocessScript.pl",       $pass );
+        # -ext2 requires that the external script reads from its first argument <infile> and writes to its second argument <outfile>
+        testcmd( $dif, "case14a.yml case14b.yml", "-externalPreprocessScript2 $testDir/case14_externalPreprocessScript2.pl",       $pass );
+        testcmd( $dif, "case14a.yml case14c.yml", "-externalPreprocessScript2 $testDir/case14_externalPreprocessScript2.pl",       $pass );
+        # -ext3 requires that the external script reads from its option -in <infile> and writes to its option -out <outfile>
+        testcmd( $dif, "case14a.yml case14b.yml", "-externalPreprocessScript3 $testDir/case14_externalPreprocessScript3.pl",       $pass );
+        testcmd( $dif, "case14a.yml case14c.yml", "-externalPreprocessScript3 $testDir/case14_externalPreprocessScript3.pl",       $pass );
     }
 }
 
@@ -727,7 +742,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v78 Tue Dec  7 18:29:08 PST 2021
+v86 Mon Jan 10 12:10:48 PST 2022
 
 
 This program is free software; you can redistribute it and/or modify
