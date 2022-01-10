@@ -390,6 +390,8 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
       -filePairs               Similar to -report, but only displays the files which are found in both directories, and mismatch
 
       -filePairsWithOptions    Similar to -filePairs, but also lists the dif command and options
+         
+      -intersection            When used with -report, only list files which exist in both directories
 
       -fast                    When used with -report, use only the file size to compare, instead of md5sum
                                This is much faster, but could miss cases where bits are flipped
