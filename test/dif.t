@@ -120,6 +120,12 @@ if ( runtests('grep') ) {
     testcmd( $dif, "case01a_hosts.txt case01d_hosts_missingline.txt", "",                $fail );
     testcmd( $dif, "case01a_hosts.txt case01a_hosts.txt",             "-grep 'network'", $pass );
     testcmd( $dif, "case01a_hosts.txt case01d_hosts_missingline.txt", "-grep 'network'", $pass );
+   
+    my $result;
+    $result = getNumLines("$dif -in $testDir/case01a_hosts.txt -stdout -grep 'network'");
+    is($result, 1, "grep 'network'");
+    $result = getNumLines("$dif -in $testDir/case01a_hosts.txt -stdout -grep 'network' -grep various");
+    is($result, 2, "grep 'network' and 'various'");
 }
 
 if ( runtests('ignore') ) {
@@ -142,6 +148,11 @@ if ( runtests('sort_strings') ) {
     testcmd( $dif, "case02a.bin case02c_longer.bin",              "-strings",       $fail );
     #testcmd( $dif, "case02a.bin case02c_longer.bin",              "-sort",          $err );
     #testcmd( $dif, "case02a.bin case02c_longer.bin",              "-sort -strings", $fail );   # Could not parse diff output
+}
+
+if ( runtests('sortWords') ) {
+    testcmd( $dif, "case01a_hosts.txt case01m_hosts_scrambled_words.txt", "",           $fail );
+    testcmd( $dif, "case01a_hosts.txt case01m_hosts_scrambled_words.txt", "-sortWords", $fail );
 }
 
 if ( runtests('uniq') ) {
@@ -178,6 +189,7 @@ if ( runtests('trim') ) {
 if ( runtests('fields') ) {
     testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-fields 5,6,7", $fail );
     testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-fields 4,8", $pass );
+    testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-fields 4 -fields 8", $pass );
     testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-fields 5,6,7 -fieldSeparator '\\s+'", $fail );
     testcmd( $dif, "case04a_lsl.txt case04b_lsl.txt", "-fields 4,8 -fieldSeparator '\\s+'", $pass );
     testcmd( $dif, "case08a.csv case08b.csv", "", $fail );
@@ -256,7 +268,7 @@ if ( runtests('replaceTable') ) {
 }
 
 if ( runtests('in') ) {
-    testcmd( $dif, "", "-in case06a_replaceDates.txt -in case06b_replaceDates.txt -replaceDates", $pass );
+    testcmd( $dif, "", "-in $testDir/case06a_replaceDates.txt -in $testDir/case06b_replaceDates.txt -replaceDates", $pass );
 }
 
 if ( runtests('stdin_stdout') ) {
@@ -269,6 +281,10 @@ if ( runtests('stdin_stdout') ) {
     $result = getNumLines("cat $testDir/case06a_replaceDates.txt | $dif -stdin -stdout -replaceDates -q | grep 'date'");
     d '$cmd $result';
     is($result, 16, "stdin__stdout -stdin -stdout");
+    
+    $result = getNumLines("cat $testDir/case06a_replaceDates.txt | $dif -replaceDates -q | grep 'date'");
+    d '$cmd $result';
+    is($result, 16, "stdin__stdout and assumed -stdin and -stdout");
     
     my $tmpfile = "$globaltmpdir/dif_out.txt";
     $result = getNumLines("cat $testDir/case06a_replaceDates.txt | $dif -stdin -out $tmpfile -replaceDates -q ; grep 'date' $tmpfile");
@@ -514,6 +530,7 @@ if ($@) {
         testcmd( $dif, "case14a.yml case14c.yml", "-yaml -case",                               $pass );
         testcmd( $dif, "case14a.yml.gz case14c.yml.gz", "-yaml -case",                         $pass );
         testcmd( $dif, "case14a.yml.gz case14c.yml.gz", "-yaml -removeDictKeys '(eggs|spam)'", $pass );
+        testcmd( $dif, "case14a.yml.gz case14c.yml.gz", "-yaml -removeDictKeys eggs -removeDictKeys spam", $pass );
         eval 'use Hash::Flatten ()';
         if ($@) {
             if ( $whoami eq 'ckoknat' and ! defined $opt{test} ) {
@@ -742,7 +759,7 @@ __END__
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v86 Mon Jan 10 12:10:48 PST 2022
+v88 Wed Jan 19 08:18:14 PST 2022
 
 
 This program is free software; you can redistribute it and/or modify

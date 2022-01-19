@@ -147,6 +147,8 @@ sub usage {
 
        -splitWords        Splits on whitespace.  Each word will be on its own line.
                           Identical to -splitChar '\\s+'
+       
+       -sortWords         Sort the words in each line (space delimited)
 
        -trim              Trims each line to $defaults{fold} characters, discarding the overflow
                           Useful when lines are very long, and the important information is near the beginning
@@ -181,8 +183,6 @@ sub usage {
        -basenames         Convert path/file to file
                           This can be useful when comparing log files which contain temporary directories
 
-       -lineWordSort      Sort the words in each line (space delimited)
-       
        -round 'string'    Round all numbers according to the sprintf string
                           For example -round '%0.2f'
        
@@ -463,13 +463,15 @@ sub usage {
     Other options:
        -stdin             Parse input from stdin and send output to stdout
                           For example:
-                              grep foo bar | dif -stdin <options> | script2 | script3
+                              grep foo bar | $scriptName -stdin <options> | script2 | script3
+                          $scriptName can autodetect piping, so this can be shortened to: 
+                              grep foo bar | $scriptName <options> | script2 | script3
 
        -stdout            Cat all preprocessed files to stdout
                           In this use case, $scriptName could be called on only one file
                           This allows $scriptName to be part of a pipeline
                           For example:
-                              dif file -stdout <options> | another_script
+                              $scriptName file -stdout <options> | another_script
                           If -stdin is given, then -stdout is assumed
 
        -in <file>         Specify input file(s)
@@ -497,6 +499,12 @@ sub usage {
             .xz
             .Z
             .zip  (single files only)
+
+        Compare remote files:
+            $scriptName localfile host:/path/file
+            $scriptName host1:/path/file host2:/path/file
+            As a prerequisite, 'scp' must already be working on the command line
+            Google 'ssh-copy-id' for details on setup
         
         Compares values inside .xls|.xlsm|.xlsx files
             requires the Perl Spreadsheet::BasicRead, Spreadsheet::ParseExcel, and Spreadsheet::XLSX modules to be installed
@@ -739,7 +747,7 @@ for my $type ('fileMappings') {
         }
     }
 }
-d '%customFilenameMappings';
+#d '%customFilenameMappings';
 my $pwd = Cwd::cwd();
 if ( $defaults{history} ) {
     #if ( $pwd =~ m{/dif/test} ) {}  # all unit tests were still triggering it
@@ -755,7 +763,7 @@ if ( $defaults{history} ) {
 }
 
 # Options can be overridden with user config file ~/.dif.options  (key/value format)
-Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'lineWordSort', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail|t', 'tailLines=s', 'fields=s', 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments|c', 'grep=s', 'filename', 'ignore=s', 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function|func=s', 'functionSort', 'language=s', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'splitWords', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript|externalPreprocessScript1|ext|ext1|e|e1=s', 'externalPreprocessScript2|ext2|e2=s', 'externalPreprocessScript3|ext3|e3=s', 'perlDump', 'perlEval', 'xlsSheetName=s', 'yaml|yml', 'json', 'removeDictKeys=s', 'flatten', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'in=s' => \@{ $opt{in} }, 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'report|r', 'intersection', 'filePairs', 'filePairsWithOptions', 'fast', 'includeFiles=s', 'excludeFiles=s', 'recursive=s', 'noDirs', 'missingFileDummy', 'hash=s', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
+Getopt::Long::GetOptions( \%opt, 'd' => sub { $d = 1 }, 'dd' => sub { $d = 2 }, 'help|h|?', 'sort', 'paragraphSort', 'sortWords', 'uniq|u', 'strings', 'fold|f', 'foldChars=s', 'trim', 'trimChars=s', 'head', 'headLines=s', 'tail|t', 'tailLines=s', 'fields=s' => \@{ $opt{fields} }, 'fieldSeparator=s', 'fieldJustify', 'length', 'ppOnly', 'white|w', 'noWhite', 'case|i', 'comments|c', 'grep=s' => \@{ $opt{grep} }, 'filename', 'ignore=s' => \@{ $opt{ignore} }, 'search=s', 'replace=s', 'start=s', 'stop=s', 'start1=s', 'stop1=s', 'start2=s', 'stop2=s', 'startMultiple', 'startIgnoreFirstLine', 'stopIgnoreLastLine', 'function|func=s' => \@{ $opt{function} }, 'functionSort', 'language=s', 'replaceTable=s', 'replaceDates', 'dos2unix', 'round=s', 'basenames', 'split', 'splitChar=s', 'splitWords', 'lsl', 'bcpp', 'perltidy', 'bin|binary', 'externalPreprocessScript|externalPreprocessScript1|ext|ext1|e|e1=s', 'externalPreprocessScript2|ext2|e2=s', 'externalPreprocessScript3|ext3|e3=s', 'perlDump', 'perlEval', 'xlsSheetName=s', 'yaml|yml', 'json', 'removeDictKeys=s' => \@{ $opt{removeDictKeys} }, 'flatten', 'silent', 'quiet|q', 'verbose|v', 'gui=s', 'difftool=s', 'diff', 'gvimdiff|gv', 'tkdiff', 'kdiff3', 'kompare|k', 'meld|m', 'stdin', 'stdout|s', 'out=s', 'in=s' => \@{ $opt{in} }, 'rp', 'ps', 'keeptmp', 'gold|g', 'dir2=s', 'report|r', 'intersection', 'filePairs', 'filePairsWithOptions', 'fast', 'includeFiles=s' => \@{ $opt{includeFiles} }, 'excludeFiles=s' => \@{ $opt{excludeFiles} }, 'recursive=s', 'noDirs', 'missingFileDummy', 'hash=s', 'tree', 'tartv', 'noBackgroundProcess', 'installationInstructions' ) or usage();
 # noDirs is not in usage.  It excludes directories
 $opt{quiet} = 1 if $opt{silent};                                                                # for backwards compatibility of -silent
 die "\nERROR:  -recursive <regex> is now called -includeFiles <regex>\n" if $opt{recursive};    # cannot handle this easily, because it needs to spawn more 'dif' processes
@@ -786,6 +794,27 @@ my @files = @ARGV;
 push @files, @{ $opt{in} };
 #d '@files';die;
 die "ERROR:  Directory $opt{dir2} not found!\n" if $opt{dir2} and !-d $opt{dir2};    # TODO move this earlier
+
+# Handle multiple -fields -grep -ignore -function -includeFiles -excludeFiles -removeDictKeys
+$opt{fields} = join ',', @{ $opt{fields} };
+delete $opt{fields} if $opt{fields} eq '';
+$opt{grep} = join '|', @{ $opt{grep} };
+delete $opt{grep} if $opt{grep} eq '';
+$opt{ignore} = join '|', @{ $opt{ignore} };
+delete $opt{ignore} if $opt{ignore} eq '';
+$opt{function} = join '|', @{ $opt{function} };
+delete $opt{function} if $opt{function} eq '';
+$opt{includeFiles} = join '|', @{ $opt{includeFiles} };
+delete $opt{includeFiles} if $opt{includeFiles} eq '';
+$opt{excludeFiles} = join '|', @{ $opt{excludeFiles} };
+delete $opt{excludeFiles} if $opt{excludeFiles} eq '';
+$opt{removeDictKeys} = join '|', @{ $opt{removeDictKeys} };
+delete $opt{removeDictKeys} if $opt{removeDictKeys} eq '';
+
+if ( !-t and !@files ) {
+    # https://stackoverflow.com/questions/18991832/how-to-tell-if-my-program-is-being-piped-to-another-perl
+    $opt{stdin} = 1;
+}
 if ( $opt{stdin} ) {
     $opt{stdout} = 1 unless defined $opt{out};
     my $content = do { local $/; <STDIN> };
@@ -837,7 +866,8 @@ if ( $files[0] =~ /(#.*)/ ) {
     $filePrefix = $files[0];
     $p4rev      = '#head';
 }
-d '$p4rev $filePrefix %customFilenameMappings $customFilenameMappings{$filePrefix}';
+d '$p4rev $filePrefix';
+#d '%customFilenameMappings $customFilenameMappings{$filePrefix}';
 if ( defined $filePrefix and defined $customFilenameMappings{$filePrefix} ) {
     $files[0] = "$customFilenameMappings{$filePrefix}$p4rev";
 }
@@ -981,7 +1011,7 @@ if ( $opt{function} ) {
 # Decide if file needs to go through the preprocessing code
 # If not, then we can later do a quick md5sum check to determine equality
 my $preprocessOptions = 0;
-$preprocessOptions = 1 if $opt{sort} or $opt{paragraphSort} or $opt{lineWordSort} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{length} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or defined $opt{round} or $opt{basenames} or $opt{dos2unix} or defined $opt{grep} or defined $opt{filename} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or defined $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{externalPreprocessScript2} or $opt{externalPreprocessScript3} or $opt{perlEval} or $opt{yaml} or $opt{json} or defined $opt{removeDictKeys} or $opt{flatten} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
+$preprocessOptions = 1 if $opt{sort} or $opt{paragraphSort} or $opt{sortWords} or $opt{uniq} or $opt{strings} or $opt{fold} or $opt{foldChars} or $opt{trim} or $opt{trimChars} or $opt{head} or $opt{headLines} or $opt{tail} or $opt{tailLines} or defined $opt{fields} or $opt{fieldJustify} or $opt{length} or $opt{white} or $opt{noWhite} or $opt{case} or $opt{comments} or defined $opt{round} or $opt{basenames} or $opt{dos2unix} or defined $opt{grep} or defined $opt{filename} or defined $opt{ignore} or defined $opt{start} or defined $opt{stop} or defined $opt{search} or defined $opt{replace} or $opt{replaceTable} or $opt{replaceDates} or $opt{functionSort} or $opt{lsl} or $opt{perltidy} or $opt{bin} or $opt{externalPreprocessScript} or $opt{externalPreprocessScript2} or $opt{externalPreprocessScript3} or $opt{perlEval} or $opt{yaml} or $opt{json} or defined $opt{removeDictKeys} or $opt{flatten} or $opt{bcpp} or $opt{perlDump} or $opt{rp} or $opt{ps};
 my $preprocessRequired = $preprocessOptions;
 d '$preprocessRequired';
 for my $file (@files) {
@@ -1421,6 +1451,12 @@ if ( $scms{Perforce} or $scms{SVN} or $scms{GIT} ) {
     say "Files are: @files" if $foundVCSfile and $opt{verbose};
 }
 d '@files';
+for my $file (@files) {
+    if ( $file =~ m{^\S+:/} ) {
+        # host:/path/file
+        $preprocessRequired = 1;
+    }
+}
 
 # Test for existence of files and directories
 #my @dirs;
@@ -1432,7 +1468,7 @@ if ( $opt{report} ) {
 } else {
     my $count = 1;
     for my $file (@files) {
-        next if $file =~ m{^//} or $file =~ /#(\d+|head|n|next|\+|\-)$/;
+        next if $file =~ m{^//} or $file =~ /#(\d+|head|n|next|\+|\-)$/ or $file =~ m{^\S+:/};
         d "Testing for existence of $file";
         if ( !-e $file ) {
             if ( $opt{missingFileDummy} ) {
@@ -1847,7 +1883,7 @@ if ( $opt{report} ) {
 }
 
 # If all files match md5sum, there is no need to uncompress or preprocess
-if ( scalar @files == 2 and !$opt{report} and !defined $opt{start2} and !defined $opt{stop2} and $files[0] !~ m{^//} and $files[1] !~ m{^//} and $files[0] !~ /#(\d+|head)$/ and $files[1] !~ /#(\d+|head)$/ ) {
+if ( scalar @files == 2 and !$opt{report} and !defined $opt{start2} and !defined $opt{stop2} and $files[0] !~ m{^//} and $files[1] !~ m{^//} and $files[0] !~ /#(\d+|head)$/ and $files[1] !~ /#(\d+|head)$/ and $files[0] !~ m{^\S+:/} and $files[1] !~ m{^\S+:/} ) {
     my @mismatch = filesMismatch(@files);
     d '@mismatch';
     if ( !@mismatch ) {
@@ -2056,7 +2092,7 @@ exit 0;
 # my $tmpfile = preprocessFile( $file, $tmpfile, $filenum, $filenumStartStop )
 sub preprocessFile {
     my ( $file, $tmpfile, $filenum, $filenumStartStop ) = @_;
-    d '$file $tmpfile $filenum';
+    d '$file $tmpfile $filenum %scms';
     d '.';
     $filenumStartStop = 2 if $filenumStartStop > 2;    # Normally there are 2 files, but with 3-file comparison, the 3rd file will use the -start2 -stop2 parameters
     if ( $scms{Perforce} or $scms{SVN} or $scms{GIT} ) {
@@ -2064,6 +2100,10 @@ sub preprocessFile {
         $file = handleSCM($file);
     } else {
         # do nothing
+    }
+    if ( $file =~ m{^\S+:/} ) {
+        # host:/path/file
+        $file = handleScp($file);
     }
     push @localFiles, $file;
 
@@ -2353,7 +2393,7 @@ sub preprocessFile {
             say "Preprocessing $filenum $file";
         }
     }
-    d '%opt $head $tail';
+    d '$head $tail';
     my $numLines = "?";
     if ($tail) {
         $numLines = getNumLines("$zipCat '$file'");
@@ -2450,7 +2490,7 @@ sub preprocessFile {
             # path/file -> file
             $line =~ s{[\w\-\./]*/(\w+)}{$1}g;
         }
-        if ( $opt{lineWordSort} ) {
+        if ( $opt{sortWords} ) {
             # sort words in current line
             chomp $line;
             $line = ( join ' ', sort( split /\s+/, $line ) ) . "\n";
@@ -2803,7 +2843,7 @@ sub readTableFile {
 sub handleSCM {
     my $fileNrev = shift;
     d '$fileNrev';
-    if ( $fileNrev =~ /^([^#]+)(#\d+|#head)?$/ and $fileNrev !~ m{^//} ) {
+    if ( $fileNrev !~ m{^\S+:/} and $fileNrev =~ /^([^#]+)(#\d+|#head)?$/ and $fileNrev !~ m{^//} ) {
         # Resolve symbolic link, not just for perforce
         $fileNrev = Cwd::abs_path($1) . ( $2 || '' );
         d '$fileNrev';
@@ -2859,6 +2899,27 @@ sub handleSCM {
         exit 1;
     }
     return $scmTmpFile;
+}
+
+sub handleScp {
+    my $file = shift;
+    d '$file';
+    my $scpTmpFile = sprintf( "$globaltmpdir/%s_%s_%s_scp", basename($0), $$, basename($file) );
+    d '$scpTmpFile';
+    if ( $scpTmpFile =~ /\.([^\.]+)_scp$/ ) {
+        $scpTmpFile =~ s/\.([^\.]+)_scp$/_scp.$1/;    # file.scp_p4 => file_scp.gz
+    }
+    d '$scpTmpFile';
+    my $cmd = "scp '$file' $scpTmpFile";
+    d '$cmd';
+    #say "Executing  $cmd" if $opt{verbose};
+    say "Executing  $cmd";
+    system($cmd);
+    if ( -z $scpTmpFile ) {
+        say "ERROR:  scp created a file with zero size for $file\nDoes this file exist on the remote host?  Were there login issues?\nExiting\n";
+        exit 1;
+    }
+    return $scpTmpFile;
 }
 
 sub indent {
@@ -3378,7 +3439,7 @@ sub flatten {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v86 Mon Jan 10 12:10:47 PST 2022
+v88 Wed Jan 19 08:18:14 PST 2022
 
 
 This program is free software; you can redistribute it and/or modify
