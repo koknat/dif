@@ -1733,28 +1733,34 @@ if ( $opt{report} ) {
         $count++;
         $pairCount++;
         if ( -f $file1 ) {
-            if ( $opt{fast} ) {
-                if ($preprocessOptions) {
-                    die "ERROR:  -report -fast may not be used in conjunction with any of the preprocessing options\n";
+            if ( -r $file1 ) {
+                if ( $opt{fast} ) {
+                    if ($preprocessOptions) {
+                        die "ERROR:  -report -fast may not be used in conjunction with any of the preprocessing options\n";
+                    }
+                    $size1     = sprintf( "%10s", -s $file1 );
+                    $numlines1 = "";
+                    $hash1     = '_' x $hashLength;
+                    $fastOK    = 1;
                 }
-                $size1     = sprintf( "%10s", -s $file1 );
+                if ( !$fastOK ) {
+                    $tmpfile1 = determineTmpFilename( $file1, $count );
+                    if ($preprocessOptions) {
+                        preprocessFile( $file1, $tmpfile1, "$pairCount/$numFilePairs", $count % 2 );    # %2 for -start2 -stop2
+                    } else {
+                        $tmpfile1 = $file1;
+                    }
+                    $size1     = sprintf( "%10s", -s $tmpfile1 );
+                    $numlines1 = getNumLines("cat $tmpfile1");
+                    $hash1     = getHash( file => $tmpfile1 );
+                    if ( ( $hashLength - length($hash1) ) > 0 ) {
+                        $hash1 = '_' x ( ( $hashLength - length($hash1) ) / 2 ) . $hash1 . '_' x ( ( $hashLength - length($hash1) ) / 2 );    # pad with _ for 32 total characters
+                    }
+                }
+            } else {
+                $size1     = "";
                 $numlines1 = "";
-                $hash1     = '_' x $hashLength;
-                $fastOK    = 1;
-            }
-            if ( !$fastOK ) {
-                $tmpfile1 = determineTmpFilename( $file1, $count );
-                if ($preprocessOptions) {
-                    preprocessFile( $file1, $tmpfile1, "$pairCount/$numFilePairs", $count % 2 );    # %2 for -start2 -stop2
-                } else {
-                    $tmpfile1 = $file1;
-                }
-                $size1     = sprintf( "%10s", -s $tmpfile1 );
-                $numlines1 = getNumLines("cat $tmpfile1");
-                $hash1     = getHash( file => $tmpfile1 );
-                if ( ( $hashLength - length($hash1) ) > 0 ) {
-                    $hash1 = '_' x ( ( $hashLength - length($hash1) ) / 2 ) . $hash1 . '_' x ( ( $hashLength - length($hash1) ) / 2 );    # pad with _ for 32 total characters
-                }
+                $hash1     = "${underscores}__NOT_READABLE__${underscores}";
             }
         } elsif ( -d $file1 ) {
             $size1     = getNumLines("find $file1 -type f | wc -l");
@@ -1767,23 +1773,29 @@ if ( $opt{report} ) {
         }
         $count++;
         if ( -f $file2 ) {
-            if ($fastOK) {
-                $size2     = sprintf( "%10s", -s $file2 );
-                $numlines2 = "";
-                $hash2     = '_' x $hashLength;
-            } else {
-                $tmpfile2 = determineTmpFilename( $file2, $count );
-                if ($preprocessOptions) {
-                    preprocessFile( $file2, $tmpfile2, "$pairCount/$numFilePairs", $count % 2 );    # %2 for -start2 -stop2
+            if ( -r $file2 ) {
+                if ($fastOK) {
+                    $size2     = sprintf( "%10s", -s $file2 );
+                    $numlines2 = "";
+                    $hash2     = '_' x $hashLength;
                 } else {
-                    $tmpfile2 = $file2;
+                    $tmpfile2 = determineTmpFilename( $file2, $count );
+                    if ($preprocessOptions) {
+                        preprocessFile( $file2, $tmpfile2, "$pairCount/$numFilePairs", $count % 2 );    # %2 for -start2 -stop2
+                    } else {
+                        $tmpfile2 = $file2;
+                    }
+                    $size2     = sprintf( "%10s", -s $tmpfile2 );
+                    $numlines2 = getNumLines("cat $tmpfile2");
+                    $hash2     = getHash( file => $tmpfile2 );
+                    if ( ( $hashLength - length($hash2) ) > 0 ) {
+                        $hash2 = '_' x ( ( $hashLength - length($hash2) ) / 2 ) . $hash2 . '_' x ( ( $hashLength - length($hash2) ) / 2 );    # pad with _ for 32 total characters
+                    }
                 }
-                $size2     = sprintf( "%10s", -s $tmpfile2 );
-                $numlines2 = getNumLines("cat $tmpfile2");
-                $hash2     = getHash( file => $tmpfile2 );
-                if ( ( $hashLength - length($hash2) ) > 0 ) {
-                    $hash2 = '_' x ( ( $hashLength - length($hash2) ) / 2 ) . $hash2 . '_' x ( ( $hashLength - length($hash2) ) / 2 );    # pad with _ for 32 total characters
-                }
+            } else {
+                $size2     = "";
+                $numlines2 = "";
+                $hash2     = "${underscores}__NOT_READABLE__${underscores}";
             }
         } elsif ( -d $file2 ) {
             $size2     = getNumLines("find $file2 -type f | wc -l");
@@ -2703,8 +2715,8 @@ sub getHash {
         #$getHash{hashingMethod} = 'Digest::xxHash';  # 0.9    11.5
         $gui = 'none';
     }
-    $getHash{hashingMethod} = 'Digest::MD5';                              # Not using Digest::xxHash because of error "Couldn't open file" on read-only file
-    $getHash{hashingMethod} = $options{hash} if defined $options{hash};
+    $getHash{hashingMethod} = 'Digest::MD5';                               # Not using Digest::xxHash because of error "Couldn't open file" on read-only file
+    $getHash{hashingMethod} = $options{hash} if defined $options{hash};    # Specify an executable
     if ( !defined $getHash{hashingMethod} ) {
         # Priority is given to Digest::xxHash if it exists for performance reasons, then Digest::MD5, then md5sum
         eval 'use Digest::xxHash ()';
@@ -2713,7 +2725,7 @@ sub getHash {
         if ( $eval_xxHash || $@ ) {
             eval 'use Digest::MD5 ()';
             if ($@) {
-                my $hashingMethod = whichCommand( 'md5sum', 'md5' );      # 'md5' is Apple OS
+                my $hashingMethod = whichCommand( 'md5sum', 'md5' );       # 'md5' is Apple OS
                 if ( defined $hashingMethod ) {
                     $getHash{hashingMethod} = $hashingMethod;
                 } else {
@@ -3185,7 +3197,7 @@ sub findFilePairs {
 sub runFileFind {
     my ( $dir, $includeRegex, $excludeRegex ) = @_;
     d '$dir $includeRegex $excludeRegex';
-    die "\nERROR:  directory $dir does not exist\n" if !-d $dir;
+    die "\nERROR:  directory $dir does not exist\n" if !-e $dir;
     #$includeRegex =~ s/[^.]\*/.*/g;  # Don't want to use this, because it may corrupt valid Perl regexes
     $includeRegex =~ s/^\*/.*/ if defined $includeRegex;    # *.py to .*.py
     $excludeRegex =~ s/^\*/.*/ if defined $excludeRegex;    # *.pyc to .*.pyc
@@ -3439,7 +3451,7 @@ sub flatten {
 __END__
 
 dif by Chris Koknat  https://github.com/koknat/dif
-v88 Wed Jan 19 08:18:14 PST 2022
+v89 Thu Feb 24 10:38:12 PST 2022
 
 
 This program is free software; you can redistribute it and/or modify
