@@ -191,6 +191,10 @@ Any preprocessing option (-comments, -white, -sort, -grep, etc) can be used when
        -basenames         Convert path/file to file
                           This can be useful when comparing log files which contain temporary directories
 
+       -extensions        Convert path/file.extension to .extension
+       
+       -removeExtensions  Convert path/file.extension to path/file
+
        -lineWordSort      Sort the words in each line (space delimited)
        
        -round 'string'    Round all numbers according to the sprintf string
