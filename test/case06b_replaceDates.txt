@@ -19,5 +19,6 @@ N  date
 O  date
 -------------
 P  date_date
+Q  date
 -------------
 foo (for testing -replaceDates in conjunction with -search -replace)
